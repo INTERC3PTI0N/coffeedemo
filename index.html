@@ -693,23 +693,14 @@
     <p class="ch-note mono" id="chNote">Charging the drum…</p>
   </div>
 
-  <!-- pour mode: the bag -->
+  <!-- bloom mode: the card flies here, then the bag opens -->
+  <div class="chamber__flier" id="chamberFlier" aria-hidden="true"></div>
+  <div class="chamber__notes" id="chamberNotes" aria-hidden="true"></div>
+
   <div class="chamber__sheet" id="chamberSheet">
     <span class="eyebrow mono">FRESHLY OPENED</span>
     <h2 class="display" id="poTitle">Canopy Blend</h2>
     <p id="poDesc">Cocoa, hazelnut, dried fig.</p>
-
-    <div class="wheel">
-      <svg viewBox="0 0 240 240" id="poWheel" aria-hidden="true">
-        <g class="wheel__rings">
-          <circle cx="120" cy="120" r="34" /><circle cx="120" cy="120" r="60" />
-          <circle cx="120" cy="120" r="86" />
-        </g>
-        <g class="wheel__spokes" id="poSpokes"></g>
-        <polygon class="wheel__shape" id="poShape" points="120,120 120,120 120,120 120,120 120,120" />
-        <g class="wheel__labels" id="poLabels"></g>
-      </svg>
-    </div>
 
     <dl class="po-facts" id="poFacts"></dl>
     <a class="btn btn--solid" href="#cta" data-cursor="link" id="poCta">Add to the box</a>

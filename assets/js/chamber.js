@@ -240,6 +240,7 @@
        A pouch: a box whose top is pinched into a fin seal. Tipped over the
        heap so the beans visibly come out of something. */
     var bagMat = new THREE.MeshPhysicalMaterial({
+      transparent: true,
       color: 0x8c6636, roughness: 0.62, metalness: 0.2,
       clearcoat: 0.22, clearcoatRoughness: 0.58, envMapIntensity: 0.85,
       side: THREE.DoubleSide
@@ -270,6 +271,7 @@
 
     // a printed band across the belly, so it reads as packaging
     var bandMat = new THREE.MeshPhysicalMaterial({
+      transparent: true,
       color: 0x15100b, roughness: 0.74, metalness: 0.1, envMapIntensity: 0.7 });
     var band = new THREE.Mesh(new THREE.BoxGeometry(2.16, 0.92, 1.22), bandMat);
     band.position.y = -0.35;
@@ -282,9 +284,8 @@
     seal.position.y = 1.62;
     bag.add(seal);
 
-    bag.scale.setScalar(0.76);
-    bag.position.set(-2.8, 2.2, 0.4);
-    bag.rotation.set(0.16, 0.62, -2.15);     // tipped, mouth down and right
+    bag.scale.setScalar(0.62);
+    bag.position.set(0, -4.3, -1.2);
     bag.visible = false;
     scene.add(bag);
 
@@ -317,7 +318,9 @@
       drumSpin: 0,
       roastT: 0,                       // 0 green → 1 fully roasted
       target: new THREE.Color(0x6e3e1d),
-      pourT: 0,
+      bloom: 0,
+      burst: false,
+      spin: 0,
       camShake: 0
     };
 
@@ -337,15 +340,159 @@
       }
     }
 
-    function seedPour() {
-      // queued up inside the bag, so they leave the mouth in a stream
-      for (var i = 0; i < COUNT; i++) {
-        P[i].x = -2.4 + (Math.random() - 0.5) * 0.8;
-        P[i].y = 2.2 + (i / COUNT) * 10 + Math.random() * 0.5;
-        P[i].z = 0.3 + (Math.random() - 0.5) * 0.9;
-        P[i].vx = 1.6 + Math.random() * 0.8;
-        P[i].vy = -1.5 - Math.random();
-        P[i].vz = (Math.random() - 0.5) * 0.5;
+    /* --- bloom: the beans arrange into the cup profile ---------------
+       Every bean is assigned to one flavour cluster, and the clusters are
+       sized by that coffee's score on the axis. So the shape you end up
+       looking at IS the profile — a cocoa-heavy blend really does grow a
+       bigger cocoa cluster. */
+    var clusters = [];
+    var SHELL_R = 4.4;
+
+    function prepareBloom(axes) {
+      clusters = [];
+      var names = Object.keys(axes);
+      var total = 0, i;
+      for (i = 0; i < names.length; i++) total += axes[names[i]];
+
+      // The clusters sit on a ring facing the camera, each one as far out as
+      // that note scores. The arrangement you end up looking at is a radar
+      // chart of the cup — built out of the actual beans.
+      var wide = canvas.clientWidth / Math.max(1, canvas.clientHeight) > 1.15;
+      // Adjacent clusters sit RMIN apart, so RMIN has to exceed how wide a
+      // clump of beans actually is or the six read as one mass.
+      var RMIN = wide ? 2.7 : 2.2;
+      var RMAX = wide ? 3.5 : 2.9;
+
+      var assigned = 0;
+      for (i = 0; i < names.length; i++) {
+        var a = -Math.PI / 2 + (i / names.length) * Math.PI * 2;
+        var v = axes[names[i]] / 100;
+        var share = Math.max(1, Math.round(COUNT * axes[names[i]] / total));
+        if (i === names.length - 1) share = Math.max(1, COUNT - assigned);
+        clusters.push({
+          name: names[i],
+          value: axes[names[i]],
+          from: assigned,
+          to: Math.min(COUNT, assigned + share),
+          angle: a,
+          radius: RMIN + v * RMAX,
+          spread: 0.30 + v * 0.46,
+          bx: 0, by: 0, bz: 0
+        });
+        var c = clusters[clusters.length - 1];
+        c.bx = Math.cos(a) * c.radius;
+        c.by = Math.sin(a) * c.radius;
+        c.bz = Math.sin(a * 2) * 0.7;
+        assigned = c.to;
+      }
+
+      // pack every bean inside the bag to start
+      for (i = 0; i < COUNT; i++) {
+        var p = P[i];
+        p.x = (Math.random() - 0.5) * 0.9;
+        p.y = -4.3 + (Math.random() - 0.5) * 1.0;
+        p.z = (Math.random() - 0.5) * 0.6;
+        p.vx = p.vy = p.vz = 0;
+        p.scale = 0;
+
+        // a fixed point on a Fibonacci shell, so the burst resolves evenly
+        var k = (i + 0.5) / COUNT;
+        var phi = Math.acos(1 - 2 * k);
+        var theta = Math.PI * (1 + Math.sqrt(5)) * i;
+        p.shell = {
+          x: Math.sin(phi) * Math.cos(theta) * SHELL_R,
+          y: Math.cos(phi) * SHELL_R * 0.82 + 0.4,
+          z: Math.sin(phi) * Math.sin(theta) * SHELL_R
+        };
+        p.jitter = {
+          x: (Math.random() - 0.5), y: (Math.random() - 0.5), z: (Math.random() - 0.5)
+        };
+        p.cluster = 0;
+      }
+      for (i = 0; i < clusters.length; i++) {
+        for (var j = clusters[i].from; j < clusters[i].to; j++) P[j].cluster = i;
+      }
+      st.bloom = 0;
+      st.burst = false;
+      st.spin = 0;
+    }
+
+    var tmpV = new THREE.Vector3();
+
+    // the whole constellation rocks gently about Y, for parallax
+    function clusterPos(c, spin) {
+      var cs = Math.cos(spin), sn = Math.sin(spin);
+      return {
+        x: c.bx * cs + c.bz * sn,
+        y: c.by,
+        z: -c.bx * sn + c.bz * cs
+      };
+    }
+
+    function clusterTarget(p, spin) {
+      var c = clusters[p.cluster] || clusters[0];
+      if (!c) return p.shell;
+      var b = clusterPos(c, spin);
+      return {
+        x: b.x + p.jitter.x * c.spread * 1.9,
+        y: b.y + p.jitter.y * c.spread * 1.9,
+        z: b.z + p.jitter.z * c.spread * 2.2
+      };
+    }
+
+    function stepBloom(dt) {
+      var b = st.bloom;
+      st.spin = Math.sin(clock.elapsedTime * 0.17) * 0.30;
+
+      // one outward impulse when the seal lets go
+      if (!st.burst && b > 0.16) {
+        st.burst = true;
+        for (var i = 0; i < COUNT; i++) {
+          var p = P[i];
+          var a = Math.random() * Math.PI * 2;
+          var up = 5.5 + Math.random() * 5.5;
+          var out = 3.2 + Math.random() * 3.4;
+          p.vx = Math.cos(a) * out;
+          p.vz = Math.sin(a) * out;
+          p.vy = up;
+        }
+      }
+
+      // springs take over once the burst has spent itself
+      var k = b < 0.30 ? 0 : clamp((b - 0.30) / 0.22, 0, 1) * 7.5;
+      var toCluster = clamp((b - 0.66) / 0.26, 0, 1);
+      toCluster = toCluster * toCluster * (3 - 2 * toCluster);
+      var swirl = Math.max(0, 1 - b * 1.6) * 5.0;
+      var grav = b < 0.34 ? 7.5 : 0;
+
+      for (var n = 0; n < COUNT; n++) {
+        var q = P[n];
+        if (q.scale < 1) q.scale = Math.min(1, q.scale + dt * (b > 0.14 ? 4.5 : 0));
+
+        var tgt = q.shell;
+        if (toCluster > 0) {
+          var ct = clusterTarget(q, st.spin);
+          tgt = {
+            x: lerp(q.shell.x, ct.x, toCluster),
+            y: lerp(q.shell.y, ct.y, toCluster),
+            z: lerp(q.shell.z, ct.z, toCluster)
+          };
+        }
+
+        q.vx += (tgt.x - q.x) * k * dt;
+        q.vy += (tgt.y - q.y) * k * dt - grav * dt;
+        q.vz += (tgt.z - q.z) * k * dt;
+
+        // a lazy rotation about Y while the cloud is still loose
+        if (swirl > 0.01) {
+          q.vx += -q.z * swirl * dt * 0.12;
+          q.vz += q.x * swirl * dt * 0.12;
+        }
+
+        var damp = Math.pow(b < 0.30 ? 0.995 : 0.90, dt * 60);
+        q.vx *= damp; q.vy *= damp; q.vz *= damp;
+
+        q.x += q.vx * dt; q.y += q.vy * dt; q.z += q.vz * dt;
       }
     }
 
@@ -355,6 +502,12 @@
     function step(dt) {
       var i, j, p, q;
       var omega = st.drumSpin;
+
+      if (st.mode === 'bloom') {
+        stepBloom(dt);
+        separate(0.9);        // a light pass — clusters should breathe
+        return;
+      }
 
       for (i = 0; i < COUNT; i++) {
         p = P[i];
@@ -391,15 +544,20 @@
         p.vx *= 0.995; p.vy *= 0.999; p.vz *= 0.995;
       }
 
-      // Keep them apart. O(n²) on 150 beans is nothing, and without it the
-      // heap reads as one brown mass instead of a pile of beans.
+      separate(1.45);
+    }
+
+    // Keep them apart. O(n²) on 150 beans is nothing, and without it the
+    // heap reads as one brown mass instead of a pile of beans.
+    function separate(gap) {
+      var i, j, p, q;
       for (i = 0; i < COUNT; i++) {
         p = P[i];
         for (j = i + 1; j < COUNT; j++) {
           q = P[j];
           var dx = q.x - p.x, dy = q.y - p.y, dz = q.z - p.z;
           var d2 = dx * dx + dy * dy + dz * dz;
-          var min = (p.s + q.s) * 1.45;
+          var min = (p.s + q.s) * gap;
           if (d2 > 0.0001 && d2 < min * min) {
             var d = Math.sqrt(d2);
             var push = (min - d) / d * 0.5;
@@ -428,7 +586,7 @@
 
         dummy.position.set(p.x, p.y, p.z);
         dummy.rotation.set(p.rx, p.ry, p.rz);
-        dummy.scale.setScalar(p.s);
+        dummy.scale.setScalar(p.s * (p.scale === undefined ? 1 : p.scale));
         dummy.updateMatrix();
         beans.setMatrixAt(i, dummy.matrix);
       }
@@ -461,9 +619,20 @@
         fire.intensity = st.roastT > 0.02 ? 12 + Math.sin(clock.elapsedTime * 9) * 5 : 0;
       } else {
         drum.visible = false;
-        bag.visible = true;
         fire.intensity = 0;
-        if (!reduced) bag.rotation.z = -2.15 + Math.sin(clock.elapsedTime * 0.8) * 0.06;
+        // the bag turns slowly, and its seal peels back as the beans leave
+        bag.rotation.y = clock.elapsedTime * 0.25;
+        var openness = clamp((st.bloom - 0.04) / 0.16, 0, 1);
+        seal.rotation.x = -openness * 1.5;
+        seal.position.y = 1.62 + openness * 0.42;
+        bagBody.scale.y = 1 - openness * 0.10;    // it slumps as it empties
+        // once it has delivered, it gets out of the way
+        // it arrives as the card turns edge-on, and leaves once emptied
+        var arrive = clamp(st.bloom / 0.05, 0, 1);
+        var fade = arrive * (1 - clamp((st.bloom - 0.38) / 0.24, 0, 1));
+        bagMat.opacity = fade;
+        bandMat.opacity = fade;
+        bag.visible = fade > 0.02;
       }
       if (st.mode === 'drum') bag.visible = false;
 
@@ -476,10 +645,14 @@
       }
       paint();
 
-      var wantZ = st.mode === 'drum' ? 16.5 : 13.5;
+      var wide = camera.aspect > 1.15;
+      var wantZ = st.mode === 'drum' ? 16.5 : 21.0;
+      // in bloom the sheet owns the right third, so the subject sits left
+      var wantX = (st.mode === 'drum' || !wide) ? 0 : 3.9;
       camera.position.z = lerp(camera.position.z, wantZ, 1 - Math.pow(0.9, dt * 60));
-      camera.position.x = Math.sin(clock.elapsedTime * 0.3) * 0.25;
-      camera.lookAt(0, st.mode === 'drum' ? 0 : -0.7, 0);
+      camera.position.x = lerp(camera.position.x, wantX, 1 - Math.pow(0.9, dt * 60)) +
+                          Math.sin(clock.elapsedTime * 0.3) * 0.2;
+      camera.lookAt(wantX, st.mode === 'drum' ? 0 : -0.2, 0);
 
       renderer.render(scene, camera);
     }
@@ -493,7 +666,40 @@
       state: st,
       resize: resize,
       seedDrum: seedDrum,
-      seedPour: seedPour,
+      prepareBloom: prepareBloom,
+      setBloomPhase: function (v) { st.bloom = clamp(v, 0, 1); },
+
+      /* Where each flavour cluster currently sits on screen, so the labels
+         can be plain DOM pinned to real 3D positions. */
+      /* Where the scene's centre lands on screen. The card flies to this
+         rather than to the middle of the window, because the camera is
+         offset to keep the subject clear of the detail panel. */
+      subjectScreen: function () {
+        tmpV.set(0, 0, 0).project(camera);
+        return {
+          x: (tmpV.x * 0.5 + 0.5) * canvas.clientWidth,
+          y: (-tmpV.y * 0.5 + 0.5) * canvas.clientHeight
+        };
+      },
+
+      clusterScreen: function () {
+        var out = [];
+        for (var i = 0; i < clusters.length; i++) {
+          var c = clusters[i];
+          // pinned just outside the clump, so the label never sits on it
+          var b = clusterPos(c, st.spin);
+          var push = 1 + 1.15 / Math.max(1, c.radius);
+          tmpV.set(b.x * push, b.y * push, b.z);
+          tmpV.project(camera);
+          out.push({
+            name: c.name, value: c.value,
+            x: (tmpV.x * 0.5 + 0.5) * canvas.clientWidth,
+            y: (-tmpV.y * 0.5 + 0.5) * canvas.clientHeight,
+            depth: tmpV.z
+          });
+        }
+        return out;
+      },
       setMode: function (m) { st.mode = m; },
       setOpen: function (v) { st.open = !!v; },
       setTarget: function (hex) { st.target.set(hex); },

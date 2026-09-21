@@ -36,8 +36,12 @@
       });
       lenis.on('scroll', ST.update);
       GS.ticker.add(function (time) { lenis.raf(time * 1000); });
-      GS.ticker.lagSmoothing(0);
     }
+
+    // Off in every mode. Left on, GSAP clamps its delta on a slow frame and
+    // its clock falls behind wall time, which stretches every duration and
+    // delays every onComplete.
+    GS.ticker.lagSmoothing(0);
 
     // anchors go through Lenis so the easing matches the rest of the page
     $$('a[href^="#"]').forEach(function (a) {
@@ -636,21 +640,36 @@
     function close() {
       if (!root.classList.contains('is-open')) return;
       stopTimeline();
-      if (hasGSAP) {
+      stopNotes();
+
+      /* Release everything that traps the user up front. If this waited on a
+         tween's onComplete and the ticker stalled — a heavy frame, a
+         backgrounded tab — the overlay would stay up with the page locked
+         behind it and no way out. The fade is cosmetic; the release is not. */
+      root.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('no-scroll');
+      if (lenis) lenis.start();
+      if (stage) stage.setOpen(false);
+      if (lastFocus && lastFocus.focus) lastFocus.focus();
+
+      var hidden = false;
+      function hide() {
+        if (hidden) return;
+        hidden = true;
+        root.classList.remove('is-open');
+        flier.style.display = 'none';
+        flier.innerHTML = '';
+      }
+
+      if (hasGSAP && !reduced) {
         GS.to([hud, sheet], { opacity: 0, y: 18, duration: 0.3, ease: 'power2.in' });
         GS.to(veil, {
           opacity: 0, duration: 0.45, ease: 'power2.inOut', delay: 0.12,
-          onComplete: finish
+          onComplete: hide
         });
-      } else { finish(); }
-
-      function finish() {
-        root.classList.remove('is-open');
-        root.setAttribute('aria-hidden', 'true');
-        document.body.classList.remove('no-scroll');
-        if (lenis) lenis.start();
-        if (stage) stage.setOpen(false);
-        if (lastFocus && lastFocus.focus) lastFocus.focus();
+        setTimeout(hide, 900);          // backstop, whatever the ticker does
+      } else {
+        hide();
       }
     }
 
@@ -662,7 +681,7 @@
       if (lenis) lenis.stop();
 
       hud.style.display = mode === 'drum' ? '' : 'none';
-      sheet.style.display = mode === 'pour' ? '' : 'none';
+      sheet.style.display = mode === 'drum' ? 'none' : '';
 
       if (hasStage) {
         stage = window.LattecanoChamber.getStage(canvas);
@@ -671,8 +690,10 @@
         stage.setOpen(true);
       }
 
-      if (hasGSAP) {
+      if (hasGSAP && !reduced) {
         GS.fromTo(veil, { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power2.out' });
+      } else {
+        GS && GS.set ? GS.set(veil, { opacity: 1 }) : (veil.style.opacity = 1);
       }
       $('#chamberClose').focus();
     }
@@ -746,19 +767,68 @@
         }, 0.35);
     }
 
-    /* ---------------- pour: open a bag ----------------------------- */
-    function pour(index) {
+    /* ---------------- bloom: open a bag ---------------------------- */
+    var flier = $('#chamberFlier');
+    var notesLayer = $('#chamberNotes');
+    var noteEls = [];
+    var noteRaf = 0;
+
+    function stopNotes() {
+      if (noteRaf) { cancelAnimationFrame(noteRaf); noteRaf = 0; }
+    }
+
+    /* The labels are DOM, pinned every frame to where their cluster actually
+       is in the scene. Cheaper than text in WebGL, and it stays crisp. */
+    function trackNotes() {
+      stopNotes();
+      (function loop() {
+        noteRaf = requestAnimationFrame(loop);
+        if (!stage || !stage.clusterScreen) return;
+        // Label tracking is cosmetic. It runs on the same tick that opens the
+        // panel, so anything thrown here must not take the opening with it.
+        var pts;
+        try { pts = stage.clusterScreen(); } catch (e) { return; }
+        if (!pts) return;
+        for (var i = 0; i < noteEls.length && i < pts.length; i++) {
+          var el = noteEls[i], pt = pts[i];
+          el.style.left = pt.x + 'px';
+          el.style.top = pt.y + 'px';
+          // behind the bag reads as further away
+          el.style.zIndex = String(1000 - Math.round(pt.depth * 1000));
+          el.style.filter = pt.depth > 0.62 ? 'opacity(.45)' : '';
+        }
+      })();
+    }
+
+    function openBag(index, cardEl) {
       var prod = PRODUCTS[index] || PRODUCTS[0];
-      open('pour');
+
+      /* 1 · take a still of the card and pin it exactly where it sits */
+      var inner = cardEl && cardEl.querySelector('.card__inner');
+      var from = inner ? inner.getBoundingClientRect() : null;
+      flier.innerHTML = '';
+      if (inner && hasGSAP) {
+        flier.appendChild(inner.cloneNode(true));
+        GS.set(flier, {
+          left: from.left, top: from.top, width: from.width, height: from.height,
+          opacity: 1, rotateY: 0, scale: 1
+        });
+        flier.style.display = 'block';
+      } else {
+        flier.style.display = 'none';
+      }
+
+      open('bloom');
 
       $('#poTitle').textContent = prod.name;
       $('#poDesc').textContent = prod.desc;
 
       if (hasStage) {
-        stage.seedPour();
         stage.setTarget(prod.hex);
         stage.setBagColour(prod.bag);
-        stage.state.roastT = 1;          // already roasted; this is the bag
+        stage.state.roastT = 1;             // already roasted; this is the bag
+        stage.prepareBloom(prod.axes);
+        stage.setBloomPhase(0);
       }
 
       // facts
@@ -771,60 +841,67 @@
         d.appendChild(dt); d.appendChild(dd); dl.appendChild(d);
       });
 
-      // flavour wheel
-      var keys = Object.keys(prod.axes);
-      var spokes = $('#poSpokes'), labels = $('#poLabels'), shape = $('#poShape');
-      spokes.innerHTML = ''; labels.innerHTML = '';
-      var pts = [], flat = [];
-      keys.forEach(function (k, i) {
-        var a = (i / keys.length) * Math.PI * 2 - Math.PI / 2;
-        var R = 86;
-        var lx = 120 + Math.cos(a) * R, ly = 120 + Math.sin(a) * R;
-        var ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        ln.setAttribute('x1', 120); ln.setAttribute('y1', 120);
-        ln.setAttribute('x2', lx); ln.setAttribute('y2', ly);
-        spokes.appendChild(ln);
-
-        var tx = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        tx.setAttribute('x', 120 + Math.cos(a) * (R + 18));
-        tx.setAttribute('y', 120 + Math.sin(a) * (R + 18) + 3);
-        tx.setAttribute('text-anchor', 'middle');
-        tx.textContent = k;
-        labels.appendChild(tx);
-
-        var v = prod.axes[k] / 100 * R;
-        pts.push([120 + Math.cos(a) * v, 120 + Math.sin(a) * v]);
-        flat.push([120, 120]);
+      // the cluster labels
+      notesLayer.innerHTML = '';
+      noteEls = Object.keys(prod.axes).map(function (k) {
+        var el = document.createElement('div');
+        el.className = 'note';
+        el.innerHTML = '<span class="note__dot"></span>' +
+                       '<span class="note__name"></span>' +
+                       '<span class="note__val"></span>';
+        el.querySelector('.note__name').textContent = k;
+        el.querySelector('.note__val').textContent = prod.axes[k];
+        notesLayer.appendChild(el);
+        return el;
       });
+      trackNotes();
 
-      function setPoints(arr) {
-        shape.setAttribute('points', arr.map(function (p) {
-          return p[0].toFixed(1) + ',' + p[1].toFixed(1);
-        }).join(' '));
+      if (!hasGSAP) {
+        if (hasStage) stage.setBloomPhase(1);
+        noteEls.forEach(function (el) { el.style.opacity = 1; });
+        return;
       }
-      setPoints(flat);
 
-      if (!hasGSAP) { setPoints(pts); return; }
+      /* 2 · fly it to the middle, turn it edge-on, and hand over to WebGL */
+      var vw = window.innerWidth, vh = window.innerHeight;
+      var tw = Math.min(330, vw * 0.62);
+      var th = tw * (from ? from.height / from.width : 1.5);
 
+      // land on the bag, not on the middle of the window
+      var subject = (hasStage && stage.subjectScreen)
+        ? stage.subjectScreen() : { x: vw / 2, y: vh / 2 };
+
+      var phase = { b: 0 };
       stopTimeline();
       tl = GS.timeline();
+
+      if (from) {
+        tl.to(flier, {
+          left: subject.x - tw / 2, top: subject.y - th / 2,
+          width: tw, height: th,
+          duration: 0.78, ease: 'expo.inOut'
+        }, 0)
+          .to(flier, { rotateY: -92, duration: 0.6, ease: 'power3.inOut' }, 0.42)
+          .to(flier, { opacity: 0, duration: 0.25, ease: 'power2.in' }, 0.78)
+          .set(flier, { display: 'none' }, 1.05);
+      }
+
+      tl.to(phase, {
+        b: 1, duration: 3.4, ease: 'power2.inOut',
+        onUpdate: function () { if (hasStage) stage.setBloomPhase(phase.b); }
+      }, from ? 0.86 : 0.1);
+
+      // the labels arrive as their clusters form
+      tl.to(noteEls, {
+        opacity: 1, duration: 0.5, stagger: 0.07, ease: 'power2.out'
+      }, from ? 3.0 : 2.2);
+
       tl.fromTo(sheet, { opacity: 0, x: 40 },
-                       { opacity: 1, x: 0, duration: 0.8, ease: 'expo.out' }, 0.15)
-        .fromTo('.wheel__rings circle', { scale: 0.6, opacity: 0, transformOrigin: '120px 120px' },
-                { scale: 1, opacity: 1, duration: 0.7, stagger: 0.07, ease: 'power3.out' }, 0.3)
-        .to({ k: 0 }, {
-          k: 1, duration: 1.1, ease: 'power3.out',
-          onUpdate: function () {
-            var k = this.targets()[0].k;
-            setPoints(pts.map(function (p) {
-              return [lerp(120, p[0], k), lerp(120, p[1], k)];
-            }));
-          }
-        }, 0.5)
+                       { opacity: 1, x: 0, duration: 0.8, ease: 'expo.out' }, 1.0)
         .fromTo('.po-facts div', { opacity: 0, y: 14 },
-                { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out' }, 0.7)
+                { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out' }, 1.3)
         .fromTo('#poCta', { opacity: 0, y: 14 },
-                { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 0.95);
+                { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 1.55);
     }
 
     /* ---------------- wiring --------------------------------------- */
@@ -838,12 +915,12 @@
     $$('[data-pour]').forEach(function (card) {
       card.addEventListener('click', function (e) {
         if (e.target.closest('a')) return;
-        pour(+card.dataset.pour);
+        openBag(+card.dataset.pour, card);
       });
       card.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          pour(+card.dataset.pour);
+          openBag(+card.dataset.pour, card);
         }
       });
     });

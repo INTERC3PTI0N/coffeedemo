@@ -345,3 +345,62 @@
     border-radius:var(--rad) var(--rad) 0 0;
   }
 }
+
+
+/* =================================================================== */
+/* THE OPENING — the clicked card flies in, then hands over to WebGL   */
+/* =================================================================== */
+.chamber__flier{
+  position:fixed; z-index:5;
+  border-radius:var(--rad);
+  overflow:hidden;
+  pointer-events:none;
+  box-shadow:0 40px 90px -30px rgba(0,0,0,.9);
+  will-change:transform,opacity;
+}
+.chamber__flier .card__inner{
+  width:100%; height:100%;
+  border-radius:var(--rad);
+}
+/* the flier is a still of the card, so nothing inside it should move */
+.chamber__flier *{ transition:none !important; animation:none !important; }
+.chamber__flier .card__cue{ display:none; }
+
+/* the flavour clusters get plain DOM labels pinned to their 3D positions */
+.chamber__notes{
+  position:absolute; inset:0; z-index:4;
+  pointer-events:none;
+}
+.note{
+  position:absolute;
+  transform:translate(-50%,-50%);
+  display:flex; align-items:center; gap:9px;
+  padding:6px 12px 6px 9px;
+  border-radius:100px;
+  background:rgba(12,8,5,.72);
+  border:1px solid rgba(242,231,214,.18);
+  backdrop-filter:blur(8px);
+  -webkit-backdrop-filter:blur(8px);
+  white-space:nowrap;
+  opacity:0;
+}
+.note__dot{
+  width:6px; height:6px; border-radius:50%;
+  background:var(--crema);
+  flex:none;
+}
+.note__name{
+  font-family:var(--mono); font-size:9px;
+  letter-spacing:.14em; text-transform:uppercase;
+  color:var(--oat);
+}
+.note__val{
+  font-family:var(--serif); font-size:13px; line-height:1;
+  color:var(--crema);
+}
+
+@media (max-width:900px){
+  .note{ padding:4px 9px 4px 7px; gap:6px; }
+  .note__name{ font-size:8px; letter-spacing:.1em; }
+  .note__val{ font-size:11px; }
+}
