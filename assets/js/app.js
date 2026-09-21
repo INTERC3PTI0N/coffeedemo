@@ -165,7 +165,8 @@
     var dot = $('.cursor__dot', cur);
     var ring = $('.cursor__ring', cur);
     var label = $('.cursor__label', cur);
-    var LABELS = { link: '', play: 'PLAY', open: 'OPEN', view: 'VIEW', drag: 'DIAL' };
+    var LABELS = { link: '', play: 'PLAY', open: 'OPEN', view: 'VIEW',
+                   drag: 'DIAL', roast: 'ROAST', close: 'CLOSE' };
 
     var pos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     var dotPos = { x: pos.x, y: pos.y };
@@ -568,6 +569,327 @@
       y: 40, opacity: 0, duration: 1, ease: 'power3.out',
       scrollTrigger: { trigger: '.roasts__head', start: 'top 84%' }
     });
+  }
+
+  /* ================================================================= */
+  /* 8b · The Chamber — roast a lot, or open a bag                     */
+  /* ================================================================= */
+
+  // Each roast: where it sits on the scale, how hot and how long it runs,
+  // and the colour it lands on.
+  var LOTS = [
+    { name: 'Cascara Morning', hex: 0xC9A06A, bag: 0xE8CFA6, temp: 196, secs: 550,
+      note: 'Dropped early, while the acidity is still in front.' },
+    { name: 'Terrace No. 7',   hex: 0xA9773C, temp: 205, secs: 630,
+      note: 'A slow ramp through drying to keep the honey sweetness.' },
+    { name: 'Canopy Blend',    hex: 0x6E3E1D, temp: 214, secs: 710,
+      note: 'Held to the edge of first crack, then developed for cocoa.' },
+    { name: 'Night Terminal',  hex: 0x3F1E0D, temp: 228, secs: 820,
+      note: 'Taken well past first crack until the oils come up.' },
+    { name: 'Cold Cellar',     hex: 0x33180B, temp: 232, secs: 860,
+      note: 'The longest development we run — built to be brewed cold.' }
+  ];
+
+  // Flavour axes for the wheel, 0–100
+  var PRODUCTS = [
+    { name: 'Cascara Morning', hex: 0xC9A06A, bag: 0xE8CFA6,
+      desc: 'Jasmine, white peach and a lime-leaf finish that stays bright as it cools.',
+      axes: { Floral: 92, Fruit: 84, Sweet: 62, Nutty: 22, Cocoa: 14, Body: 34 },
+      facts: [['Process','Washed'],['Altitude','2,150 m'],['Varietal','Heirloom'],['Roast','Light']] },
+    { name: 'Terrace No. 7', hex: 0xA9773C, bag: 0xD8B27C,
+      desc: 'Apricot and brown sugar over a soft, tea-like body. Sixteen days of rest.',
+      axes: { Floral: 58, Fruit: 88, Sweet: 82, Nutty: 40, Cocoa: 28, Body: 52 },
+      facts: [['Process','Honey'],['Altitude','2,080 m'],['Varietal','Kurume'],['Roast','Med-light']] },
+    { name: 'Canopy Blend', hex: 0x6E3E1D, bag: 0xC08F52,
+      desc: 'Cocoa, hazelnut and dried fig. Two farms, one drum, roasted every Tuesday.',
+      axes: { Floral: 24, Fruit: 46, Sweet: 74, Nutty: 86, Cocoa: 90, Body: 78 },
+      facts: [['Process','Mixed'],['Altitude','1,900 m'],['Varietal','Blend'],['Roast','Medium']] },
+    { name: 'Night Terminal', hex: 0x3F1E0D, bag: 0x8E6236,
+      desc: 'Dark chocolate, molasses and walnut. Built to hold its own under milk.',
+      axes: { Floral: 10, Fruit: 22, Sweet: 60, Nutty: 72, Cocoa: 96, Body: 94 },
+      facts: [['Process','Natural'],['Altitude','1,840 m'],['Varietal','Bourbon'],['Roast','Dark']] }
+  ];
+
+  var chamber = null;
+
+  function initChamber() {
+    var root = $('#chamber');
+    var canvas = $('#chamberCanvas');
+    if (!root || !canvas) return;
+
+    var hasStage = window.LattecanoChamber && window.LattecanoChamber.supported;
+    var stage = null;
+
+    var hud = $('#chamberHud');
+    var sheet = $('#chamberSheet');
+    var veil = $('.chamber__veil', root);
+    var phases = $$('#chPhases li');
+    var curve = $('#chCurve');
+    var curveDot = $('#chCurveDot');
+    var lastFocus = null;
+    var tl = null;
+
+    function stopTimeline() {
+      if (tl) { tl.kill(); tl = null; }
+    }
+
+    function close() {
+      if (!root.classList.contains('is-open')) return;
+      stopTimeline();
+      if (hasGSAP) {
+        GS.to([hud, sheet], { opacity: 0, y: 18, duration: 0.3, ease: 'power2.in' });
+        GS.to(veil, {
+          opacity: 0, duration: 0.45, ease: 'power2.inOut', delay: 0.12,
+          onComplete: finish
+        });
+      } else { finish(); }
+
+      function finish() {
+        root.classList.remove('is-open');
+        root.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('no-scroll');
+        if (lenis) lenis.start();
+        if (stage) stage.setOpen(false);
+        if (lastFocus && lastFocus.focus) lastFocus.focus();
+      }
+    }
+
+    function open(mode) {
+      lastFocus = document.activeElement;
+      root.classList.add('is-open');
+      root.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('no-scroll');
+      if (lenis) lenis.stop();
+
+      hud.style.display = mode === 'drum' ? '' : 'none';
+      sheet.style.display = mode === 'pour' ? '' : 'none';
+
+      if (hasStage) {
+        stage = window.LattecanoChamber.getStage(canvas);
+        stage.resize();
+        stage.setMode(mode);
+        stage.setOpen(true);
+      }
+
+      if (hasGSAP) {
+        GS.fromTo(veil, { opacity: 0 }, { opacity: 1, duration: 0.5, ease: 'power2.out' });
+      }
+      $('#chamberClose').focus();
+    }
+
+    /* ---------------- drum: roast a lot ---------------------------- */
+    function roast(index) {
+      var lot = LOTS[index] || LOTS[2];
+      open('drum');
+
+      $('#chTitle').textContent = lot.name;
+      $('#chKicker').textContent = 'IN THE DRUM';
+      phases.forEach(function (li) { li.classList.remove('is-on'); });
+
+      if (hasStage) {
+        stage.seedDrum();
+        stage.setTarget(lot.hex);
+        stage.state.roastT = 0;
+        stage.state.drumSpin = 0;
+      }
+
+      if (!hasGSAP) {
+        if (hasStage) stage.state.roastT = 1;
+        $('#chNote').textContent = lot.note;
+        return;
+      }
+
+      var len = curve ? curve.getTotalLength() : 0;
+      if (curve) GS.set(curve, { strokeDasharray: len, strokeDashoffset: len });
+
+      var prog = { t: 0 };
+      stopTimeline();
+      tl = GS.timeline();
+
+      tl.fromTo([hud.querySelector('.ch-head'), $('.ch-gauges'), $('.ch-phases'), $('.ch-curve')],
+                { opacity: 0, y: 22 },
+                { opacity: 1, y: 0, duration: 0.7, stagger: 0.07, ease: 'power3.out' }, 0.1)
+        .to(prog, {
+          t: 1, duration: 7.2, ease: 'power1.inOut',
+          onUpdate: function () {
+            var t = prog.t;
+            if (hasStage) {
+              stage.state.roastT = t;
+              // the drum speeds up as the charge dries and loosens
+              stage.state.drumSpin = 0.85 + t * 1.15;
+            }
+            $('#chTemp').textContent = Math.round(lerp(20, lot.temp, Math.pow(t, 0.62)));
+            var secs = Math.round(lot.secs * t);
+            $('#chTime').textContent =
+              String(Math.floor(secs / 60)).padStart(2, '0') + ':' +
+              String(secs % 60).padStart(2, '0');
+            $('#chMass').textContent = (10 - t * 1.55).toFixed(1);   // moisture loss
+
+            phases.forEach(function (li) {
+              li.classList.toggle('is-on', t >= parseFloat(li.dataset.at));
+            });
+
+            if (curve) {
+              GS.set(curve, { strokeDashoffset: len * (1 - t) });
+              var pt = curve.getPointAtLength(len * t);
+              curveDot.setAttribute('cx', pt.x);
+              curveDot.setAttribute('cy', pt.y);
+            }
+
+            $('#chNote').textContent =
+              t < 0.30 ? 'Driving off the moisture…' :
+              t < 0.58 ? 'Sugars browning — the drum is loosening up.' :
+              t < 0.82 ? 'First crack. You would hear it from the door.' :
+              t < 0.98 ? 'Development: this is where the cup is decided.' :
+                         lot.note;
+          }
+        }, 0.35);
+    }
+
+    /* ---------------- pour: open a bag ----------------------------- */
+    function pour(index) {
+      var prod = PRODUCTS[index] || PRODUCTS[0];
+      open('pour');
+
+      $('#poTitle').textContent = prod.name;
+      $('#poDesc').textContent = prod.desc;
+
+      if (hasStage) {
+        stage.seedPour();
+        stage.setTarget(prod.hex);
+        stage.setBagColour(prod.bag);
+        stage.state.roastT = 1;          // already roasted; this is the bag
+      }
+
+      // facts
+      var dl = $('#poFacts');
+      dl.innerHTML = '';
+      prod.facts.forEach(function (f) {
+        var d = document.createElement('div');
+        var dt = document.createElement('dt'); dt.textContent = f[0];
+        var dd = document.createElement('dd'); dd.textContent = f[1];
+        d.appendChild(dt); d.appendChild(dd); dl.appendChild(d);
+      });
+
+      // flavour wheel
+      var keys = Object.keys(prod.axes);
+      var spokes = $('#poSpokes'), labels = $('#poLabels'), shape = $('#poShape');
+      spokes.innerHTML = ''; labels.innerHTML = '';
+      var pts = [], flat = [];
+      keys.forEach(function (k, i) {
+        var a = (i / keys.length) * Math.PI * 2 - Math.PI / 2;
+        var R = 86;
+        var lx = 120 + Math.cos(a) * R, ly = 120 + Math.sin(a) * R;
+        var ln = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        ln.setAttribute('x1', 120); ln.setAttribute('y1', 120);
+        ln.setAttribute('x2', lx); ln.setAttribute('y2', ly);
+        spokes.appendChild(ln);
+
+        var tx = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        tx.setAttribute('x', 120 + Math.cos(a) * (R + 18));
+        tx.setAttribute('y', 120 + Math.sin(a) * (R + 18) + 3);
+        tx.setAttribute('text-anchor', 'middle');
+        tx.textContent = k;
+        labels.appendChild(tx);
+
+        var v = prod.axes[k] / 100 * R;
+        pts.push([120 + Math.cos(a) * v, 120 + Math.sin(a) * v]);
+        flat.push([120, 120]);
+      });
+
+      function setPoints(arr) {
+        shape.setAttribute('points', arr.map(function (p) {
+          return p[0].toFixed(1) + ',' + p[1].toFixed(1);
+        }).join(' '));
+      }
+      setPoints(flat);
+
+      if (!hasGSAP) { setPoints(pts); return; }
+
+      stopTimeline();
+      tl = GS.timeline();
+      tl.fromTo(sheet, { opacity: 0, x: 40 },
+                       { opacity: 1, x: 0, duration: 0.8, ease: 'expo.out' }, 0.15)
+        .fromTo('.wheel__rings circle', { scale: 0.6, opacity: 0, transformOrigin: '120px 120px' },
+                { scale: 1, opacity: 1, duration: 0.7, stagger: 0.07, ease: 'power3.out' }, 0.3)
+        .to({ k: 0 }, {
+          k: 1, duration: 1.1, ease: 'power3.out',
+          onUpdate: function () {
+            var k = this.targets()[0].k;
+            setPoints(pts.map(function (p) {
+              return [lerp(120, p[0], k), lerp(120, p[1], k)];
+            }));
+          }
+        }, 0.5)
+        .fromTo('.po-facts div', { opacity: 0, y: 14 },
+                { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out' }, 0.7)
+        .fromTo('#poCta', { opacity: 0, y: 14 },
+                { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 0.95);
+    }
+
+    /* ---------------- wiring --------------------------------------- */
+    $$('[data-roast-open]').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        roast(+btn.dataset.roastOpen);
+      });
+    });
+
+    $$('[data-pour]').forEach(function (card) {
+      card.addEventListener('click', function (e) {
+        if (e.target.closest('a')) return;
+        pour(+card.dataset.pour);
+      });
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          pour(+card.dataset.pour);
+        }
+      });
+    });
+
+    $('#chamberClose').addEventListener('click', close);
+    root.addEventListener('click', function (e) {
+      if (e.target === root || e.target.classList.contains('chamber__veil')) close();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') close();
+    });
+
+    window.addEventListener('resize', function () { if (stage) stage.resize(); });
+  }
+
+  /* ================================================================= */
+  /* 8c · Still renders: the section art is a picture of real beans     */
+  /* ================================================================= */
+  function initBeanArt() {
+    if (!window.LattecanoChamber || !window.LattecanoChamber.supported) return;
+    var render = window.LattecanoChamber.renderBeanBed;
+
+    // done off the critical path — these are decoration, not content
+    var jobs = [];
+    $$('.panel').forEach(function (panel, i) {
+      jobs.push(function () {
+        var art = $('.panel__art', panel);
+        if (!art) return;
+        var url = render(LOTS[i] ? LOTS[i].hex : 0x6e3e1d, 560, 820, i);
+        art.style.backgroundImage = 'url(' + url + ')';
+        art.classList.add('is-bed');
+      });
+    });
+    $$('.card__bed').forEach(function (bed, i) {
+      jobs.push(function () {
+        var url = render(PRODUCTS[i] ? PRODUCTS[i].hex : 0x6e3e1d, 420, 520, i + 9);
+        bed.style.backgroundImage = 'url(' + url + ')';
+      });
+    });
+
+    (function next() {
+      var job = jobs.shift();
+      if (!job) return;
+      try { job(); } catch (e) { /* decoration only */ }
+      if (jobs.length) setTimeout(next, 16);
+    })();
   }
 
   /* ================================================================= */
@@ -1025,12 +1347,15 @@
     initPanels();
     initLab();
     initCollection();
+    initChamber();
     initJourney();
     initBrew();
     initOutro();
 
     initLoader(function () {
       if (window.__heroIntro) window.__heroIntro.play();
+      // still renders are decoration; let the page settle first
+      setTimeout(initBeanArt, 400);
     });
 
     var resizeTimer;

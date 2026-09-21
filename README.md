@@ -19,26 +19,41 @@ Ten sections, each with its own motion idea rather than one effect repeated:
 | 01 | Hero | The framed window opens to full bleed while the camera flies into the bean field and the wordmark scales past you |
 | 02 | Manifesto | Per-word `rotateX` reveal through a clipping mask; beans loiter in the margins |
 | 03 | The Harvest | Five highland layers scrubbed at different rates, with beans raining through them |
-| 04 | Our Roasts | Five panels that expand on hover/focus, each with its own generated roast gradient |
+| 04 | Our Roasts | Five panels that expand on hover/focus, over beds of real beans rendered at each roast level; "Roast this lot" opens the drum |
 | 05 | Founder quote | Line-by-line mask reveal and a signature that draws itself |
 | 06 | Roast Lab | The field forms a ring around one large bean you can drag; the slider re-roasts every bean on the page |
-| 07 | The Collection | Pinned horizontal scroll with beans streaming the other way; cards tilt in 3D |
+| 07 | The Collection | Pinned horizontal scroll, cards tilt in 3D; clicking a bag opens it and pours |
 | 08 | Bean to Cup | Parallax airport-code slab, a CSS globe that turns with scroll, and beans travelling the shipping arc |
 | 09 | Brew Guide | Working calculator — method × servings → dose, water, ratio, grind, temp, time and steps |
 | 10 | Subscribe | Parallax field, validated form, footer |
 
-## The two useful tools
+## The interactive pieces
 
-Both are real, not decorative:
+Four, all real rather than decorative:
 
 - **Roast Lab** (`#lab`) — drag the slider from light to dark. Every bean on
   the page is the same lot, so the whole field takes the roast: colour,
   roughness and oil sheen interpolate across four stops, and the acidity /
   body / sweetness / bitterness bars move with it. Drag the big bean to spin
   it. "Open in Roast Lab" on any roast panel jumps the slider to that coffee.
+
+- **The Drum** (`#roasts` → *Roast this lot*) — an immersive takeover. ~150
+  instanced beans tumble against the wall of a rotating drum with flights,
+  darkening green → yellow → first crack → the chosen roast over about seven
+  seconds, while a HUD ticks through bean temperature, elapsed time, moisture
+  loss, the five roast phases and a curve that draws itself. Each lot has its
+  own drop temperature and time.
+
+- **The Pour** (`#collection` → click a bag) — the bag tips and the beans
+  stream out into a heap, while a flavour wheel draws itself from that
+  coffee's six axes alongside process, altitude, varietal and roast.
+
 - **Brew Guide** (`#brew`) — pick V60, AeroPress, French Press, Espresso or
   Cold Brew, set servings, and get the dose, water, ratio, grind, temperature,
   time and a four-step method.
+
+Both takeovers trap scroll, close on Escape or the backdrop, and restore focus
+to whatever opened them.
 
 ## Palette
 
@@ -99,6 +114,17 @@ sections.
 shared; the feature bean gets the high one, its neighbours the middle, the rest
 the low.
 
+**Section art is rendered, not drawn.** `assets/js/chamber.js` renders a still
+bed of ~430 beans at each roast level once at load and hands it back as a JPEG
+data URL, which becomes the background of the roast panels and the collection
+bags. They are photographs of the actual geometry, so the five roast levels
+differ because the beans differ — not because a gradient was tinted.
+
+**The Chamber** shares one renderer and one instanced mesh across both
+takeovers. Beans run a small solver: gravity, wall or floor constraints, the
+drum's tangential drag, and an O(n²) separation pass. The separation is what
+stops the heap reading as one brown mass — at 150 beans it costs nothing.
+
 All easing is frame-rate independent — a per-frame "move 5% of the way" rate is
 converted for the frame actually drawn, so transitions take the same wall-clock
 time at 30fps as at 144.
@@ -110,7 +136,9 @@ index.html
 assets/
   css/base.css        tokens, resets, type, nav, cursor, loader, grain
   css/sections.css    the ten sections
-  js/scene.js         three.js — bean geometry, noise texture, both scenes
+  css/chamber.css     the takeover, plus the two product sections
+  js/scene.js         three.js — bean geometry, textures, the page-wide field
+  js/chamber.js       the drum / pour stage, and the still bean-bed renders
   js/app.js           Lenis + GSAP/ScrollTrigger, Roast Lab, Brew Guide
   img/favicon.svg
   vendor/             GSAP 3.12.5 + ScrollTrigger, Lenis 1.1.13, three.js r160

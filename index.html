@@ -13,6 +13,7 @@
 <link rel="stylesheet" href="assets/vendor/lenis.css" />
 <link rel="stylesheet" href="assets/css/base.css" />
 <link rel="stylesheet" href="assets/css/sections.css" />
+<link rel="stylesheet" href="assets/css/chamber.css" />
 </head>
 <body class="is-loading">
 
@@ -192,6 +193,14 @@
             <span>Jasmine</span><span>White Peach</span><span>Lime Leaf</span>
           </div>
           <a class="link" href="#lab" data-cursor="link">Open in Roast Lab</a>
+          <div class="panel__meter" aria-hidden="true">
+            <span class="panel__meter-scale"><i style="--pct:16%"></i></span>
+            <em class="mono">LIGHT</em>
+          </div>
+          <button class="roastbtn" type="button" data-roast-open="0" data-cursor="roast">
+            <span class="roastbtn__ring" aria-hidden="true"></span>
+            <span class="roastbtn__label">Roast this lot</span>
+          </button>
         </div>
       </article>
 
@@ -207,6 +216,14 @@
             <span>Apricot</span><span>Brown Sugar</span><span>Black Tea</span>
           </div>
           <a class="link" href="#lab" data-cursor="link">Open in Roast Lab</a>
+          <div class="panel__meter" aria-hidden="true">
+            <span class="panel__meter-scale"><i style="--pct:36%"></i></span>
+            <em class="mono">MEDIUM-LIGHT</em>
+          </div>
+          <button class="roastbtn" type="button" data-roast-open="1" data-cursor="roast">
+            <span class="roastbtn__ring" aria-hidden="true"></span>
+            <span class="roastbtn__label">Roast this lot</span>
+          </button>
         </div>
       </article>
 
@@ -222,6 +239,14 @@
             <span>Cocoa</span><span>Hazelnut</span><span>Dried Fig</span>
           </div>
           <a class="link" href="#lab" data-cursor="link">Open in Roast Lab</a>
+          <div class="panel__meter" aria-hidden="true">
+            <span class="panel__meter-scale"><i style="--pct:58%"></i></span>
+            <em class="mono">MEDIUM</em>
+          </div>
+          <button class="roastbtn" type="button" data-roast-open="2" data-cursor="roast">
+            <span class="roastbtn__ring" aria-hidden="true"></span>
+            <span class="roastbtn__label">Roast this lot</span>
+          </button>
         </div>
       </article>
 
@@ -237,6 +262,14 @@
             <span>Dark Chocolate</span><span>Molasses</span><span>Walnut</span>
           </div>
           <a class="link" href="#lab" data-cursor="link">Open in Roast Lab</a>
+          <div class="panel__meter" aria-hidden="true">
+            <span class="panel__meter-scale"><i style="--pct:82%"></i></span>
+            <em class="mono">DARK</em>
+          </div>
+          <button class="roastbtn" type="button" data-roast-open="3" data-cursor="roast">
+            <span class="roastbtn__ring" aria-hidden="true"></span>
+            <span class="roastbtn__label">Roast this lot</span>
+          </button>
         </div>
       </article>
 
@@ -252,6 +285,14 @@
             <span>Toffee</span><span>Date</span><span>Clove</span>
           </div>
           <a class="link" href="#lab" data-cursor="link">Open in Roast Lab</a>
+          <div class="panel__meter" aria-hidden="true">
+            <span class="panel__meter-scale"><i style="--pct:94%"></i></span>
+            <em class="mono">COLD BREW</em>
+          </div>
+          <button class="roastbtn" type="button" data-roast-open="4" data-cursor="roast">
+            <span class="roastbtn__ring" aria-hidden="true"></span>
+            <span class="roastbtn__label">Roast this lot</span>
+          </button>
         </div>
       </article>
     </div>
@@ -329,10 +370,11 @@
         <span class="mono collection__hint">SCROLL&nbsp;→</span>
       </div>
 
-      <article class="card" data-tilt data-cursor="view">
+      <article class="card" data-tilt data-cursor="open" data-pour="0" tabindex="0" role="button" aria-label="Open Cascara Morning">
         <div class="card__inner">
           <div class="card__bag" style="--b1:#F0DCBE;--b2:#C99A5C">
             <span class="card__seal"></span>
+            <span class="card__bed" aria-hidden="true"></span>
             <b>CASCARA<br/>MORNING</b>
             <i class="mono">LIGHT · WASHED</i>
           </div>
@@ -341,13 +383,15 @@
             <p>Jasmine, white peach, lime leaf. The one we open the roastery with.</p>
           </div>
           <span class="card__coord mono">[ 06° 09′ N, 38° 12′ E ]</span>
+          <span class="card__cue mono" aria-hidden="true">Open the bag</span>
         </div>
       </article>
 
-      <article class="card" data-tilt data-cursor="view">
+      <article class="card" data-tilt data-cursor="open" data-pour="1" tabindex="0" role="button" aria-label="Open Terrace No. 7">
         <div class="card__inner">
           <div class="card__bag" style="--b1:#E7C48F;--b2:#A6682F">
             <span class="card__seal"></span>
+            <span class="card__bed" aria-hidden="true"></span>
             <b>TERRACE<br/>NO. 7</b>
             <i class="mono">MED-LIGHT · HONEY</i>
           </div>
@@ -356,13 +400,15 @@
             <p>Apricot and brown sugar. Sixteen days of rest before it ships.</p>
           </div>
           <span class="card__coord mono">[ 06° 11′ N, 38° 15′ E ]</span>
+          <span class="card__cue mono" aria-hidden="true">Open the bag</span>
         </div>
       </article>
 
-      <article class="card" data-tilt data-cursor="view">
+      <article class="card" data-tilt data-cursor="open" data-pour="2" tabindex="0" role="button" aria-label="Open Canopy Blend">
         <div class="card__inner">
           <div class="card__bag" style="--b1:#D2A268;--b2:#7A431B">
             <span class="card__seal"></span>
+            <span class="card__bed" aria-hidden="true"></span>
             <b>CANOPY<br/>BLEND</b>
             <i class="mono">MEDIUM · BLEND</i>
           </div>
@@ -371,13 +417,15 @@
             <p>Cocoa, hazelnut, dried fig. Our house pour, roasted every Tuesday.</p>
           </div>
           <span class="card__coord mono">[ 06° 04′ N, 38° 02′ E ]</span>
+          <span class="card__cue mono" aria-hidden="true">Open the bag</span>
         </div>
       </article>
 
-      <article class="card" data-tilt data-cursor="view">
+      <article class="card" data-tilt data-cursor="open" data-pour="3" tabindex="0" role="button" aria-label="Open Night Terminal">
         <div class="card__inner">
           <div class="card__bag" style="--b1:#B07C46;--b2:#4A2510">
             <span class="card__seal"></span>
+            <span class="card__bed" aria-hidden="true"></span>
             <b>NIGHT<br/>TERMINAL</b>
             <i class="mono">DARK · NATURAL</i>
           </div>
@@ -386,6 +434,7 @@
             <p>Dark chocolate and molasses. Built to hold its own under milk.</p>
           </div>
           <span class="card__coord mono">[ 05° 58′ N, 37° 54′ E ]</span>
+          <span class="card__cue mono" aria-hidden="true">Open the bag</span>
         </div>
       </article>
 
@@ -590,11 +639,89 @@
   </footer>
 </main>
 
+<!-- ==================================================================
+     THE CHAMBER — the immersive stage for both product sections
+     ================================================================== -->
+<div class="chamber" id="chamber" aria-hidden="true" role="dialog" aria-modal="true"
+     aria-labelledby="chTitle">
+  <div class="chamber__veil"></div>
+  <canvas class="chamber__canvas" id="chamberCanvas"></canvas>
+
+  <button class="chamber__close" id="chamberClose" type="button" aria-label="Close"
+          data-cursor="close"><span></span><span></span></button>
+
+  <!-- drum mode: the roast -->
+  <div class="chamber__hud" id="chamberHud">
+    <div class="ch-head">
+      <span class="eyebrow mono" id="chKicker">IN THE DRUM</span>
+      <h2 class="display" id="chTitle">Canopy Blend</h2>
+    </div>
+
+    <div class="ch-gauges">
+      <div class="gauge">
+        <span class="mono">BEAN TEMP</span>
+        <b><i id="chTemp">20</i><em>°C</em></b>
+      </div>
+      <div class="gauge">
+        <span class="mono">ELAPSED</span>
+        <b id="chTime">00:00</b>
+      </div>
+      <div class="gauge">
+        <span class="mono">CHARGE</span>
+        <b><i id="chMass">10.0</i><em>kg</em></b>
+      </div>
+    </div>
+
+    <ol class="ch-phases" id="chPhases">
+      <li data-at="0.06"><span></span>Charge</li>
+      <li data-at="0.30"><span></span>Drying</li>
+      <li data-at="0.58"><span></span>First crack</li>
+      <li data-at="0.82"><span></span>Development</li>
+      <li data-at="0.98"><span></span>Drop</li>
+    </ol>
+
+    <div class="ch-curve">
+      <svg viewBox="0 0 320 90" aria-hidden="true">
+        <path class="ch-curve__grid" d="M0 22H320M0 45H320M0 68H320" />
+        <path id="chCurve" class="ch-curve__line"
+              d="M2 86C60 78 96 58 140 40S220 14 318 6" />
+        <circle id="chCurveDot" class="ch-curve__dot" cx="2" cy="86" r="3.4" />
+      </svg>
+      <span class="mono">ROAST CURVE</span>
+    </div>
+
+    <p class="ch-note mono" id="chNote">Charging the drum…</p>
+  </div>
+
+  <!-- pour mode: the bag -->
+  <div class="chamber__sheet" id="chamberSheet">
+    <span class="eyebrow mono">FRESHLY OPENED</span>
+    <h2 class="display" id="poTitle">Canopy Blend</h2>
+    <p id="poDesc">Cocoa, hazelnut, dried fig.</p>
+
+    <div class="wheel">
+      <svg viewBox="0 0 240 240" id="poWheel" aria-hidden="true">
+        <g class="wheel__rings">
+          <circle cx="120" cy="120" r="34" /><circle cx="120" cy="120" r="60" />
+          <circle cx="120" cy="120" r="86" />
+        </g>
+        <g class="wheel__spokes" id="poSpokes"></g>
+        <polygon class="wheel__shape" id="poShape" points="120,120 120,120 120,120 120,120 120,120" />
+        <g class="wheel__labels" id="poLabels"></g>
+      </svg>
+    </div>
+
+    <dl class="po-facts" id="poFacts"></dl>
+    <a class="btn btn--solid" href="#cta" data-cursor="link" id="poCta">Add to the box</a>
+  </div>
+</div>
+
 <script src="assets/vendor/gsap.min.js"></script>
 <script src="assets/vendor/ScrollTrigger.min.js"></script>
 <script src="assets/vendor/lenis.min.js"></script>
 <script src="assets/vendor/three.min.js"></script>
 <script src="assets/js/scene.js"></script>
+<script src="assets/js/chamber.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
 </html>
