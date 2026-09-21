@@ -12,36 +12,49 @@ section{ position:relative; }
   background:var(--ink);
   overflow:hidden;
   display:flex; align-items:center; justify-content:center;
-}
-
-.hero__stage{ position:absolute; inset:0; display:grid; place-items:center; }
-
-.hero__frame{
-  position:absolute; inset:0;
-  /* starts as an inset "window", opens to full-bleed on scroll */
+  /* the window, shared by the lit pane and the matte over it */
   --cx:21%; --cy:16%; --cr:10px;
-  clip-path:inset(var(--cy) var(--cx) var(--cy) var(--cx) round var(--cr));
-  overflow:hidden;
-  will-change:clip-path;
 }
-.hero__canvas{ position:absolute; inset:0; width:100%; height:100%; }
+
+/* Below the bean canvas: the roastery interior you look into. */
+.hero__pane{
+  position:absolute; z-index:1;
+  top:var(--cy); right:var(--cx); bottom:var(--cy); left:var(--cx);
+  border-radius:var(--cr);
+  background:
+    radial-gradient(62% 58% at 48% 40%, #3a2416 0%, #241609 52%, #150d07 100%);
+  box-shadow:inset 0 0 120px rgba(0,0,0,.7);
+}
+
+.hero__stage{ position:absolute; inset:0; z-index:3; pointer-events:none; }
+
+/* The window is a matte, not a clip: ink fills everything outside the inset
+   rect, so the shared bean canvas shows through and the opening reads as the
+   frame pulling back. */
+.hero__mask{
+  position:absolute;
+  top:var(--cy); right:var(--cx); bottom:var(--cy); left:var(--cx);
+  border-radius:var(--cr);
+  box-shadow:0 0 0 100vmax var(--ink);
+  will-change:top,right,bottom,left;
+}
 
 .hero__glow{
-  position:absolute; inset:0;
+  position:absolute; inset:0; z-index:1;
   background:
     radial-gradient(62% 52% at 50% 42%, rgba(217,169,108,.20), transparent 68%),
     radial-gradient(38% 46% at 78% 78%, rgba(195,60,43,.16), transparent 70%);
   pointer-events:none;
 }
 .hero__scrim{
-  position:absolute; inset:0;
+  position:absolute; inset:0; z-index:2;
   background:linear-gradient(to bottom, rgba(18,11,7,.5) 0%, transparent 28%,
               transparent 52%, rgba(18,11,7,.82) 100%);
   pointer-events:none;
 }
 
 .hero__ui{
-  position:absolute; inset:0;
+  position:absolute; inset:0; z-index:5;
   padding:0 calc(var(--gut) + 2vw);
   display:flex; align-items:center; justify-content:space-between;
   gap:20px;
@@ -82,7 +95,7 @@ section{ position:relative; }
   position:absolute;
   left:50%; bottom:clamp(74px,11vw,150px);
   transform:translateX(-50%);
-  z-index:4;
+  z-index:5;
   color:rgba(242,231,214,.7);
   display:flex; align-items:center; gap:10px;
 }
@@ -394,9 +407,17 @@ svg.hl{ width:128%; max-width:none; right:auto; height:auto; }
   overflow:hidden;
   display:flex; align-items:center;
 }
-.lab__canvas{ position:absolute; inset:0; width:100%; height:100%; }
+/* an invisible grab area over the feature bean, so it can still be spun */
+.lab__grab{
+  position:absolute;
+  left:0; top:0; width:62%; height:100%;
+  z-index:4;
+  cursor:grab;
+  pointer-events:auto;
+}
+.lab__grab:active{ cursor:grabbing; }
 .lab__scrim{
-  position:absolute; inset:0;
+  position:absolute; inset:0; z-index:3;
   background:
     radial-gradient(70% 60% at 30% 45%, rgba(195,60,43,.14), transparent 70%),
     linear-gradient(105deg, rgba(18,11,7,.9) 0%, rgba(18,11,7,.15) 45%, rgba(18,11,7,.92) 100%);
@@ -412,13 +433,14 @@ svg.hl{ width:128%; max-width:none; right:auto; height:auto; }
   font-size:clamp(44px,8vw,136px);
   line-height:.94;
   letter-spacing:-.01em;
+  z-index:5;
   color:var(--paper);
   text-shadow:0 18px 60px rgba(0,0,0,.72);
   pointer-events:none;
   opacity:.95;
 }
 .lab__panel{
-  position:relative; z-index:2;
+  position:relative; z-index:6;
   width:min(420px,88vw);
   margin-left:auto;
   margin-right:clamp(var(--gut),6vw,120px);
@@ -498,8 +520,8 @@ svg.hl{ width:128%; max-width:none; right:auto; height:auto; }
 }
 
 @media (max-width:860px){
-  .lab{ display:block; min-height:auto; padding:0 0 clamp(60px,10vh,100px); }
-  .lab__canvas{ position:relative; width:100%; height:50svh; }
+  .lab{ display:block; min-height:auto; padding:50svh 0 clamp(60px,10vh,100px); }
+  .lab__grab{ width:100%; height:50svh; }
   .lab__scrim{ inset:0 0 auto 0; height:50svh; }
   .lab__title{
     position:relative; top:auto; bottom:auto;
@@ -515,7 +537,7 @@ svg.hl{ width:128%; max-width:none; right:auto; height:auto; }
 }
 
 @media (max-width:760px){
-  .hero__frame{ --cx:7%; --cy:12%; }
+  .hero{ --cx:7%; --cy:12%; }
   .hero__ui{
     flex-direction:column;
     align-items:flex-start;
@@ -1064,3 +1086,38 @@ svg.hl{ width:128%; max-width:none; right:auto; height:auto; }
 @media (max-width:860px){
   .footer{ grid-template-columns:repeat(2,1fr); }
 }
+
+
+/* =================================================================== */
+/* STACKING: copy over the bean field                                  */
+/*                                                                     */
+/* #beanField is fixed at z-index 2, above every section background    */
+/* and below every section's copy. These rules come last on purpose —  */
+/* several of the wrappers below set z-index 1 or 2 earlier in this     */
+/* file, and a lower value there would drop the text behind the beans. */
+/* =================================================================== */
+section, .footer{ position:relative; }
+
+.manifesto__mark,
+.manifesto__text,
+.manifesto__label,
+.altitude__copy,
+.roasts__head,
+.panels,
+.quote figure,
+.collection__track,
+.collection__rail,
+.journey__codes,
+.journey__caption,
+.journey__facts,
+.journey__globe,
+.brew__head,
+.brew__tool,
+.cta__inner,
+.footer > *{
+  position:relative;
+  z-index:3;
+}
+
+/* scenery stays under the beans */
+.highlands{ z-index:1; }

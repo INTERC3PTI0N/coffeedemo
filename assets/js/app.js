@@ -249,7 +249,7 @@
   /* ================================================================= */
   /* 5 · Hero                                                          */
   /* ================================================================= */
-  var heroScene = null;
+  var beans = null;
 
   /* The wordmark should span the viewport whatever font actually loads,
      so measure the letters and solve for the size rather than guessing. */
@@ -274,14 +274,9 @@
   }
 
   function initHero() {
-    var frame = $('#heroFrame');
+    var frame = $('#hero');   // carries the --cx/--cy window vars
     var title = $('#heroTitle');
     var chars = $$('.hero__title .ch');
-    var canvas = $('#beanCanvas');
-
-    if (window.LattecanoScene && window.LattecanoScene.supported) {
-      heroScene = window.LattecanoScene.createHero(canvas);
-    }
 
     fitHeroTitle();
     if (document.fonts && document.fonts.ready) {
@@ -316,7 +311,7 @@
         start: 'top top',
         end: 'bottom top',
         scrub: 0.6,
-        onUpdate: function (self) { if (heroScene) heroScene.setProgress(self.progress); }
+        onUpdate: function (self) { if (beans) beans.setHeroDolly(self.progress); }
       }
     })
       .to(frame, { '--cy': '0%', '--cx': '0%', '--cr': '0px', ease: 'none' }, 0)
@@ -324,24 +319,104 @@
       .to('.hero__ui', { opacity: 0, y: -40, ease: 'none' }, 0)
       .to('.hero__cue', { opacity: 0, ease: 'none' }, 0);
 
-    // only render the hero canvas while it is on screen
-    ST.create({
-      trigger: '.hero', start: 'top bottom', end: 'bottom top',
-      onToggle: function (self) { if (heroScene) heroScene.setVisible(self.isActive); }
-    });
+    function GSfallback() {
+      chars.forEach(function (c) { c.style.transform = 'translateY(0)'; });
+      var mask = $('#heroMask');
+      if (mask) mask.style.display = 'none';
+    }
+  }
 
-    // pointer parallax
+  /* ================================================================= */
+  /* 5b · The bean field — one pool, re-choreographed per section       */
+  /* ================================================================= */
+  var FORMATION_BY_SECTION = [
+    ['#hero',       'swarm'],
+    ['#manifesto',  'margin'],
+    ['#altitude',   'fall'],
+    ['#roasts',     'sparse'],
+    ['#quote',      'margin'],
+    ['#lab',        'orbit'],
+    ['#collection', 'stream'],
+    ['#journey',    'arc'],
+    ['#brew',       'sparse'],
+    ['#cta',        'swirl']
+  ];
+
+  function initBeans() {
+    var canvas = $('#beanField');
+    if (!canvas || !window.LattecanoBeans || !window.LattecanoBeans.supported) {
+      if (canvas) canvas.remove();
+      return;
+    }
+
+    beans = window.LattecanoBeans.create(canvas);
+    if (!beans) return;
+    window.__beans = beans;
+
     window.addEventListener('pointermove', function (e) {
-      if (!heroScene) return;
-      heroScene.setPointer(
+      beans.setPointer(
         (e.clientX / window.innerWidth - 0.5) * 2,
         (e.clientY / window.innerHeight - 0.5) * 2
       );
     }, { passive: true });
 
-    function GSfallback() {
-      chars.forEach(function (c) { c.style.transform = 'translateY(0)'; });
-      if (frame) frame.style.clipPath = 'inset(0 0 0 0)';
+    if (!hasGSAP) return;
+
+    /* Which formation is showing has to be derived from the scroll position,
+       not from whichever section's onToggle happened to fire last. During a
+       fast scroll or a jump, several sections toggle in one tick and the
+       last callback wins even when it is nowhere near the viewport. */
+    var zones = [];
+    FORMATION_BY_SECTION.forEach(function (pair) {
+      var sec = $(pair[0]);
+      if (!sec) return;
+      zones.push({
+        name: pair[1],
+        el: sec,
+        // a measuring trigger: it reports start/end in scroll pixels and
+        // accounts for pinning, but drives nothing itself
+        st: ST.create({ trigger: sec, start: 'top center', end: 'bottom center' })
+      });
+    });
+
+    if (!zones.length) return;
+
+    ST.create({
+      start: 0,
+      end: 'max',
+      onUpdate: function (self) {
+        var y = self.scroll();
+
+        // zones are in document order, so the last one already entered wins
+        var zone = zones[0];
+        for (var i = 0; i < zones.length; i++) {
+          if (y >= zones[i].st.start) zone = zones[i];
+        }
+
+        var st = zone.st;
+        var p = clamp((y - st.start) / Math.max(1, st.end - st.start), 0, 1);
+        beans.setFormation(zone.name, p);
+        beans.setLocal(p);
+        beans.setLight(zone.el.dataset.theme === 'light' ? 1 : 0);
+      }
+    });
+
+    // spin the feature bean by hand in the Roast Lab
+    var grab = $('#labGrab');
+    if (grab) {
+      var dragging = false, lastX = 0;
+      grab.addEventListener('pointerdown', function (e) {
+        dragging = true; lastX = e.clientX;
+        if (grab.setPointerCapture) grab.setPointerCapture(e.pointerId);
+      });
+      grab.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        beans.nudgeFeature((e.clientX - lastX) * 0.012);
+        lastX = e.clientX;
+      });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+        grab.addEventListener(ev, function () { dragging = false; });
+      });
     }
   }
 
@@ -498,14 +573,13 @@
   /* ================================================================= */
   /* 9 · Roast Lab                                                     */
   /* ================================================================= */
-  var labScene = null;
-
-  // roast stops: colour, surface roughness, and what it does to the cup
+  // Roast stops. `oil` is the clearcoat: light roasts are dry and matte, dark
+  // roasts push oil to the surface and start to shine.
   var ROAST_STOPS = [
-    { at: 0,   hex: 0xC99A5C, rough: 0.70, name: 'LIGHT',       temp: 196, time: '09:10' },
-    { at: 30,  hex: 0xA0682F, rough: 0.60, name: 'MEDIUM-LIGHT', temp: 205, time: '10:30' },
-    { at: 60,  hex: 0x6E3E1D, rough: 0.46, name: 'MEDIUM',      temp: 214, time: '11:50' },
-    { at: 100, hex: 0x35190C, rough: 0.30, name: 'DARK',        temp: 228, time: '13:40' }
+    { at: 0,   hex: 0xC9A06A, rough: 0.86, oil: 0.08, name: 'LIGHT',        temp: 196, time: '09:10' },
+    { at: 30,  hex: 0xA56C33, rough: 0.78, oil: 0.18, name: 'MEDIUM-LIGHT', temp: 205, time: '10:30' },
+    { at: 60,  hex: 0x6E3E1D, rough: 0.64, oil: 0.40, name: 'MEDIUM',       temp: 214, time: '11:50' },
+    { at: 100, hex: 0x33180B, rough: 0.52, oil: 0.55, name: 'DARK',         temp: 228, time: '13:40' }
   ];
 
   function roastAt(t) {
@@ -524,6 +598,7 @@
     };
     return {
       hex: mix(a.hex, b.hex),
+      oil: lerp(a.oil, b.oil, k),
       rough: lerp(a.rough, b.rough, k),
       name: k < 0.5 ? a.name : b.name,
       temp: Math.round(lerp(a.temp, b.temp, k)),
@@ -542,13 +617,8 @@
   }
 
   function initLab() {
-    var canvas = $('#labCanvas');
     var range = $('#roastRange');
-    if (!canvas || !range) return;
-
-    if (window.LattecanoScene && window.LattecanoScene.supported) {
-      labScene = window.LattecanoScene.createLab(canvas);
-    }
+    if (!range) return;
 
     var nameEl = $('#roastName');
     var tempEl = $('#roastTemp');
@@ -562,7 +632,8 @@
       var r = roastAt(t);
       var p = profileAt(t);
 
-      if (labScene) labScene.setRoast(r.hex, r.rough);
+      // the whole field takes the roast, not just one bean
+      if (beans) beans.setRoast(r.hex, r.oil, r.rough);
 
       nameEl.textContent = r.name;
       tempEl.textContent = r.temp + '°C · ' + r.time;
@@ -599,13 +670,7 @@
       });
     });
 
-    if (!hasGSAP) { if (labScene) labScene.setVisible(true); return; }
-
-    ST.create({
-      trigger: '#lab', start: 'top bottom', end: 'bottom top',
-      onToggle: function (self) { if (labScene) labScene.setVisible(self.isActive); },
-      onUpdate: function (self) { if (labScene) labScene.setTilt((self.progress - 0.5) * 1.2); }
-    });
+    if (!hasGSAP) return;
 
     GS.from('.lab__panel', {
       x: 70, opacity: 0, duration: 1.15, ease: 'expo.out',
@@ -953,6 +1018,7 @@
     initScroll();
     initCursor();
     initChrome();
+    initBeans();
     initHero();
     initStatements();
     initAltitude();
@@ -971,8 +1037,7 @@
     window.addEventListener('resize', function () {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(function () {
-        if (heroScene) heroScene.resize();
-        if (labScene) labScene.resize();
+        if (beans) beans.resize();
         fitHeroTitle();
         if (hasGSAP) ST.refresh();
       }, 160);

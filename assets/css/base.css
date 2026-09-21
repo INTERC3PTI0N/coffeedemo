@@ -158,6 +158,22 @@ h1,h2,h3,h4,p,figure,blockquote{ margin:0; }
 }
 
 /* =================================================================== */
+/* THE BEAN FIELD                                                      */
+/*                                                                     */
+/* One fixed canvas for the whole page. It is layered ABOVE each        */
+/* section's background and BELOW its copy, which is what lets the      */
+/* beans travel across sections instead of sitting in a box. Every      */
+/* content wrapper therefore needs to sit at z-index 3 or higher.       */
+/* =================================================================== */
+#beanField{
+  position:fixed;
+  inset:0;
+  width:100vw; height:100vh;
+  z-index:2;
+  pointer-events:none;
+}
+
+/* =================================================================== */
 /* LOADER                                                              */
 /* =================================================================== */
 .loader{

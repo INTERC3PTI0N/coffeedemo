@@ -41,6 +41,12 @@
 <!-- ============ GRAIN + VIGNETTE ============ -->
 <div class="grain" aria-hidden="true"></div>
 
+<!-- ============ THE BEAN FIELD ============
+     One fixed WebGL layer that runs the length of the page. It sits above
+     each section's background and below its copy, so the beans travel
+     through the site rather than living in one box. -->
+<canvas id="beanField" aria-hidden="true"></canvas>
+
 <!-- ============ NAV ============ -->
 <header class="nav" id="nav">
   <nav class="nav__group nav__group--left" aria-label="Primary">
@@ -77,12 +83,14 @@
        01 · HERO
        ================================================================== -->
   <section class="hero" id="hero" data-theme="dark">
-    <div class="hero__stage">
-      <div class="hero__frame" id="heroFrame">
-        <canvas class="hero__canvas" id="beanCanvas"></canvas>
-        <div class="hero__glow" aria-hidden="true"></div>
-        <div class="hero__scrim" aria-hidden="true"></div>
-      </div>
+    <!-- the lit pane sits UNDER the bean canvas; the matte sits over it -->
+    <div class="hero__pane" aria-hidden="true"></div>
+
+    <div class="hero__stage" aria-hidden="true">
+      <div class="hero__glow"></div>
+      <div class="hero__scrim"></div>
+      <!-- the matte: ink everywhere except the window, which opens on scroll -->
+      <div class="hero__mask" id="heroMask"></div>
     </div>
 
     <div class="hero__ui">
@@ -276,16 +284,16 @@
        06 · ROAST LAB (interactive 3D)
        ================================================================== -->
   <section class="lab" id="lab" data-theme="dark">
-    <canvas class="lab__canvas" id="labCanvas"></canvas>
     <div class="lab__scrim" aria-hidden="true"></div>
+    <div class="lab__grab" id="labGrab" aria-hidden="true"></div>
 
     <h2 class="lab__title">Roast<br/>Lab</h2>
 
     <div class="lab__panel">
       <span class="eyebrow mono">DIAL IT IN</span>
       <p class="lab__lede">
-        Drag the roast curve. The bean above is the real thing — same lot,
-        four different finishes. Watch the profile move with it.
+        Drag the roast curve. Every bean on the page comes from this lot, so
+        the whole field takes the roast with it. Drag the big one to spin it.
       </p>
 
       <label class="slider" for="roastRange">
