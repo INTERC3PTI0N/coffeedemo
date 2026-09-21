@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>LATTECANO — Single Origin Coffee, Grown High &amp; Roasted Slow</title>
+<meta name="description" content="LATTECANO is a single-origin coffee house. Highland-grown arabica, slow-roasted in small batches, traced from cherry to cup." />
+<meta name="theme-color" content="#120B07" />
+<link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,700;1,6..96,400;1,6..96,500&family=JetBrains+Mono:wght@400;500&display=swap" />
+<link rel="stylesheet" href="assets/vendor/lenis.css" />
+<link rel="stylesheet" href="assets/css/base.css" />
+<link rel="stylesheet" href="assets/css/sections.css" />
+</head>
+<body class="is-loading">
+
+<!-- ============ PRELOADER ============ -->
+<div class="loader" id="loader" aria-hidden="true">
+  <div class="loader__inner">
+    <div class="loader__mark">
+      <span class="loader__word">
+        <b>L</b><b>A</b><b>T</b><b>T</b><b>E</b><b>C</b><b>A</b><b>N</b><b>O</b>
+      </span>
+    </div>
+    <div class="loader__meta">
+      <span class="mono" id="loaderPct">00</span>
+      <span class="loader__bar"><i id="loaderBar"></i></span>
+      <span class="mono">GRINDING</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CURSOR ============ -->
+<div class="cursor" id="cursor" aria-hidden="true">
+  <div class="cursor__dot"></div>
+  <div class="cursor__ring"><span class="cursor__label mono"></span></div>
+</div>
+
+<!-- ============ GRAIN + VIGNETTE ============ -->
+<div class="grain" aria-hidden="true"></div>
+
+<!-- ============ NAV ============ -->
+<header class="nav" id="nav">
+  <nav class="nav__group nav__group--left" aria-label="Primary">
+    <a class="nav__pill" href="#manifesto" data-cursor="link">Origin</a>
+    <a class="nav__pill" href="#roasts" data-cursor="link">Roasts</a>
+    <a class="nav__pill" href="#collection" data-cursor="link">Collection</a>
+  </nav>
+
+  <a class="nav__brand" href="#hero" aria-label="LATTECANO home" data-cursor="link">
+    <svg class="nav__logo" viewBox="0 0 48 30" aria-hidden="true">
+      <path d="M24 3c-6.2 0-11 5.1-11 11.6 0 6.6 4.9 12.4 11 12.4s11-5.8 11-12.4C35 8.1 30.2 3 24 3Z" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <path d="M24 3.8c-3.4 3.6-4.6 7.3-4.6 11.2 0 3.9 1.2 7.8 4.6 11.4 3.4-3.6 4.6-7.5 4.6-11.4 0-3.9-1.2-7.6-4.6-11.2Z" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".72"/>
+    </svg>
+    <span class="nav__wordmark">LATTECANO</span>
+  </a>
+
+  <div class="nav__group nav__group--right">
+    <a class="nav__pill" href="#brew" data-cursor="link">Brew Guide</a>
+    <a class="nav__pill nav__pill--solid" href="#cta" data-cursor="link">Subscribe</a>
+  </div>
+</header>
+
+<!-- side rail, like the reference's edge tab -->
+<button class="railtab" id="railtab" type="button" data-cursor="drag">
+  <span>Roast Lab</span><i>+</i>
+</button>
+
+<!-- scroll progress rail -->
+<div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
+
+<main id="smooth-content">
+
+  <!-- ==================================================================
+       01 · HERO
+       ================================================================== -->
+  <section class="hero" id="hero" data-theme="dark">
+    <div class="hero__stage">
+      <div class="hero__frame" id="heroFrame">
+        <canvas class="hero__canvas" id="beanCanvas"></canvas>
+        <div class="hero__glow" aria-hidden="true"></div>
+        <div class="hero__scrim" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <div class="hero__ui">
+      <p class="hero__tag">
+        <span>Highland arabica, picked by hand</span>
+        <span>and roasted in ten-kilo batches.</span>
+      </p>
+
+      <button class="filmbtn" type="button" data-cursor="play">
+        <span>Watch the Harvest</span>
+        <i aria-hidden="true">&#9654;</i>
+      </button>
+    </div>
+
+    <h1 class="hero__title" id="heroTitle" aria-label="LATTECANO">
+      <span class="clip"><span class="ch">L</span></span><span class="clip"><span class="ch">A</span></span><span class="clip"><span class="ch">T</span></span><span class="clip"><span class="ch">T</span></span><span class="clip"><span class="ch">E</span></span><span class="clip"><span class="ch">C</span></span><span class="clip"><span class="ch">A</span></span><span class="clip"><span class="ch">N</span></span><span class="clip"><span class="ch">O</span></span>
+    </h1>
+
+    <div class="hero__cue mono" aria-hidden="true">
+      <span>SCROLL</span><i></i>
+    </div>
+  </section>
+
+  <!-- ==================================================================
+       02 · MANIFESTO
+       ================================================================== -->
+  <section class="manifesto" id="manifesto" data-theme="light">
+    <div class="rules" aria-hidden="true"></div>
+
+    <div class="manifesto__mark">
+      <svg viewBox="0 0 220 60" aria-hidden="true">
+        <path id="sipPath" d="M8 44C48 14 96 6 140 16c30 7 48 20 70 12" fill="none" stroke="currentColor" stroke-width="1" />
+        <path d="M120 22c14-9 30-13 46-11" fill="none" stroke="currentColor" stroke-width=".8" opacity=".5"/>
+      </svg>
+      <em>Lot 04 · Yirga Highlands</em>
+    </div>
+
+    <h2 class="manifesto__text" data-split="words">
+      Altitude does something to a coffee cherry — it slows the sugar, tightens the bean, and leaves behind an acidity you can taste from the first sip to the last of the cup.
+    </h2>
+
+    <span class="manifesto__label mono">OUR SEASON</span>
+  </section>
+
+  <!-- ==================================================================
+       03 · ALTITUDE (parallax highlands)
+       ================================================================== -->
+  <section class="altitude" id="altitude" data-theme="light">
+    <div class="rules" aria-hidden="true"></div>
+
+    <div class="altitude__copy">
+      <span class="eyebrow mono">THE GROWING SEASON</span>
+      <p>
+        Between October and February, when the highland nights drop to single
+        digits, our growers walk the terraces and take only the cherries that
+        have gone deep red. Nothing is stripped. Nothing is rushed. A picker
+        will pass the same tree five times in a season.
+      </p>
+      <ul class="stats">
+        <li><b class="count" data-to="2150" data-suffix=" m">0</b><span>Average altitude</span></li>
+        <li><b class="count" data-to="5" data-suffix="×">0</b><span>Selective passes</span></li>
+        <li><b class="count" data-to="10" data-suffix=" kg">0</b><span>Batch size</span></li>
+      </ul>
+    </div>
+
+    <div class="highlands" id="highlands" aria-hidden="true">
+      <div class="hl hl--sky"></div>
+      <div class="hl hl--haze"></div>
+      <svg class="hl hl--r4" viewBox="0 0 1600 420" preserveAspectRatio="none"><path d="M0 420V250Q120 130 300 210Q460 282 620 150Q790 20 960 170Q1120 308 1290 168Q1450 40 1600 160V420Z"/></svg>
+      <svg class="hl hl--r3" viewBox="0 0 1600 420" preserveAspectRatio="none"><path d="M0 420V300Q140 200 320 268Q480 328 660 226Q830 130 1000 246Q1160 352 1330 244Q1480 148 1600 240V420Z"/></svg>
+      <svg class="hl hl--r2" viewBox="0 0 1600 420" preserveAspectRatio="none"><path d="M0 420V340Q160 268 350 322Q520 370 700 292Q870 220 1040 306Q1200 384 1370 300Q1500 236 1600 296V420Z"/></svg>
+      <svg class="hl hl--r1" viewBox="0 0 1600 300" preserveAspectRatio="none"><path d="M0 300V226Q170 168 370 214Q550 254 740 196Q920 142 1100 206Q1270 264 1430 208Q1530 176 1600 206V300Z"/></svg>
+      <div class="hl hl--rows"></div>
+    </div>
+  </section>
+
+  <!-- ==================================================================
+       04 · ROASTS (expanding panels)
+       ================================================================== -->
+  <section class="roasts" id="roasts" data-theme="light">
+    <header class="roasts__head">
+      <h2 class="display">Our Roasts</h2>
+      <svg class="roasts__flourish" viewBox="0 0 260 40" aria-hidden="true">
+        <path d="M6 30C60 8 120 2 178 10c28 4 52 12 76 10" fill="none" stroke="currentColor" stroke-width=".9"/>
+        <path d="M40 34c48-16 104-22 158-16" fill="none" stroke="currentColor" stroke-width=".7" opacity=".55"/>
+      </svg>
+    </header>
+
+    <div class="panels" id="panels">
+      <article class="panel is-open" data-roast="0" style="--p1:#E6C79A;--p2:#B8823F;--p3:#7B4A1E" data-cursor="open">
+        <div class="panel__art" aria-hidden="true"></div>
+        <div class="panel__vert"><span>Cascara Morning</span></div>
+        <div class="panel__body">
+          <h3>Cascara<br/>Morning</h3>
+          <div class="panel__meta mono"><span>₹ 1,180 / 250g</span><i></i><span>LIGHT ROAST</span></div>
+          <p>Washed Yirga lot dried on raised beds. Jasmine, white peach and a
+             lime-leaf finish that stays bright as it cools.</p>
+          <div class="panel__notes">
+            <span>Jasmine</span><span>White Peach</span><span>Lime Leaf</span>
+          </div>
+          <a class="link" href="#lab" data-cursor="link">Open in Roast Lab</a>
+        </div>
+      </article>
+
+      <article class="panel" data-roast="1" style="--p1:#D8A96A;--p2:#9A5F2A;--p3:#5B3015" data-cursor="open">
+        <div class="panel__art" aria-hidden="true"></div>
+        <div class="panel__vert"><span>Terrace No. 7</span></div>
+        <div class="panel__body">
+          <h3>Terrace<br/>No.&nbsp;7</h3>
+          <div class="panel__meta mono"><span>₹ 1,340 / 250g</span><i></i><span>MEDIUM–LIGHT</span></div>
+          <p>Honey-processed and rested sixteen days. Apricot and brown sugar
+             over a soft, tea-like body.</p>
+          <div class="panel__notes">
+            <span>Apricot</span><span>Brown Sugar</span><span>Black Tea</span>
+          </div>
+          <a class="link" href="#lab" data-cursor="link">Open in Roast Lab</a>
+        </div>
+      </article>
+
+      <article class="panel" data-roast="2" style="--p1:#C08B4E;--p2:#7E451C;--p3:#3E200E" data-cursor="open">
+        <div class="panel__art" aria-hidden="true"></div>
+        <div class="panel__vert"><span>Canopy Blend</span></div>
+        <div class="panel__body">
+          <h3>Canopy<br/>Blend</h3>
+          <div class="panel__meta mono"><span>₹ 1,090 / 250g</span><i></i><span>MEDIUM</span></div>
+          <p>Our house pour. Two farms, one drum, roasted to the edge of first
+             crack for cocoa, hazelnut and dried fig.</p>
+          <div class="panel__notes">
+            <span>Cocoa</span><span>Hazelnut</span><span>Dried Fig</span>
+          </div>
+          <a class="link" href="#lab" data-cursor="link">Open in Roast Lab</a>
+        </div>
+      </article>
+
+      <article class="panel" data-roast="3" style="--p1:#9C6836;--p2:#5A2E12;--p3:#2A1509" data-cursor="open">
+        <div class="panel__art" aria-hidden="true"></div>
+        <div class="panel__vert"><span>Night Terminal</span></div>
+        <div class="panel__body">
+          <h3>Night<br/>Terminal</h3>
+          <div class="panel__meta mono"><span>₹ 1,260 / 250g</span><i></i><span>DARK ROAST</span></div>
+          <p>Built for espresso and for milk. Dark chocolate, molasses and a
+             long, low finish that survives a flat white.</p>
+          <div class="panel__notes">
+            <span>Dark Chocolate</span><span>Molasses</span><span>Walnut</span>
+          </div>
+          <a class="link" href="#lab" data-cursor="link">Open in Roast Lab</a>
+        </div>
+      </article>
+
+      <article class="panel" data-roast="4" style="--p1:#7E512C;--p2:#40200D;--p3:#1B0E06" data-cursor="open">
+        <div class="panel__art" aria-hidden="true"></div>
+        <div class="panel__vert"><span>Cold Cellar</span></div>
+        <div class="panel__body">
+          <h3>Cold<br/>Cellar</h3>
+          <div class="panel__meta mono"><span>₹ 980 / 250g</span><i></i><span>COLD BREW</span></div>
+          <p>Coarse-ground for eighteen hours in the cellar. Sweet, thick and
+             almost sticky — no ice needed.</p>
+          <div class="panel__notes">
+            <span>Toffee</span><span>Date</span><span>Clove</span>
+          </div>
+          <a class="link" href="#lab" data-cursor="link">Open in Roast Lab</a>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ==================================================================
+       05 · FOUNDER QUOTE
+       ================================================================== -->
+  <section class="quote" id="quote" data-theme="light">
+    <div class="rules" aria-hidden="true"></div>
+    <figure>
+      <blockquote data-split="lines">
+        <span class="quote__mark" aria-hidden="true">&ldquo;</span>
+        Eleven years in, the part that still gets me is how little we do. We
+        buy honestly, we roast carefully, and then we get out of the way. A
+        good coffee has already decided what it wants to taste like long
+        before it reaches our drum.
+      </blockquote>
+      <figcaption>
+        <svg class="sig" viewBox="0 0 180 46" aria-hidden="true">
+          <path d="M6 34c14-20 24-26 30-20s-4 24 2 26 16-14 22-24 10-12 12-6-6 20 0 22 14-10 20-18 12-10 14-4-2 16 4 16 18-8 24-14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        <b>Amara Cano</b>
+        <span>Founder &amp; Head Roaster</span>
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ==================================================================
+       06 · ROAST LAB (interactive 3D)
+       ================================================================== -->
+  <section class="lab" id="lab" data-theme="dark">
+    <canvas class="lab__canvas" id="labCanvas"></canvas>
+    <div class="lab__scrim" aria-hidden="true"></div>
+
+    <h2 class="lab__title">Roast<br/>Lab</h2>
+
+    <div class="lab__panel">
+      <span class="eyebrow mono">DIAL IT IN</span>
+      <p class="lab__lede">
+        Drag the roast curve. The bean above is the real thing — same lot,
+        four different finishes. Watch the profile move with it.
+      </p>
+
+      <label class="slider" for="roastRange">
+        <span class="slider__head mono"><b id="roastName">MEDIUM</b><em id="roastTemp">211°C · 11:20</em></span>
+        <input id="roastRange" type="range" min="0" max="100" value="50" step="1"
+               aria-label="Roast level" />
+        <span class="slider__scale mono"><i>LIGHT</i><i>MEDIUM</i><i>DARK</i></span>
+      </label>
+
+      <div class="bars" id="bars">
+        <div class="bar" data-key="acidity"><span>Acidity</span><i><b></b></i><em class="mono">0</em></div>
+        <div class="bar" data-key="body"><span>Body</span><i><b></b></i><em class="mono">0</em></div>
+        <div class="bar" data-key="sweet"><span>Sweetness</span><i><b></b></i><em class="mono">0</em></div>
+        <div class="bar" data-key="bitter"><span>Bitterness</span><i><b></b></i><em class="mono">0</em></div>
+      </div>
+
+      <p class="lab__note mono" id="roastNote">BEST AS FILTER · 1:16 · 94°C</p>
+    </div>
+  </section>
+
+  <!-- ==================================================================
+       07 · COLLECTION (pinned horizontal)
+       ================================================================== -->
+  <section class="collection" id="collection" data-theme="dark">
+    <div class="collection__bg" aria-hidden="true"><div class="collection__bgart"></div></div>
+
+    <div class="collection__track" id="collectionTrack">
+      <div class="collection__intro">
+        <span class="eyebrow mono">THE COLLECTION</span>
+        <h2 class="display">Four bags,<br/>one season.</h2>
+        <p>Everything we put out this harvest, in the order we'd drink it.
+           Keep scrolling — the shelf moves with you.</p>
+        <span class="mono collection__hint">SCROLL&nbsp;→</span>
+      </div>
+
+      <article class="card" data-tilt data-cursor="view">
+        <div class="card__inner">
+          <div class="card__bag" style="--b1:#F0DCBE;--b2:#C99A5C">
+            <span class="card__seal"></span>
+            <b>CASCARA<br/>MORNING</b>
+            <i class="mono">LIGHT · WASHED</i>
+          </div>
+          <div class="card__text">
+            <h3>Cascara Morning</h3>
+            <p>Jasmine, white peach, lime leaf. The one we open the roastery with.</p>
+          </div>
+          <span class="card__coord mono">[ 06° 09′ N, 38° 12′ E ]</span>
+        </div>
+      </article>
+
+      <article class="card" data-tilt data-cursor="view">
+        <div class="card__inner">
+          <div class="card__bag" style="--b1:#E7C48F;--b2:#A6682F">
+            <span class="card__seal"></span>
+            <b>TERRACE<br/>NO. 7</b>
+            <i class="mono">MED-LIGHT · HONEY</i>
+          </div>
+          <div class="card__text">
+            <h3>Terrace No. 7</h3>
+            <p>Apricot and brown sugar. Sixteen days of rest before it ships.</p>
+          </div>
+          <span class="card__coord mono">[ 06° 11′ N, 38° 15′ E ]</span>
+        </div>
+      </article>
+
+      <article class="card" data-tilt data-cursor="view">
+        <div class="card__inner">
+          <div class="card__bag" style="--b1:#D2A268;--b2:#7A431B">
+            <span class="card__seal"></span>
+            <b>CANOPY<br/>BLEND</b>
+            <i class="mono">MEDIUM · BLEND</i>
+          </div>
+          <div class="card__text">
+            <h3>Canopy Blend</h3>
+            <p>Cocoa, hazelnut, dried fig. Our house pour, roasted every Tuesday.</p>
+          </div>
+          <span class="card__coord mono">[ 06° 04′ N, 38° 02′ E ]</span>
+        </div>
+      </article>
+
+      <article class="card" data-tilt data-cursor="view">
+        <div class="card__inner">
+          <div class="card__bag" style="--b1:#B07C46;--b2:#4A2510">
+            <span class="card__seal"></span>
+            <b>NIGHT<br/>TERMINAL</b>
+            <i class="mono">DARK · NATURAL</i>
+          </div>
+          <div class="card__text">
+            <h3>Night Terminal</h3>
+            <p>Dark chocolate and molasses. Built to hold its own under milk.</p>
+          </div>
+          <span class="card__coord mono">[ 05° 58′ N, 37° 54′ E ]</span>
+        </div>
+      </article>
+
+      <article class="card card--cta" data-tilt data-cursor="link">
+        <div class="card__inner">
+          <h3>Can't choose?</h3>
+          <p>The Season Box ships all four, 150g each, on the first Friday of
+             every month.</p>
+          <a class="btn" href="#cta" data-cursor="link">Take the box</a>
+        </div>
+      </article>
+    </div>
+
+    <div class="collection__rail" aria-hidden="true">
+      <i id="collectionBar"></i>
+    </div>
+  </section>
+
+  <!-- ==================================================================
+       08 · JOURNEY
+       ================================================================== -->
+  <section class="journey" id="journey" data-theme="dark">
+    <div class="journey__hero">
+      <div class="journey__heroart" aria-hidden="true"></div>
+      <h2 class="journey__codes" id="journeyCodes"><span>ETH</span><i>—</i><span>YOU</span></h2>
+    </div>
+
+    <div class="journey__caption">
+      <div class="journey__cap-row mono">
+        <span><b>06° 09′ N, 38° 12′ E</b><em>Yirga Highlands</em></span>
+        <span class="right"><b>19° 04′ N, 72° 52′ E</b><em>Lattecano Roastery</em></span>
+      </div>
+      <h3 class="display">From cherry to cup</h3>
+      <p>Eleven weeks, four hands, one drum. Every bag carries the date it was
+         picked and the date it was roasted — nothing in between is a secret.</p>
+    </div>
+
+    <div class="journey__map">
+      <div class="journey__globe" aria-hidden="true">
+        <div class="globe">
+          <div class="globe__sphere"></div>
+          <div class="globe__grid"></div>
+          <div class="globe__land"></div>
+          <div class="globe__glow"></div>
+        </div>
+        <svg class="route" viewBox="0 0 600 600" aria-hidden="true">
+          <path id="routePath" d="M238 262Q322 182 392 302" fill="none"
+                stroke="var(--crema)" stroke-width="1.4" stroke-dasharray="4 5"/>
+          <circle class="route__a" cx="238" cy="262" r="5"/>
+          <circle class="route__b" cx="392" cy="302" r="5"/>
+          <circle class="route__pod" r="4.5"/>
+        </svg>
+      </div>
+
+      <div class="journey__facts">
+        <div class="fact">
+          <span class="mono">Picked</span>
+          <b>14 NOV</b>
+        </div>
+        <div class="fact">
+          <span class="mono">Sea freight</span>
+          <b class="count" data-to="6340" data-suffix=" km">0</b>
+        </div>
+        <div class="fact">
+          <span class="mono">Rest before roast</span>
+          <b class="count" data-to="42" data-suffix=" days">0</b>
+        </div>
+        <div class="fact fact--wide">
+          <span class="mono">Roasted</span>
+          <b>EVERY TUESDAY, 06:00</b>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================================================================
+       09 · BREW CALCULATOR
+       ================================================================== -->
+  <section class="brew" id="brew" data-theme="light">
+    <div class="rules" aria-hidden="true"></div>
+
+    <div class="brew__head">
+      <span class="eyebrow mono">USE THIS TOMORROW MORNING</span>
+      <h2 class="display">Brew&nbsp;Guide</h2>
+      <p>Pick a method and how much you want. We'll give you the dose, the
+         water, the grind and the timing — the same card we tape to the wall
+         at the roastery.</p>
+    </div>
+
+    <div class="brew__tool">
+      <div class="brew__methods" id="brewMethods" role="tablist" aria-label="Brew method">
+        <button class="method is-active" role="tab" aria-selected="true" data-method="v60" data-cursor="link">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M8 10h24l-9 16h-6L8 10Z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M20 26v6" stroke="currentColor" stroke-width="1.5"/></svg>
+          <span>V60</span>
+        </button>
+        <button class="method" role="tab" aria-selected="false" data-method="aero" data-cursor="link">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="13" y="8" width="14" height="22" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M13 15h14M20 30v4" stroke="currentColor" stroke-width="1.5"/></svg>
+          <span>AeroPress</span>
+        </button>
+        <button class="method" role="tab" aria-selected="false" data-method="press" data-cursor="link">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="12" y="12" width="16" height="20" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M20 12V6M14 18h12" stroke="currentColor" stroke-width="1.5"/></svg>
+          <span>French Press</span>
+        </button>
+        <button class="method" role="tab" aria-selected="false" data-method="espresso" data-cursor="link">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M10 14h20v8a8 8 0 0 1-8 8h-4a8 8 0 0 1-8-8v-8Z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M30 17h4a4 4 0 0 1 0 8h-4" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+          <span>Espresso</span>
+        </button>
+        <button class="method" role="tab" aria-selected="false" data-method="cold" data-cursor="link">
+          <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M13 10h14l-2 22H15L13 10Z" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M14 20h12" stroke="currentColor" stroke-width="1.5"/></svg>
+          <span>Cold Brew</span>
+        </button>
+      </div>
+
+      <div class="brew__panelwrap">
+        <label class="brew__cups">
+          <span class="mono">SERVINGS</span>
+          <div class="stepper">
+            <button type="button" id="cupsDown" aria-label="Fewer servings" data-cursor="link">–</button>
+            <b id="cupsVal">2</b>
+            <button type="button" id="cupsUp" aria-label="More servings" data-cursor="link">+</button>
+          </div>
+        </label>
+
+        <div class="recipe" id="recipe">
+          <div class="recipe__row recipe__row--big">
+            <span class="mono" id="rCoffeeLabel">COFFEE</span><b id="rCoffee">30 g</b>
+          </div>
+          <div class="recipe__row recipe__row--big">
+            <span class="mono" id="rWaterLabel">WATER</span><b id="rWater">500 ml</b>
+          </div>
+          <div class="recipe__grid">
+            <div><span class="mono">RATIO</span><b id="rRatio">1:16.7</b></div>
+            <div><span class="mono">GRIND</span><b id="rGrind">Medium-fine</b></div>
+            <div><span class="mono">TEMP</span><b id="rTemp">94 °C</b></div>
+            <div><span class="mono">TIME</span><b id="rTime">3:00</b></div>
+          </div>
+          <ol class="recipe__steps" id="rSteps"></ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================================================================
+       10 · CTA
+       ================================================================== -->
+  <section class="cta" id="cta" data-theme="dark">
+    <div class="cta__art" aria-hidden="true"></div>
+    <div class="cta__inner">
+      <h2 class="display">Start your<br/>morning ritual</h2>
+      <p>250g every fortnight, roasted the day before it ships. Pause it,
+         skip it or change the roast whenever you like.</p>
+      <form class="cta__form" id="ctaForm" novalidate>
+        <input type="email" id="ctaEmail" placeholder="you@yourmorning.com"
+               aria-label="Email address" required />
+        <button class="btn btn--solid" type="submit" data-cursor="link">Subscribe</button>
+      </form>
+      <p class="cta__note mono" id="ctaNote" role="status"></p>
+    </div>
+  </section>
+
+  <!-- ==================================================================
+       FOOTER
+       ================================================================== -->
+  <footer class="footer" data-theme="light">
+    <div class="footer__brand">
+      <svg viewBox="0 0 48 30" aria-hidden="true">
+        <path d="M24 3c-6.2 0-11 5.1-11 11.6 0 6.6 4.9 12.4 11 12.4s11-5.8 11-12.4C35 8.1 30.2 3 24 3Z" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <path d="M24 3.8c-3.4 3.6-4.6 7.3-4.6 11.2 0 3.9 1.2 7.8 4.6 11.4 3.4-3.6 4.6-7.5 4.6-11.4 0-3.9-1.2-7.6-4.6-11.2Z" fill="none" stroke="currentColor" stroke-width="1.2" opacity=".72"/>
+      </svg>
+      <p>Roasted in small batches.<br/>Shipped within 24 hours.</p>
+    </div>
+
+    <div class="footer__col">
+      <h4>Coffee</h4>
+      <a href="#roasts" data-cursor="link">Cascara Morning</a>
+      <a href="#roasts" data-cursor="link">Terrace No. 7</a>
+      <a href="#roasts" data-cursor="link">Canopy Blend</a>
+      <a href="#roasts" data-cursor="link">Night Terminal</a>
+      <a href="#collection" data-cursor="link">The Season Box</a>
+    </div>
+
+    <div class="footer__col">
+      <h4>Learn</h4>
+      <a href="#brew" data-cursor="link">Brew Guide</a>
+      <a href="#lab" data-cursor="link">Roast Lab</a>
+      <a href="#journey" data-cursor="link">Traceability</a>
+      <a href="#altitude" data-cursor="link">The Harvest</a>
+    </div>
+
+    <div class="footer__col">
+      <h4>House</h4>
+      <a href="#manifesto" data-cursor="link">Our Story</a>
+      <a href="#quote" data-cursor="link">The Roastery</a>
+      <a href="#cta" data-cursor="link">Subscriptions</a>
+      <a href="#cta" data-cursor="link">Wholesale</a>
+    </div>
+
+    <div class="footer__end">
+      <span class="mono">© 2026 LATTECANO COFFEE CO.</span>
+      <span class="mono">GROWN HIGH · ROASTED SLOW</span>
+    </div>
+  </footer>
+</main>
+
+<script src="assets/vendor/gsap.min.js"></script>
+<script src="assets/vendor/ScrollTrigger.min.js"></script>
+<script src="assets/vendor/lenis.min.js"></script>
+<script src="assets/vendor/three.min.js"></script>
+<script src="assets/js/scene.js"></script>
+<script src="assets/js/app.js"></script>
+</body>
+</html>

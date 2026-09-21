@@ -1,0 +1,11 @@
+{
+  "name": "lattecano",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LATTECANO — an immersive 3D, scroll-driven site for a single-origin coffee house.",
+  "scripts": {
+    "dev": "python3 -m http.server 4173",
+    "start": "python3 -m http.server 4173"
+  },
+  "license": "MIT"
+}
