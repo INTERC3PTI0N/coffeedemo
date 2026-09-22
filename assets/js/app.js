@@ -406,6 +406,24 @@
       }
     });
 
+    // spin the cup by hand in the hero
+    var cupGrab = $('#heroGrab');
+    if (cupGrab && beans.nudgeCup) {
+      var cupDragging = false, cupLastX = 0;
+      cupGrab.addEventListener('pointerdown', function (e) {
+        cupDragging = true; cupLastX = e.clientX;
+        if (cupGrab.setPointerCapture) cupGrab.setPointerCapture(e.pointerId);
+      });
+      cupGrab.addEventListener('pointermove', function (e) {
+        if (!cupDragging) return;
+        beans.nudgeCup((e.clientX - cupLastX) * 0.010);
+        cupLastX = e.clientX;
+      });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+        cupGrab.addEventListener(ev, function () { cupDragging = false; });
+      });
+    }
+
     // spin the feature bean by hand in the Roast Lab
     var grab = $('#labGrab');
     if (grab) {

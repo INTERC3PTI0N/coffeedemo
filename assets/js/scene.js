@@ -97,7 +97,7 @@
     // A narrow crease spikes when there are too few vertices to resolve it,
     // so its width tracks the tessellation. Small beans read fine slightly
     // softer; broken ones never do.
-    var sigma = 0.034 + 1.7 / s;
+    var sigma = 0.040 + 1.9 / s;
     var sig2 = sigma * sigma;
 
     function creaseAt(x, y, tight) {
@@ -142,8 +142,8 @@
       v.z *= 1 + 0.15 * back;            // bulge the dome
 
       var groove = creaseAt(v.x, v.y);
-      v.z *= 1 - 0.72 * groove * front;
-      v.x *= 1 + 0.042 * groove * front;  // the lips pinch outward
+      v.z *= 1 - 0.80 * groove * front;
+      v.x *= 1 + 0.052 * groove * front;  // the lips pinch outward
 
       // no two beans the same
       v.x += 0.022 * Math.sin(v.y * 3.1 + sd) * (0.5 + 0.5 * back);
@@ -167,26 +167,34 @@
     pos.needsUpdate = true;
     geo.computeVertexNormals();
 
-    /* --- 3. vertex colour: pale silverskin in the fissure ----------- */
+    /* --- 3. vertex colour ------------------------------------------
+       On a real bean the fissure is packed with silverskin — pale, dry,
+       fibrous, and clearly LIGHTER than the body. Rendering it as a dark
+       groove (which is what an occlusion-only model gives you) is the single
+       thing that stops a bean reading as a bean. So: a bright fibrous fill
+       down the centre, a thin shadow where the walls turn away from it, and
+       an unevenly roasted body around both. */
     var col = new Float32Array(pos.count * 3);
     for (i = 0; i < pos.count; i++) {
       v.fromBufferAttribute(pos, i);
       var fr = smooth(clamp((v.z + 0.02) / 0.20, 0, 1));
-      var deep = creaseAt(v.x, v.y, true) * fr;    // the floor of the fissure
-      var wide = creaseAt(v.x, v.y, false) * fr;   // floor plus its shoulders
-      var lip = clamp(wide - deep, 0, 1);          // the raised edges
+      var fill = creaseAt(v.x, v.y, true) * fr;    // the silverskin itself
+      var wide = creaseAt(v.x, v.y, false) * fr;   // fill plus its walls
+      var wall = clamp(wide - fill * 1.3, 0, 1);   // where the walls turn away
 
-      // roasting is never perfectly even
-      var mottle = 0.82 + 0.26 * fbm3(v.x * 3.2 + sd, v.y * 2.6, v.z * 3.2, 3)
-                        + 0.10 * fbm3(v.x * 1.3 - sd, v.y * 1.1, v.z * 1.3, 2);
+      // the silverskin is fibrous — it streaks along the bean, not across it
+      var fibre = 0.62 + 0.76 * fbm3(v.y * 22 + sd, v.x * 5, 1.7, 3);
 
-      // The groove is occluded, not luminous. Only its lips carry the pale
-      // silverskin, which is what actually reads as the line down the bean.
-      var tint = mottle * (1 - 0.52 * deep) + lip * 0.34;
+      // roasting is never even: patches scorch harder than others
+      var mottle = 0.80 + 0.30 * fbm3(v.x * 3.2 + sd, v.y * 2.6, v.z * 3.2, 3)
+                        + 0.14 * fbm3(v.x * 1.3 - sd, v.y * 1.1, v.z * 1.3, 2);
 
-      col[i * 3] = tint;
-      col[i * 3 + 1] = tint * (1 - 0.04 * lip);
-      col[i * 3 + 2] = tint * (1 - 0.11 * lip);
+      var tint = mottle * (1 - 0.32 * wall) + fill * 1.75 * fibre;
+
+      // the silverskin is drier and paler than the bean, so it loses the red
+      col[i * 3]     = tint;
+      col[i * 3 + 1] = tint * (1 + 0.05 * fill);
+      col[i * 3 + 2] = tint * (1 + 0.16 * fill);
     }
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
 
@@ -209,8 +217,8 @@
     for (var y = 0; y < n; y++) {
       for (var x = 0; x < n; x++) {
         var u = x / n * 9, w = y / n * 9;
-        var val = fbm3(u * 3.4, w * 3.4, 0.5, 4) * 0.62 +
-                  fbm3(u * 11, w * 11, 2.5, 2) * 0.38;
+        var val = fbm3(u * 1.6, w * 1.6, 0.5, 4) * 0.58 +
+                  fbm3(u * 5.0, w * 5.0, 2.5, 3) * 0.42;
         val = clamp(0.5 + (val - 0.5) * contrast, 0, 1);
         val = floor + val * span;
         var c8 = Math.round(clamp(val, 0, 1) * 255);
@@ -229,7 +237,7 @@
   /* Roughness is multiplied by its map, so a mid-grey map would halve it and
      turn a dry roasted bean into polished chocolate. This one sits high. */
   function matteTexture() {
-    if (!MATTE) MATTE = noiseCanvasTexture(256, 1.6, 0.78, 0.22, 3);
+    if (!MATTE) MATTE = noiseCanvasTexture(256, 1.6, 0.70, 0.30, 2);
     return MATTE;
   }
 
@@ -242,12 +250,18 @@
     var img = ctx.createImageData(n, n);
     var d = img.data;
 
+    /* Octave scales matter more than octave count. Stacked too high, every
+       feature lands under a pixel once the map is repeated over the mesh,
+       the bump derivatives average out, and the surface renders dead smooth
+       — which is exactly what the first version of this did. These three
+       sit at roughly 36px, 11px and 4px, so they survive on screen. */
     for (var y = 0; y < n; y++) {
       for (var x = 0; x < n; x++) {
         var u = x / n * 9, w = y / n * 9;
-        var val = fbm3(u * 3.4, w * 3.4, 0.5, 4) * 0.62 +
-                  fbm3(u * 11, w * 11, 2.5, 2) * 0.38;
-        val = clamp(0.5 + (val - 0.5) * 2.5, 0, 1);
+        var val = fbm3(u * 1.6, w * 1.6, 0.5, 4) * 0.52 +   // broad dents
+                  fbm3(u * 5.0, w * 5.0, 2.5, 3) * 0.32 +   // the pitting
+                  fbm3(u * 14,  w * 14,  5.5, 2) * 0.16;    // fine pores
+        val = clamp(0.5 + (val - 0.5) * 1.8, 0, 1);
         var c8 = Math.round(val * 255);
         var k = (y * n + x) * 4;
         d[k] = d[k + 1] = d[k + 2] = c8;
@@ -262,7 +276,6 @@
     return GRAIN;
   }
 
-  // three levels of detail, built once, shared by every bean
   var GEO = {};
   function sharedGeo(level) {
     var spec = { lo: [34, 1], mid: [54, 2], hi: [96, 3] }[level] || [54, 2];
@@ -303,6 +316,92 @@
     return new THREE.LatheGeometry(v, segments || 72);
   }
 
+  /* The printed sleeve. Drawn on a canvas and wrapped by the lathe's UVs,
+     so the brand is actually ON the cup rather than floating beside it. */
+  var SLEEVE = null;
+  function sleeveTexture() {
+    if (SLEEVE) return SLEEVE;
+    var W = 2048, H = 512;
+    var cv = document.createElement('canvas');
+    cv.width = W; cv.height = H;
+    var g = cv.getContext('2d');
+
+    g.fillStyle = '#efdcb4';
+    g.fillRect(0, 0, W, H);
+
+    // kraft board: flecks and a faint fibre grain
+    for (var i = 0; i < 2600; i++) {
+      var x = Math.random() * W, y = Math.random() * H;
+      g.fillStyle = Math.random() > 0.5
+        ? 'rgba(160,126,74,0.13)' : 'rgba(255,248,232,0.16)';
+      g.fillRect(x, y, 1 + Math.random() * 3, 1);
+    }
+
+    var INK = '#221509';
+
+    // the brand, twice around, so it is readable from either side
+    function stamp(cx) {
+      var word = 'LATTECANO';
+      g.save();
+      g.textBaseline = 'middle';
+      g.textAlign = 'center';
+
+      // letterspacing by hand — canvas letterSpacing is not dependable
+      /* The wrap is 2048px around the whole circumference, but only about a
+         third of that faces the camera. The stamp has to fit inside that
+         third or the brand is never readable in one view. */
+      g.font = '700 66px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif';
+      var track = 15;
+      var widths = [], total = 0, j;
+      for (j = 0; j < word.length; j++) {
+        widths[j] = g.measureText(word[j]).width;
+        total += widths[j] + track;
+      }
+      total -= track;
+      var x = cx - total / 2;
+      g.fillStyle = INK;
+      for (j = 0; j < word.length; j++) {
+        g.fillText(word[j], x + widths[j] / 2, H * 0.44);
+        x += widths[j] + track;
+      }
+
+      // rules above and below
+      g.strokeStyle = 'rgba(34,21,9,0.42)';
+      g.lineWidth = 3;
+      g.beginPath();
+      g.lineWidth = 2;
+      g.moveTo(cx - total / 2, H * 0.27); g.lineTo(cx + total / 2, H * 0.27);
+      g.moveTo(cx - total / 2, H * 0.60); g.lineTo(cx + total / 2, H * 0.60);
+      g.stroke();
+
+      // the strapline
+      g.font = '500 19px "JetBrains Mono", ui-monospace, monospace';
+      g.fillStyle = 'rgba(34,21,9,0.6)';
+      g.fillText('SINGLE ORIGIN  ·  ROASTED SLOW', cx, H * 0.745);
+
+      // the bean mark
+      g.save();
+      g.translate(cx, H * 0.145);
+      g.strokeStyle = INK; g.lineWidth = 2.6;
+      g.beginPath(); g.ellipse(0, 0, 17, 25, 0, 0, 6.283); g.stroke();
+      g.lineWidth = 2;
+      g.beginPath();
+      g.moveTo(0, -22); g.bezierCurveTo(7, -9, -7, 9, 0, 22);
+      g.stroke();
+      g.restore();
+      g.restore();
+    }
+    // three wraps, so however far the cup is spun a whole wordmark faces out
+    stamp(W / 6);
+    stamp(W / 2);
+    stamp(W * 5 / 6);
+
+    SLEEVE = new THREE.CanvasTexture(cv);
+    SLEEVE.colorSpace = THREE.SRGBColorSpace;
+    SLEEVE.anisotropy = 8;
+    return SLEEVE;
+  }
+
   function buildCup(scene) {
     var cup = new THREE.Group();
 
@@ -320,8 +419,10 @@
       sleevePts.push([profileRadius(y) + 0.022, y]);
     }
     var sleeveMat = new THREE.MeshPhysicalMaterial({
-      color: 0xf2dca6, roughness: 0.62, metalness: 0.0,
-      clearcoat: 0.18, envMapIntensity: 0.9, side: THREE.DoubleSide
+      map: sleeveTexture(),
+      color: 0xffffff, roughness: 0.74, metalness: 0.0,
+      clearcoat: 0.10, clearcoatRoughness: 0.7,
+      envMapIntensity: 0.75, side: THREE.DoubleSide
     });
     var sleeve = new THREE.Mesh(lathe(sleevePts, 84), sleeveMat);
     cup.add(sleeve);
@@ -348,6 +449,44 @@
     tab.rotation.z = -0.13;
     cup.add(tab);
 
+    // the sip hole, and the moulded ring around the dome
+    var hole = new THREE.Mesh(
+      new THREE.CircleGeometry(0.15, 28),
+      new THREE.MeshBasicMaterial({ color: 0x14181c }));
+    hole.position.set(0.52, 1.585, 0.06);
+    hole.rotation.x = -Math.PI / 2 + 0.10;
+    hole.scale.set(1, 0.72, 1);
+    cup.add(hole);
+
+    var groove = new THREE.Mesh(
+      new THREE.TorusGeometry(0.74, 0.022, 8, 60),
+      new THREE.MeshPhysicalMaterial({ color: 0x2e353d, roughness: 0.5 }));
+    groove.position.y = 1.487;
+    groove.rotation.x = Math.PI / 2;
+    cup.add(groove);
+
+    /* Steam. Three soft plumes that rise and fade — the one cue that says
+       the cup is full and hot rather than a prop. */
+    var steamMat = new THREE.MeshBasicMaterial({
+      map: sunTexture(), transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending,
+      toneMapped: false, color: 0xd8cbb6
+    });
+    var steam = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), steamMat, 14);
+    steam.frustumCulled = false;
+    cup.add(steam);
+    var puffs = [];
+    for (var sp = 0; sp < 14; sp++) {
+      puffs.push({
+        x: (hash3(sp, 5, 2) - 0.5) * 0.7,
+        z: (hash3(sp, 9, 4) - 0.5) * 0.5,
+        life: hash3(sp, 13, 6),
+        size: 0.5 + hash3(sp, 17, 8) * 0.7,
+        sway: (hash3(sp, 21, 10) - 0.5) * 1.4
+      });
+    }
+    var sd2 = new THREE.Object3D();
+
     // a real takeaway cup runs about 1.6 : 1 tall to wide; a lathe of this
     // profile comes out squat, so the group carries the stretch
     var BASE = new THREE.Vector3(1.0, 1.24, 1.0);
@@ -356,15 +495,41 @@
     cup.visible = false;
     scene.add(cup);
 
+    var drag = 0;
+
     return {
       group: cup,
       setVisible: function (v) { cup.visible = v; },
-      update: function (t, reveal, dolly) {
+      /* the hero cup can be spun by hand, which is the one bit of the page
+         that rewards just messing about with it */
+      nudge: function (dx) { drag += dx; },
+
+      update: function (t, reveal, dolly, dt) {
         if (!cup.visible) return;
-        cup.rotation.y = t * 0.24;
+        /* It rocks around front rather than spinning: a cup that turns all
+           the way round shows its brand a third of the time. Dragging still
+           spins it fully, and it eases back to front when let go. */
+        drag += (0 - drag) * 0.006;
+        cup.rotation.y = Math.sin(t * 0.22) * 0.34 + drag;
         cup.rotation.z = -0.20 + Math.sin(t * 0.4) * 0.03 - dolly * 0.16;
         cup.position.y = Math.sin(t * 0.55) * 0.09 - dolly * 0.5;
         cup.scale.set(BASE.x * reveal, BASE.y * reveal, BASE.z * reveal);
+
+        steamMat.opacity = reveal * 0.20;
+        for (var i = 0; i < puffs.length; i++) {
+          var q = puffs[i];
+          q.life += (dt || 0.016) * 0.16;
+          if (q.life > 1) q.life -= 1;
+          sd2.position.set(
+            q.x + Math.sin(t * 0.7 + i) * 0.28 * q.life * q.sway,
+            1.62 + q.life * 2.6,
+            q.z
+          );
+          sd2.scale.setScalar(q.size * (0.35 + q.life * 1.8));
+          sd2.updateMatrix();
+          steam.setMatrixAt(i, sd2.matrix);
+        }
+        steam.instanceMatrix.needsUpdate = true;
       }
     };
   }
@@ -853,7 +1018,9 @@
         color: baseColour.clone(),
         vertexColors: true,
         bumpMap: grain,
-        bumpScale: i === 0 ? 0.055 : 0.032,
+        // bumpScale here is not a 0–1 knob: on a mesh this size anything
+        // under ~1 renders as a dead smooth surface. Swept it to find out.
+        bumpScale: i === 0 ? 1.6 : 1.1,
         roughnessMap: matte,
         roughness: 0.94,
         metalness: 0.0,
@@ -981,7 +1148,7 @@
       var heroOn = state.heroCur > 0.01;
       cup.setVisible(heroOn);
       sky.setVisible(heroOn);
-      cup.update(t, state.heroCur, state.heroDolly);
+      cup.update(t, state.heroCur, state.heroDolly, dt);
       sky.update(t, state.heroCur);
 
       /* The bank belongs to the harvest section alone. The canvas is fixed and
@@ -1095,6 +1262,8 @@
       nudgeFeature: function (dx) {
         if (beans[0]) beans[0].drag += dx;
       },
+
+      nudgeCup: function (dx) { cup.nudge(dx); },
 
       /* for diagnostics: what the field currently thinks it is doing */
       debug: function () {

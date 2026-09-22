@@ -88,7 +88,7 @@
       color: 0xffffff,
       vertexColors: true,
       bumpMap: Beans.grainTexture(),
-      bumpScale: 0.03,
+      bumpScale: 1.3,
       roughnessMap: Beans.matteTexture(),
       roughness: 0.94,
       metalness: 0.0,

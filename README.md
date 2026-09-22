@@ -103,7 +103,22 @@ blend into each other rather than cutting.
   pale silverskin on its lips, which is what actually reads as the line down
   the bean.
 
-**Surface.** A value-noise canvas supplies the bump map. Roughness gets a
+**Surface.** A value-noise canvas supplies the bump map. Two things about it
+are easy to get wrong and were both wrong here for a while:
+
+- *Octave scale.* Stacked too high, every feature lands under a pixel once the
+  map is repeated over the mesh, the bump derivatives average out, and the
+  surface renders dead smooth. The three octaves now sit at roughly 36, 11 and
+  4 pixels so they survive on screen.
+- *`bumpScale` is not a 0–1 knob.* On a mesh this size anything under about 1
+  is invisible. It is 1.6 on the feature bean and 1.1 elsewhere, found by
+  sweeping it rather than guessing.
+
+**The fissure** is filled with silverskin — pale, dry, fibrous, and clearly
+*lighter* than the body. Rendering it as a dark groove, which is what an
+occlusion-only model gives you, is the single thing that stops a bean reading
+as a bean. It is now a bright fibrous fill streaked along the bean's length,
+with a thin shadow only where the walls turn away from it. Roughness gets a
 *separate*, high-biased map — a mid-grey one would halve the roughness and turn
 a dry roasted bean into polished chocolate. The roast slider drives colour,
 roughness and clearcoat together, so dark roasts pick up the oil sheen they
@@ -121,9 +136,17 @@ the low.
 **The cup.** The hero centrepiece is a takeaway cup built the way a real one
 is drawn: one profile swept around Y on a lathe for the body, the same profile
 pushed out two millimetres for the printed sleeve, and a second for the lid's
-skirt and dome. A lathe of that profile comes out squat, so the group carries a
-1.24 vertical stretch to reach the 1.6 : 1 a real cup has. Behind it sits a
-sun flare with an anamorphic streak and a starfield.
+skirt and dome, plus a sip hole, a moulded ring and a drinking tab. A lathe of
+that profile comes out squat, so the group carries a 1.24 vertical stretch to
+reach the 1.6 : 1 a real cup has. Behind it sits a sun flare with an
+anamorphic streak and a starfield; above it, three plumes of steam.
+
+The sleeve is LATTECANO's own: a kraft board drawn on a canvas — flecks, fibre,
+wordmark, bean mark and strapline — and wrapped by the lathe's UVs, so the
+brand is on the cup rather than floating beside it. It is stamped three times
+around, and the cup *rocks* around front instead of spinning, because a cup
+that turns all the way round shows its brand about a third of the time. Drag
+it to spin it fully; it eases back to front when you let go.
 
 Beans orbit it on a near edge-on ring, spaced by golden angle rather than by
 index — a projected circle crowds its own turning points, so evenly indexed

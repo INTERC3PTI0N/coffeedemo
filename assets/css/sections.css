@@ -28,6 +28,16 @@ section{ position:relative; }
 
 .hero__stage{ position:absolute; inset:0; z-index:3; pointer-events:none; }
 
+/* spin the cup by dragging it; sits under the copy so links still win */
+.hero__grab{
+  position:absolute;
+  left:28%; right:28%; top:18%; bottom:26%;
+  z-index:4;
+  cursor:grab;
+}
+.hero__grab:active{ cursor:grabbing; }
+@media (max-width:760px){ .hero__grab{ left:12%; right:12%; } }
+
 /* The window is a matte, not a clip: ink fills everything outside the inset
    rect, so the shared bean canvas shows through and the opening reads as the
    frame pulling back. */
