@@ -712,13 +712,31 @@
   <!-- card mode: drag anywhere on the stage to turn the card -->
   <div class="chamber__grab" id="chamberGrab" aria-hidden="true"></div>
 
-  <div class="chamber__sheet" id="chamberSheet">
-    <span class="eyebrow mono">FRESHLY OPENED</span>
-    <h2 class="display" id="poTitle">Canopy Blend</h2>
-    <p id="poDesc">Cocoa, hazelnut, dried fig.</p>
+  <!-- card mode: the batch docket drops in from the top and hangs there -->
+  <div class="docket" id="chamberSheet">
+    <i class="docket__tape docket__tape--l" aria-hidden="true"></i>
+    <i class="docket__tape docket__tape--r" aria-hidden="true"></i>
 
-    <dl class="po-facts" id="poFacts"></dl>
-    <a class="btn btn--solid" href="#cta" data-cursor="link" id="poCta">Add to the box</a>
+    <div class="docket__sheet">
+      <div class="docket__top mono">
+        <span>LATTECANO&nbsp;ROASTERY</span>
+        <span id="poLot">LOT 04</span>
+      </div>
+      <span class="docket__rule" aria-hidden="true"></span>
+
+      <span class="eyebrow mono">FRESHLY OPENED</span>
+      <h2 class="display" id="poTitle">Canopy Blend</h2>
+      <p id="poDesc">Cocoa, hazelnut, dried fig.</p>
+
+      <dl class="po-facts" id="poFacts"></dl>
+
+      <span class="docket__coord mono" id="poCoord">[ 06° 04′ N, 38° 02′ E ]</span>
+      <a class="btn btn--solid" href="#cta" data-cursor="link" id="poCta">Add to the box</a>
+
+      <span class="docket__stamp" id="poStamp" aria-hidden="true">
+        <b>MEDIUM</b><i>ROASTED</i>
+      </span>
+    </div>
   </div>
 </div>
 

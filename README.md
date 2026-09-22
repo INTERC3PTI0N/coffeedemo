@@ -22,7 +22,7 @@ Ten sections, each with its own motion idea rather than one effect repeated:
 | 04 | Our Roasts | Five panels that expand on hover/focus over beds of real beans; clicking the open one opens that bean as a specimen, "Roast this lot" opens the drum |
 | 05 | Founder quote | Line-by-line mask reveal and a signature that draws itself |
 | 06 | Roast Lab | The field forms a ring around one large bean you can drag; the slider re-roasts every bean on the page |
-| 07 | The Collection | Pinned horizontal scroll; the cards are real 3D objects, and clicking one sends it into a deck of cards tumbling past the camera |
+| 07 | The Collection | Pinned horizontal scroll; the cards are real 3D objects, and clicking one sends it into a deck of cards while a paper docket falls in with the notes |
 | 08 | Bean to Cup | Parallax airport-code slab, a CSS globe that turns with scroll, and beans travelling the shipping arc |
 | 09 | Brew Guide | Working calculator — method × servings → dose, water, ratio, grind, temp, time and steps |
 | 10 | Subscribe | Parallax field, validated form, footer |
@@ -57,6 +57,11 @@ Four, all real rather than decorative:
   through two and a half turns so its back and its tasting notes pass the
   camera, and settles face-on while a field of blank cards keeps tumbling past
   the lens. Drag anywhere on the stage to turn it.
+
+  The copy arrives as **a batch docket**: a piece of stock that falls in from
+  the top of the window, swings once on its tape and hangs there. Click
+  anywhere off it and the same sheet tips off its tape and drops out of the
+  bottom — the gesture that brought it in, run the other way.
 
 - **Brew Guide** (`#brew`) — pick V60, AeroPress, French Press, Espresso or
   Cold Brew, set servings, and get the dose, water, ratio, grind, temperature,
@@ -195,6 +200,20 @@ mass — at 150 beans it costs nothing. The specimen gets its own highest-detail
 geometry and material, because it is the only view where the surface is the
 whole point. The deck builds its card through the collection's own module, in
 the chamber's renderer, because a texture cannot cross WebGL contexts.
+
+**The docket is stock, not a panel.** The paper is rendered once on canvas —
+laid lines, fibres both ways, three tea rings that have soaked in, the foxing
+an old sheet picks up, and edges that have seen more light than the middle. A
+flat cream fill reads as a modal; this reads as something that came off a
+bench. It tears along a perforated bottom edge, and the card it belongs to
+carries the same perforation above its name, so the two are visibly the same
+document.
+
+The fall and the settle are separate tweens. The sheet drops on `expo.out`
+while the rotation comes back on `elastic.out` a beat later — one eased tween
+doing both reads as a bounce, and paper does not bounce. The tape grows by
+width rather than `scaleX`, because it carries a CSS rotation that a transform
+tween would write over.
 
 The deck's blanks sit on a ring, and the ring splays as they come forward.
 Behind the card the radius holds, so the depth stays populated; from just

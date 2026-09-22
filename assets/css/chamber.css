@@ -157,11 +157,12 @@
 
 .chamber__veil{
   position:absolute; inset:0;
+  /* Opaque, not a scrim. At 97% the page behind still read through the
+     empty parts of the stage — and in card mode most of the stage is
+     empty, so the hero's wordmark sat right under the docket. */
   background:
     radial-gradient(60% 55% at 50% 45%, rgba(58,36,22,.5), transparent 72%),
-    rgba(9,6,4,.99);
-  backdrop-filter:blur(6px);
-  -webkit-backdrop-filter:blur(6px);
+    #090604;
   opacity:0;
 }
 .chamber__canvas{
@@ -269,63 +270,139 @@
   text-align:center;
 }
 
-/* ---- pour sheet ---------------------------------------------------- */
-.chamber__sheet{
-  /* Centred with margin rather than a transform: GSAP animates `x` on this
-     element, and a transform here would be overwritten (taking the vertical
-     centring with it). */
+/* ---- the batch docket ----------------------------------------------
+   Card mode's copy is a piece of paper: it drops in from the top of the
+   window, swings once on its tape and hangs there. Everything about it
+   is stock, ink and stain — nothing glassy, because the point is that it
+   came off a bench and not out of a UI kit.
+   -------------------------------------------------------------------- */
+.docket{
   position:absolute; z-index:3;
-  right:clamp(16px,5vw,90px);
-  top:0; bottom:0; margin:auto 0;
-  height:fit-content;
-  width:min(400px,86vw);
-  max-height:86vh; overflow:auto;
-  background:rgba(14,9,6,.7);
-  border:1px solid rgba(242,231,214,.16);
-  border-radius:var(--rad);
-  backdrop-filter:blur(18px);
-  -webkit-backdrop-filter:blur(18px);
-  padding:clamp(22px,2.6vw,34px);
-}
-.chamber__sheet .display{ font-size:clamp(26px,2.8vw,40px); margin-bottom:8px; }
-.chamber__sheet > p{
-  font-size:13px; line-height:1.6;
-  color:rgba(242,231,214,.7);
-  margin-bottom:14px;
+  top:clamp(12px,2.6vh,30px);
+  /* clear of the close button, which sits in the same corner */
+  right:clamp(76px,8.5vw,142px);
+  width:min(390px,84vw);
+  max-height:86vh;
+  padding-top:clamp(14px,2vh,26px);   /* the tape overhangs into this */
+  display:flex;
+  transform-origin:50% -14%;          /* it swings from above the window */
+  will-change:transform;
+  filter:drop-shadow(0 34px 44px rgba(0,0,0,.66));
 }
 
-.wheel{ display:grid; place-items:center; margin-bottom:16px; }
-.wheel svg{ width:min(190px,58%); height:auto; overflow:visible; }
-.wheel__rings circle{ fill:none; stroke:rgba(242,231,214,.14); stroke-width:1; }
-.wheel__spokes line{ stroke:rgba(242,231,214,.12); stroke-width:1; }
-.wheel__shape{
-  fill:rgba(195,60,43,.28);
-  stroke:var(--crema); stroke-width:1.6; stroke-linejoin:round;
+/* two strips of masking tape holding it to the glass */
+.docket__tape{
+  position:absolute; top:0; z-index:2;
+  width:74px; height:30px;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(255,255,255,.14) 0 1px, transparent 1px 4px),
+    linear-gradient(170deg, rgba(232,214,178,.82), rgba(205,182,140,.74));
+  box-shadow:0 2px 8px rgba(0,0,0,.4);
+  opacity:.9;
 }
-.wheel__labels text{
-  fill:rgba(242,231,214,.66);
-  font-family:var(--mono); font-size:8px;
-  letter-spacing:.1em; text-transform:uppercase;
+.docket__tape--l{ left:14%; transform:rotate(-7deg); }
+.docket__tape--r{ right:14%; transform:rotate(6deg); }
+
+.docket__sheet{
+  position:relative;
+  flex:1;
+  padding:clamp(26px,2.8vw,36px) clamp(22px,2.4vw,32px) clamp(30px,3vw,38px);
+  color:#2A1B12;
+  background:#EFE2C9;                 /* replaced by the rendered stock */
+  background-size:100% 100%;
+  overflow:auto;
+
+  /* a torn-off bottom edge: the sheet stops short and a row of scallops
+     finishes it, the way a docket comes off a perforated pad */
+  -webkit-mask:
+    linear-gradient(#000 0 0) top/100% calc(100% - 9px) no-repeat,
+    radial-gradient(circle 9px at 50% 0, transparent 98%, #000) bottom/18px 9px repeat-x;
+  mask:
+    linear-gradient(#000 0 0) top/100% calc(100% - 9px) no-repeat,
+    radial-gradient(circle 9px at 50% 0, transparent 98%, #000) bottom/18px 9px repeat-x;
+}
+
+.docket__top{
+  display:flex; justify-content:space-between; gap:12px;
+  font-size:8.5px; letter-spacing:.2em;
+  color:rgba(42,27,18,.62);
+}
+.docket__rule{
+  display:block; height:1px; margin:10px 0 18px;
+  background:repeating-linear-gradient(90deg,
+    rgba(42,27,18,.42) 0 4px, transparent 4px 8px);
+}
+
+.docket .eyebrow{ color:#B2462F; }
+.docket .display{
+  font-size:clamp(28px,3vw,42px);
+  line-height:1.02;
+  margin:6px 0 10px;
+  color:#22150D;
+}
+.docket > .docket__sheet > p{
+  font-size:13.5px; line-height:1.66;
+  color:rgba(42,27,18,.78);
+  margin-bottom:20px;
+  max-width:34ch;
+}
+.docket__coord{
+  display:block;
+  font-size:8.5px; letter-spacing:.16em;
+  color:rgba(42,27,18,.5);
+  margin:16px 0 18px;
+}
+.docket .btn--solid{
+  background:#B2462F; border-color:#B2462F; color:#F7EEDC;
+}
+.docket .btn--solid:hover{ background:#96361F; border-color:#96361F; }
+
+/* the roast stamp, pressed a little off-square the way a real one is */
+.docket__stamp{
+  position:absolute; right:clamp(16px,2vw,26px); bottom:clamp(20px,2.4vw,30px);
+  width:86px; height:86px;
+  display:grid; place-content:center; text-align:center; gap:2px;
+  border:2px solid rgba(178,70,47,.62);
+  border-radius:50%;
+  color:rgba(178,70,47,.72);
+  transform:rotate(-13deg);
+  opacity:.9;
+  pointer-events:none;
+}
+.docket__stamp::before{
+  content:"";
+  position:absolute; inset:5px;
+  border:1px solid rgba(178,70,47,.4);
+  border-radius:50%;
+}
+.docket__stamp b{
+  font-family:var(--mono); font-size:11px; font-weight:500;
+  letter-spacing:.1em;
+}
+.docket__stamp i{
+  font-style:normal;
+  font-family:var(--mono); font-size:7.5px;
+  letter-spacing:.22em;
 }
 
 .po-facts{
   display:grid; grid-template-columns:repeat(2,1fr);
-  gap:1px; margin:0 0 18px;
-  background:rgba(242,231,214,.12);
-  border:1px solid rgba(242,231,214,.12);
-  border-radius:10px; overflow:hidden;
+  gap:1px; margin:0;
+  background:rgba(42,27,18,.24);
+  border:1px solid rgba(42,27,18,.24);
 }
 .po-facts div{
-  background:rgba(12,8,5,.75);
-  padding:12px 14px;
-  display:flex; flex-direction:column; gap:5px;
+  background:rgba(247,238,220,.5);
+  padding:11px 13px;
+  display:flex; flex-direction:column; gap:4px;
 }
 .po-facts dt{
-  font-family:var(--mono); font-size:8.5px;
-  letter-spacing:.14em; text-transform:uppercase;
-  color:rgba(242,231,214,.45);
+  font-family:var(--mono); font-size:8px;
+  letter-spacing:.16em; text-transform:uppercase;
+  color:rgba(42,27,18,.5);
 }
-.po-facts dd{ margin:0; font-size:13px; font-weight:600; }
+.po-facts dd{ margin:0; font-size:13px; font-weight:600; color:#22150D; }
 
 @media (max-width:900px){
   .chamber__hud{
@@ -339,11 +416,18 @@
   .ch-phases{ grid-column:1; grid-row:4; grid-template-columns:repeat(2,1fr); }
   .ch-curve{ display:none; }
   .ch-note{ grid-column:1; grid-row:3; align-self:end; }
-  .chamber__sheet{
-    right:0; left:0; top:auto; bottom:0; margin:0;
-    width:100%; max-height:62vh;
-    border-radius:var(--rad) var(--rad) 0 0;
+  /* On a phone the docket owns the top of the window and the card drops
+     in behind it — see `lift` in the chamber's card mode. */
+  .docket{
+    /* Both insets rather than a centring margin: GSAP owns this element's
+       transform, so the centring has to come out of the box model. */
+    left:clamp(12px,6vw,44px);
+    right:clamp(12px,6vw,44px);
+    top:56px;                          /* under the close button */
+    width:auto;
+    max-height:72vh;
   }
+  .docket__stamp{ width:70px; height:70px; }
 }
 
 

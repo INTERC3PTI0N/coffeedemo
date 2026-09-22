@@ -632,31 +632,37 @@
     { name: 'Cascara Morning', hex: 0xC9A06A,
       desc: 'Jasmine, white peach and a lime-leaf finish that stays bright as it cools.',
       facts: [['Process','Washed'],['Altitude','2,150 m'],['Varietal','Heirloom'],['Roast','Light']],
-      glow: 'rgba(232,207,166,0.55)', roastLine: 'LIGHT \u00B7 WASHED',
+      lot: 'LOT 01', glow: 'rgba(232,207,166,0.55)', roastLine: 'LIGHT \u00B7 WASHED',
       coord: '[ 06\u00B0 09\u2032 N, 38\u00B0 12\u2032 E ]',
       notes: ['Jasmine', 'White peach', 'Lime leaf'] },
     { name: 'Terrace No. 7', hex: 0xA9773C,
       desc: 'Apricot and brown sugar over a soft, tea-like body. Sixteen days of rest.',
       facts: [['Process','Honey'],['Altitude','2,080 m'],['Varietal','Kurume'],['Roast','Med-light']],
-      glow: 'rgba(216,178,124,0.50)', roastLine: 'MED-LIGHT \u00B7 HONEY',
+      lot: 'LOT 02', glow: 'rgba(216,178,124,0.50)', roastLine: 'MED-LIGHT \u00B7 HONEY',
       coord: '[ 06\u00B0 11\u2032 N, 38\u00B0 15\u2032 E ]',
       notes: ['Apricot', 'Brown sugar', 'Black tea'] },
     { name: 'Canopy Blend', hex: 0x6E3E1D,
       desc: 'Cocoa, hazelnut and dried fig. Two farms, one drum, roasted every Tuesday.',
       facts: [['Process','Mixed'],['Altitude','1,900 m'],['Varietal','Blend'],['Roast','Medium']],
-      glow: 'rgba(192,143,82,0.45)', roastLine: 'MEDIUM \u00B7 BLEND',
+      lot: 'LOT 03', glow: 'rgba(192,143,82,0.45)', roastLine: 'MEDIUM \u00B7 BLEND',
       coord: '[ 06\u00B0 04\u2032 N, 38\u00B0 02\u2032 E ]',
       notes: ['Cocoa', 'Hazelnut', 'Dried fig'] },
     { name: 'Night Terminal', hex: 0x3F1E0D,
       desc: 'Dark chocolate, molasses and walnut. Built to hold its own under milk.',
       facts: [['Process','Natural'],['Altitude','1,840 m'],['Varietal','Bourbon'],['Roast','Dark']],
-      glow: 'rgba(196,72,52,0.42)', roastLine: 'DARK \u00B7 NATURAL',
+      lot: 'LOT 04', glow: 'rgba(196,72,52,0.42)', roastLine: 'DARK \u00B7 NATURAL',
       coord: '[ 05\u00B0 58\u2032 N, 37\u00B0 54\u2032 E ]',
       notes: ['Dark chocolate', 'Molasses', 'Walnut'] }
   ];
 
   var chamber = null;
   var cardLayer = null;
+
+  /* The bean beds are rendered off the critical path and land a beat after
+     the page does. Both the shelf and the takeover draw from them, so they
+     are kept here and pushed to whoever is already holding a stale copy. */
+  var BEDS = [];
+  var onBed = null;
 
   function initChamber() {
     var root = $('#chamber');
@@ -677,6 +683,7 @@
     var curveDot = $('#chCurveDot');
     var lastFocus = null;
     var tl = null;
+    var mode = '';
 
     function stopTimeline() {
       if (tl) { tl.kill(); tl = null; }
@@ -707,18 +714,29 @@
       }
 
       if (hasGSAP && !reduced) {
-        GS.to([hud, sheet], { opacity: 0, y: 18, duration: 0.3, ease: 'power2.in' });
+        if (mode === 'card') {
+          /* It does not fade — it falls. The sheet tips off its tape and
+             drops out of the bottom of the window, which is the same
+             gesture that brought it in, run the other way. */
+          GS.to(sheet, {
+            yPercent: 128, rotate: 4.5, duration: 0.62, ease: 'power2.in'
+          });
+          GS.to(sheet, { opacity: 0, duration: 0.22, delay: 0.42 });
+        } else {
+          GS.to([hud, sheet], { opacity: 0, y: 18, duration: 0.3, ease: 'power2.in' });
+        }
         GS.to(veil, {
-          opacity: 0, duration: 0.45, ease: 'power2.inOut', delay: 0.12,
+          opacity: 0, duration: 0.5, ease: 'power2.inOut', delay: 0.3,
           onComplete: hide
         });
-        setTimeout(hide, 900);          // backstop, whatever the ticker does
+        setTimeout(hide, 1200);         // backstop, whatever the ticker does
       } else {
         hide();
       }
     }
 
-    function open(mode) {
+    function open(m) {
+      mode = m;
       lastFocus = document.activeElement;
       root.classList.add('is-open');
       root.setAttribute('aria-hidden', 'false');
@@ -817,27 +835,109 @@
         }, 0.35);
     }
 
+    /* ---------------- the docket's paper ----------------------------
+       Drawn once, the same way the section art is: laid fibres, a couple
+       of tea rings that have soaked in at the edges, and the foxing an
+       old sheet picks up. A flat cream fill reads as a modal; this reads
+       as stock. */
+    var STOCK = null;
+    function paperStock() {
+      if (STOCK !== null) return STOCK;
+      STOCK = '';
+      try {
+        var W = 480, H = 900;
+        var c = document.createElement('canvas');
+        c.width = W; c.height = H;
+        var g = c.getContext('2d');
+        if (!g) return STOCK;
+
+        g.fillStyle = '#EFE2C9';
+        g.fillRect(0, 0, W, H);
+
+        // laid lines — the faint ribbing of a pressed sheet
+        g.strokeStyle = 'rgba(160,132,92,0.07)';
+        g.lineWidth = 1;
+        for (var y = 0; y < H; y += 7) {
+          g.beginPath(); g.moveTo(0, y + 0.5); g.lineTo(W, y + 0.5); g.stroke();
+        }
+
+        // long fibres, both ways, so it does not read as corduroy
+        var i, n;
+        for (i = 0; i < 2600; i++) {
+          var fx = Math.random() * W, fy = Math.random() * H;
+          var len = 4 + Math.random() * 26;
+          var horiz = Math.random() < 0.62;
+          g.strokeStyle = Math.random() < 0.5
+            ? 'rgba(122,94,58,0.055)' : 'rgba(255,250,236,0.10)';
+          g.beginPath();
+          g.moveTo(fx, fy);
+          g.lineTo(fx + (horiz ? len : len * 0.25), fy + (horiz ? len * 0.2 : len));
+          g.stroke();
+        }
+
+        // tea rings: a dark rim with a lighter wash inside
+        function ring(cx, cy, r, a) {
+          var wash = g.createRadialGradient(cx, cy, r * 0.2, cx, cy, r);
+          wash.addColorStop(0, 'rgba(150,104,52,' + (a * 0.18) + ')');
+          wash.addColorStop(0.82, 'rgba(150,104,52,' + (a * 0.26) + ')');
+          wash.addColorStop(1, 'rgba(150,104,52,0)');
+          g.fillStyle = wash;
+          g.beginPath(); g.arc(cx, cy, r, 0, 6.2832); g.fill();
+
+          g.strokeStyle = 'rgba(118,76,34,' + (a * 0.5) + ')';
+          g.lineWidth = 3 + Math.random() * 2;
+          g.beginPath();
+          g.arc(cx, cy, r * 0.93, Math.random() * 6, Math.random() * 6 + 4.6);
+          g.stroke();
+        }
+        ring(W * 0.86, H * 0.10, 74, 1);
+        ring(W * 0.10, H * 0.74, 96, 0.72);
+        ring(W * 0.62, H * 0.95, 60, 0.5);
+
+        // foxing — the little rust specks age leaves behind
+        for (i = 0, n = 220; i < n; i++) {
+          var sx = Math.random() * W, sy = Math.random() * H;
+          var sr = 0.6 + Math.random() * 2.4;
+          g.fillStyle = 'rgba(126,86,44,' + (0.05 + Math.random() * 0.12) + ')';
+          g.beginPath(); g.arc(sx, sy, sr, 0, 6.2832); g.fill();
+        }
+
+        // the edges have seen more light and more hands than the middle
+        var edge = g.createRadialGradient(W / 2, H / 2, W * 0.25, W / 2, H / 2, H * 0.72);
+        edge.addColorStop(0, 'rgba(120,84,44,0)');
+        edge.addColorStop(1, 'rgba(120,84,44,0.30)');
+        g.fillStyle = edge;
+        g.fillRect(0, 0, W, H);
+
+        STOCK = c.toDataURL('image/jpeg', 0.84);
+      } catch (e) {
+        STOCK = '';                     // the flat cream fill is the fallback
+      }
+      return STOCK;
+    }
+
     /* ---------------- card: open a card ----------------------------
        Clicking a card sends it into the deck: it comes out of the depth
        spinning, unwinds, and settles face-on while blanks tumble past the
        camera. The card is a real object throughout — there is no still,
        no clone and no handoff, so nothing has to be made to match. */
-    function openCard(index, cardEl) {
-      var prod = PRODUCTS[index] || PRODUCTS[0];
+    var stockEl = sheet && $('.docket__sheet', sheet);
 
-      // the shelf's copy steps aside; the chamber has its own
-      if (cardLayer) cardLayer.mute(index, true);
-
-      var staged = false;
-      if (hasStage) {
-        stage = window.LattecanoChamber.getStage(canvas);
-        staged = stage.prepareCard(prod, cardLayer ? cardLayer.bedURL(index) : '');
+    function fillDocket(index, prod) {
+      var stock = paperStock();
+      if (stock && stockEl && !stockEl.dataset.stocked) {
+        stockEl.style.backgroundImage = 'url(' + stock + ')';
+        stockEl.dataset.stocked = '1';
       }
-
-      open('card');
 
       $('#poTitle').textContent = prod.name;
       $('#poDesc').textContent = prod.desc;
+      $('#poLot').textContent = prod.lot;
+      $('#poCoord').textContent = prod.coord;
+
+      // the roast stamp reads off the same line the card front carries
+      var roast = prod.roastLine.split('\u00B7')[0].trim();
+      $('#poStamp').querySelector('b').textContent = roast;
 
       var dl = $('#poFacts');
       dl.innerHTML = '';
@@ -847,33 +947,66 @@
         var dd = document.createElement('dd'); dd.textContent = f[1];
         d.appendChild(dt); d.appendChild(dd); dl.appendChild(d);
       });
+    }
 
-      if (!staged) {
-        // no WebGL: the panel is the whole interaction, so it just appears
-        if (hasGSAP) GS.set(sheet, { opacity: 1, x: 0 });
+    function openCard(index, cardEl) {
+      var prod = PRODUCTS[index] || PRODUCTS[0];
+
+      // the shelf's copy steps aside; the chamber has its own
+      if (cardLayer) cardLayer.mute(index, true);
+
+      var staged = false;
+      if (hasStage) {
+        stage = window.LattecanoChamber.getStage(canvas);
+        staged = stage.prepareCard(prod, BEDS[index] || '');
+      }
+
+      open('card');
+      fillDocket(index, prod);
+
+      if (staged && (!hasGSAP || reduced)) stage.setCardPhase(1);
+
+      if (!hasGSAP) return;
+
+      if (reduced) {
+        // no travel: the docket is simply there, already hanging
+        GS.set(sheet, { opacity: 1, yPercent: 0, rotate: 0 });
+        GS.set('.docket__sheet > *', { opacity: 1, y: 0 });
+        GS.set('.po-facts div', { opacity: 1, y: 0 });
+        GS.set('.docket__tape', { opacity: 0.9 });
         return;
       }
 
-      if (!hasGSAP || reduced) {
-        stage.setCardPhase(1);
-        if (hasGSAP) GS.set(sheet, { opacity: 1, x: 0 });
-        return;
-      }
-
-      var phase = { t: 0 };
       stopTimeline();
       tl = GS.timeline();
-      tl.to(phase, {
-        t: 1, duration: 1.5, ease: 'power3.out',
-        onUpdate: function () { stage.setCardPhase(phase.t); }
-      }, 0);
 
-      tl.fromTo(sheet, { opacity: 0, x: 40 },
-                       { opacity: 1, x: 0, duration: 0.8, ease: 'expo.out' }, 0.55)
-        .fromTo('.po-facts div', { opacity: 0, y: 14 },
-                { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out' }, 0.85)
-        .fromTo('#poCta', { opacity: 0, y: 14 },
-                { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 1.1);
+      if (staged) {
+        var phase = { t: 0 };
+        tl.to(phase, {
+          t: 1, duration: 1.5, ease: 'power3.out',
+          onUpdate: function () { stage.setCardPhase(phase.t); }
+        }, 0);
+      }
+
+      /* The docket drops in on its own weight and then swings once on the
+         tape before it settles. The swing is a separate tween on rotation
+         so the fall can stay fast while the settle stays soft — one eased
+         tween doing both reads as a bounce, which paper does not do. */
+      tl.fromTo(sheet,
+        { opacity: 1, yPercent: -125, rotate: -3.4 },
+        { yPercent: 0, duration: 1.05, ease: 'expo.out' }, 0.12)
+        .fromTo(sheet, { rotate: -3.4 },
+          { rotate: 0, duration: 1.9, ease: 'elastic.out(1,0.42)' }, 0.42)
+        /* The tape grows by width, not scaleX: it carries a CSS rotation,
+           and a transform tween here would write over it. */
+        .fromTo('.docket__tape', { width: 8, opacity: 0 },
+          { width: 74, opacity: 0.9, duration: 0.5, stagger: 0.07, ease: 'power3.out' }, 0.62)
+        .fromTo('.docket__sheet > *:not(.docket__stamp)', { opacity: 0, y: 12 },
+          { opacity: 1, y: 0, duration: 0.55, stagger: 0.055, ease: 'power3.out' }, 0.66)
+        .fromTo('.po-facts div', { opacity: 0, y: 10 },
+          { opacity: 1, y: 0, duration: 0.45, stagger: 0.05, ease: 'power3.out' }, 0.9)
+        .fromTo('#poStamp', { opacity: 0, scale: 1.5, rotate: -34 },
+          { opacity: 0.9, scale: 1, rotate: -13, duration: 0.45, ease: 'back.out(2)' }, 1.25);
     }
 
     /* Drag anywhere on the stage to turn the card. Pointer capture keeps
@@ -886,7 +1019,8 @@
         dragging = true;
         lastX = e.clientX;
         travel = 0;
-        if (grab.setPointerCapture) grab.setPointerCapture(e.pointerId);
+        // not every pointer can be captured; the drag works without it
+        try { grab.setPointerCapture(e.pointerId); } catch (err) { /* no capture */ }
       });
       grab.addEventListener('pointermove', function (e) {
         if (!dragging) return;
@@ -898,9 +1032,9 @@
       function release(e) {
         if (!dragging) return;
         dragging = false;
-        if (e && grab.hasPointerCapture && grab.hasPointerCapture(e.pointerId)) {
-          grab.releasePointerCapture(e.pointerId);
-        }
+        try {
+          if (e && grab.hasPointerCapture(e.pointerId)) grab.releasePointerCapture(e.pointerId);
+        } catch (err) { /* nothing to release */ }
         // a click on the backdrop still closes; a drag does not
         if (travel < 6) close();
       }
@@ -1008,6 +1142,14 @@
       });
     }
 
+    /* A card opened before its bed had finished rendering was built without
+       one. When the render lands, repaint that card's face rather than
+       leaving it flat until the next time it is opened. */
+    onBed = function (i, url) {
+      var prod = PRODUCTS[i];
+      if (stage && prod && stage.setCardBed) stage.setCardBed(prod.name, url);
+    };
+
     window.__openSpecimen = openSpecimen;
 
     /* ---------------- wiring --------------------------------------- */
@@ -1065,8 +1207,10 @@
     $$('.card__bed').forEach(function (bed, i) {
       jobs.push(function () {
         var url = render(PRODUCTS[i] ? PRODUCTS[i].hex : 0x6e3e1d, 420, 520, i + 9);
+        BEDS[i] = url;
         bed.style.backgroundImage = 'url(' + url + ')';
         if (cardLayer) cardLayer.setBed(i, url);
+        if (onBed) onBed(i, url);
       });
     });
 

@@ -160,6 +160,15 @@
         bx += g.measureText(brand[i]).width + 9;
       }
 
+      // the lot, under the brand, and a hairline to sit it on
+      g.font = '500 19px "JetBrains Mono", ui-monospace, monospace';
+      g.fillStyle = 'rgba(251,245,236,0.54)';
+      g.fillText(product.lot || '', 54, 112);
+
+      g.strokeStyle = 'rgba(251,245,236,0.24)';
+      g.lineWidth = 1.6;
+      g.beginPath(); g.moveTo(54, 140); g.lineTo(W - 54, 140); g.stroke();
+
       // the bean mark, top-right
       g.save();
       g.translate(W - 74, 64);
@@ -192,6 +201,21 @@
       }
 
       var y = H - 250 - (lines.length - 1) * (size * 0.08);
+
+      /* A perforated rule above the name — the same one the docket tears
+         along. It is what ties the card you are holding to the paper that
+         drops in when you open it. */
+      g.save();
+      g.strokeStyle = 'rgba(251,245,236,0.36)';
+      g.lineWidth = 2;
+      if (g.setLineDash) g.setLineDash([3, 11]);
+      g.lineCap = 'round';
+      g.beginPath();
+      g.moveTo(54, y - size * 1.15);
+      g.lineTo(W - 54, y - size * 1.15);
+      g.stroke();
+      g.restore();
+
       for (i = 0; i < lines.length; i++) { g.fillText(lines[i], 54, y); y += size * 1.08; }
 
       // the roast line
@@ -203,6 +227,16 @@
       g.strokeStyle = 'rgba(251,245,236,0.26)';
       g.lineWidth = 2;
       g.beginPath(); g.moveTo(54, H - 138); g.lineTo(W - 54, H - 138); g.stroke();
+
+      /* A printed vignette. The card darkens at its edges when it turns,
+         but only on whichever side the light has left — this holds the
+         type in the middle of the field whatever the angle. */
+      var vig = g.createRadialGradient(W * 0.5, H * 0.5, W * 0.36,
+                                       W * 0.5, H * 0.5, H * 0.70);
+      vig.addColorStop(0, 'rgba(6,4,2,0)');
+      vig.addColorStop(1, 'rgba(6,4,2,0.48)');
+      g.fillStyle = vig;
+      g.fillRect(0, 0, W, H);
 
       tex.needsUpdate = true;
       if (onReady) onReady();
@@ -364,9 +398,9 @@
       cards.push({
         group: group,
         frontTex: built.frontTex,
+        mats: built.materials,
         // every card tumbles on its own clock, as in the reference
         phase: i * 1.7,
-        bed: '',
         focus: 0, turn: 0, intro: 1, muted: false,
         hover: 0, hoverTarget: 0
       });
@@ -479,6 +513,15 @@
 
         // it lifts toward you when it settles, and arrives from further off
         c.group.position.z = c.focus * 0.55 + c.hover * 0.5 - c.intro * 1.6;
+
+        /* It catches the light as you point at it. Brightening the
+           environment rather than adding a lamp keeps the highlight
+           anchored to the card's own gloss, so it still travels across
+           the face as the card turns. */
+        if (c.mats) {
+          c.mats[0].envMapIntensity = 1.5 + c.hover * 1.0;
+          c.mats[1].envMapIntensity = 1.35 + c.hover * 0.85;
+        }
       }
 
       renderer.render(scene, camera);
@@ -506,14 +549,10 @@
          of it on screen, so the two are never up at the same time. */
       mute: function (i, v) { if (cards[i]) cards[i].muted = !!v; },
 
-      /* Hand a card its bean bed once the still render is done; the
-         takeover asks for it back, to paint its own copy of the card. */
+      /* Hand a card its bean bed once the still render is done. */
       setBed: function (i, url) {
-        if (!cards[i]) return;
-        cards[i].bed = url || '';
-        if (cards[i].frontTex) cards[i].frontTex.setBed(url);
+        if (cards[i] && cards[i].frontTex) cards[i].frontTex.setBed(url);
       },
-      bedURL: function (i) { return cards[i] ? cards[i].bed : ''; },
       unmuteAll: function () {
         cards.forEach(function (c) { c.muted = false; });
       },

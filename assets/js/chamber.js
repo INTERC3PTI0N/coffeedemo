@@ -500,12 +500,12 @@
 
       deck.visible = true;
 
-      /* On a narrow screen the detail panel takes the bottom of the
-         window, so the card is smaller and sits above it rather than
-         behind it. */
+      /* On a narrow screen the docket hangs down over most of the window,
+         so the card is smaller and sits in the band left under it. Both
+         at full size is not a layout a phone has room for. */
       var narrow = camera.aspect < 1.15;
-      var fit = narrow ? 3.1 : 4.6;
-      var lift = narrow ? 2.5 : 0;
+      var fit = narrow ? 2.0 : 4.6;
+      var lift = narrow ? -3.5 : 0;
 
       if (hero) {
         var g = hero.group;
@@ -545,7 +545,7 @@
         var splay = 1 + Math.max(0, b.z + 2) * 0.17;
         var spread = (0.55 + p * 0.45) * splay;
         b.mesh.position.set(Math.cos(b.a) * b.r * spread,
-                            Math.sin(b.a) * b.r * 0.62 * spread + b.y + lift * 0.6,
+                            Math.sin(b.a) * b.r * 0.62 * spread + b.y + lift * 0.5,
                             b.z);
         b.mesh.rotation.set(
           b.tilt + (reduced ? 0 : Math.sin(t * 0.3 + b.phase) * 0.5),
@@ -871,6 +871,9 @@
       nudgeSpecimen: function (dx) { specDragTarget += dx; },
 
       prepareCard: prepareCard,
+      setCardBed: function (name, url) {
+        if (cardBuilt[name] && url) cardBuilt[name].setBed(url);
+      },
       setCardPhase: function (v) { st.cardIn = clamp(v, 0, 1); },
       nudgeCard: function (dx) { cardDragTarget += dx; },
       drum: drum
