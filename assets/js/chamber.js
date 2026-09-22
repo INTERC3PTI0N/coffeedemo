@@ -442,6 +442,30 @@
       });
     }
 
+    /* --- the specimen -------------------------------------------------
+       One bean of the chosen roast, at a size you can actually look at.
+       Not instanced: it gets the highest detail geometry and its own
+       material, because this is the only view where the surface is the
+       whole point. */
+    var specMat = new THREE.MeshPhysicalMaterial({
+      color: 0x6e3e1d,
+      vertexColors: true,
+      bumpMap: Beans.grainTexture(),
+      bumpScale: 1.9,
+      roughnessMap: Beans.matteTexture(),
+      roughness: 0.94,
+      metalness: 0.0,
+      clearcoat: 0.2,
+      clearcoatRoughness: 0.58,
+      envMapIntensity: 1.0
+    });
+    var specimen = new THREE.Mesh(Beans.beanGeometry(120, 3), specMat);
+    specimen.scale.setScalar(2.35);
+    specimen.visible = false;
+    scene.add(specimen);
+
+    var specDrag = 0, specDragTarget = 0;
+
     /* --- the beans --------------------------------------------------- */
     var COUNT = global.innerWidth < 760 ? 90 : 150;
     var beanGeo = Beans.beanGeometry(34, 1);
@@ -472,6 +496,7 @@
       roastT: 0,                       // 0 green → 1 fully roasted
       target: new THREE.Color(0x6e3e1d),
       bloom: 0,
+      specReveal: 1,
       burst: false,
       spin: 0,
       camShake: 0
@@ -829,7 +854,29 @@
           }
           smoke.instanceMatrix.needsUpdate = true;
         }
+      } else if (st.mode === 'specimen') {
+        drum.visible = false;
+        rig.visible = false;
+        chaff.visible = false;
+        smoke.visible = false;
+        bag.visible = false;
+        beans.visible = false;
+        specimen.visible = true;
+        fire.intensity = 0;
+
+        specDrag += (specDragTarget - specDrag) * (1 - Math.pow(0.88, dt * 60));
+        /* It rocks around its creased face rather than spinning: left to
+           turn freely it spends half its time edge-on, which is the one
+           angle where a bean looks like nothing at all. */
+        specimen.rotation.y = -0.34 + specDrag +
+                              (reduced ? 0 : Math.sin(clock.elapsedTime * 0.20) * 0.42);
+        specimen.rotation.x = 0.14 + (reduced ? 0 : Math.sin(clock.elapsedTime * 0.3) * 0.05);
+        specimen.rotation.z = 0.20;
+        specimen.position.y = -0.35 + (reduced ? 0 : Math.sin(clock.elapsedTime * 0.5) * 0.09);
+        specimen.scale.setScalar(1.55 * st.specReveal);
       } else {
+        specimen.visible = false;
+        beans.visible = true;
         rig.visible = false;
         chaff.visible = false;
         smoke.visible = false;
@@ -861,13 +908,13 @@
       paint();
 
       var wide = camera.aspect > 1.15;
-      var wantZ = st.mode === 'drum' ? 19.5 : 21.0;
+      var wantZ = st.mode === 'drum' ? 19.5 : (st.mode === 'specimen' ? 12.0 : 21.0);
       // in bloom the sheet owns the right third, so the subject sits left
-      var wantX = (st.mode === 'drum' || !wide) ? 0 : 3.9;
+      var wantX = (st.mode === 'drum' || st.mode === 'specimen' || !wide) ? 0 : 3.9;
       camera.position.z = lerp(camera.position.z, wantZ, 1 - Math.pow(0.9, dt * 60));
       camera.position.x = lerp(camera.position.x, wantX, 1 - Math.pow(0.9, dt * 60)) +
                           Math.sin(clock.elapsedTime * 0.3) * 0.2;
-      camera.lookAt(wantX, st.mode === 'drum' ? 0 : -0.2, 0);
+      camera.lookAt(wantX, (st.mode === 'drum' || st.mode === 'specimen') ? 0 : -0.2, 0);
 
       renderer.render(scene, camera);
     }
@@ -918,6 +965,13 @@
       setMode: function (m) { st.mode = m; },
       setOpen: function (v) { st.open = !!v; },
       setTarget: function (hex) { st.target.set(hex); },
+      setSpecimen: function (hex, rough, oil) {
+        specMat.color.set(hex);
+        specMat.roughness = 0.72 + (typeof rough === 'number' ? rough : 0.9) * 0.28;
+        specMat.clearcoat = typeof oil === 'number' ? oil : 0.2;
+      },
+      setSpecReveal: function (v) { st.specReveal = clamp(v, 0, 1); },
+      nudgeSpecimen: function (dx) { specDragTarget += dx; },
       setBagColour: function (hex) { bagMat.color.set(hex).multiplyScalar(0.72); },
       drum: drum
     };

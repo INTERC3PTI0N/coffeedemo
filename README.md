@@ -19,7 +19,7 @@ Ten sections, each with its own motion idea rather than one effect repeated:
 | 01 | Hero | A takeaway cup turned on a lathe, orbited by beans, lit by a sun flare; the framed window opens to full bleed as the camera closes on it |
 | 02 | Manifesto | Per-word `rotateX` reveal through a clipping mask; beans loiter in the margins |
 | 03 | The Harvest | A WebGL cloud bank you look down onto, with distant peaks behind it and the terraces in front; beans rain through all three |
-| 04 | Our Roasts | Five panels that expand on hover/focus, over beds of real beans rendered at each roast level; "Roast this lot" opens the drum |
+| 04 | Our Roasts | Five panels that expand on hover/focus over beds of real beans; clicking the open one opens that bean as a specimen, "Roast this lot" opens the drum |
 | 05 | Founder quote | Line-by-line mask reveal and a signature that draws itself |
 | 06 | Roast Lab | The field forms a ring around one large bean you can drag; the slider re-roasts every bean on the page |
 | 07 | The Collection | Pinned horizontal scroll, cards tilt in 3D; clicking a card flies it into the stage and blooms the beans into a flavour radar |
@@ -36,6 +36,13 @@ Four, all real rather than decorative:
   roughness and oil sheen interpolate across four stops, and the acidity /
   body / sweetness / bitterness bars move with it. Drag the big bean to spin
   it. "Open in Roast Lab" on any roast panel jumps the slider to that coffee.
+
+- **The Specimen** (`#roasts` → click the open panel) — the panel's own art
+  opens out to full bleed and dissolves off a single bean of that lot, at a
+  size where the surface is the point. Lot number, process, altitude, varietal
+  and grade, and nothing else. Drag to turn it. Like the cup, it rocks around
+  its creased face rather than spinning — left to turn freely a bean spends
+  half its time edge-on, which is the one angle where it looks like nothing.
 
 - **The Drum** (`#roasts` → *Roast this lot*) — an immersive takeover. ~150
   instanced beans tumble against the wall of a rotating drum with flights,
@@ -182,8 +189,9 @@ data URL, which becomes the background of the roast panels and the collection
 bags. They are photographs of the actual geometry, so the five roast levels
 differ because the beans differ — not because a gradient was tinted.
 
-**The Chamber** shares one renderer and one instanced mesh across both
-takeovers, with two solvers. The drum is force-based: gravity, wall
+**The Chamber** shares one renderer across three takeovers, with two solvers
+and one standalone mesh (the specimen gets its own highest-detail geometry and
+material, because it is the only view where the surface is the whole point). The drum is force-based: gravity, wall
 constraints and the drum's tangential drag. The bloom is target-based: one
 outward impulse when the seal lets go, then springs that pull each bean first
 to a point on a Fibonacci shell and then to its flavour cluster. Both run an

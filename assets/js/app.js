@@ -573,13 +573,28 @@
       panels.forEach(function (x) { x.classList.toggle('is-open', x === p); });
     }
 
-    panels.forEach(function (p) {
+    panels.forEach(function (p, i) {
       p.addEventListener('mouseenter', function () { open(p); });
-      p.addEventListener('click', function (e) {
-        if (e.target.closest('a')) return;
-        open(p);
-      });
       p.addEventListener('focusin', function () { open(p); });
+
+      /* Clicking a closed panel expands it; clicking the one already open
+         takes you into it. The cursor has been promising OPEN on these all
+         along without anything behind it. */
+      p.addEventListener('click', function (e) {
+        if (e.target.closest('a') || e.target.closest('button')) return;
+        if (!p.classList.contains('is-open')) { open(p); return; }
+        if (window.__openSpecimen) window.__openSpecimen(i, p);
+      });
+
+      p.setAttribute('tabindex', '0');
+      p.setAttribute('role', 'button');
+      p.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        if (e.target !== p) return;
+        e.preventDefault();
+        if (!p.classList.contains('is-open')) { open(p); return; }
+        if (window.__openSpecimen) window.__openSpecimen(i, p);
+      });
     });
 
     if (!hasGSAP) return;
@@ -644,6 +659,7 @@
 
     var hud = $('#chamberHud');
     var sheet = $('#chamberSheet');
+    var spec = $('#chamberSpec');
     var veil = $('.chamber__veil', root);
     var phases = $$('#chPhases li');
     var curve = $('#chCurve');
@@ -698,8 +714,9 @@
       document.body.classList.add('no-scroll');
       if (lenis) lenis.stop();
 
-      hud.style.display = mode === 'drum' ? '' : 'none';
-      sheet.style.display = mode === 'drum' ? 'none' : '';
+      hud.style.display   = mode === 'drum' ? '' : 'none';
+      sheet.style.display = mode === 'bloom' ? '' : 'none';
+      spec.style.display  = mode === 'specimen' ? '' : 'none';
 
       if (hasStage) {
         stage = window.LattecanoChamber.getStage(canvas);
@@ -921,6 +938,108 @@
         .fromTo('#poCta', { opacity: 0, y: 14 },
                 { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 1.55);
     }
+
+    /* ---------------- specimen: look at one bean -------------------- */
+
+    // what each lot's bean actually is, for the line of numbers under it
+    var SPECS = [
+      ['Washed',  '2,150 m', 'Heirloom', 'Screen 16'],
+      ['Honey',   '2,080 m', 'Kurume',   'Screen 17'],
+      ['Mixed',   '1,900 m', 'Blend',    'Screen 16'],
+      ['Natural', '1,840 m', 'Bourbon',  'Screen 18'],
+      ['Natural', '1,780 m', 'Bourbon',  'Screen 15']
+    ];
+    var SPEC_KEYS = ['Process', 'Altitude', 'Varietal', 'Grade'];
+
+    function openSpecimen(index, panelEl) {
+      var lot = LOTS[index] || LOTS[2];
+      var roast = roastAt([8, 34, 60, 88, 96][index] || 50);
+
+      // the panel's own art carries you into the view
+      var art = panelEl && panelEl.querySelector('.panel__art');
+      var from = art ? art.getBoundingClientRect() : null;
+      flier.innerHTML = '';
+      if (art && hasGSAP) {
+        var ghost = document.createElement('div');
+        ghost.style.cssText = 'width:100%;height:100%;background-size:cover;' +
+          'background-position:center;background-image:' + art.style.backgroundImage;
+        flier.appendChild(ghost);
+        GS.set(flier, {
+          left: from.left, top: from.top, width: from.width, height: from.height,
+          opacity: 1, scale: 1, rotateY: 0
+        });
+        flier.style.display = 'block';
+      } else {
+        flier.style.display = 'none';
+      }
+
+      open('specimen');
+
+      $('#specTitle').textContent = lot.name;
+      $('#specKicker').textContent = 'LOT 0' + (index + 1) + ' · YIRGA HIGHLANDS';
+
+      var dl = $('#specFacts');
+      dl.innerHTML = '';
+      (SPECS[index] || SPECS[2]).forEach(function (val, i) {
+        var d = document.createElement('div');
+        var dt = document.createElement('dt'); dt.textContent = SPEC_KEYS[i];
+        var dd = document.createElement('dd'); dd.textContent = val;
+        d.appendChild(dt); d.appendChild(dd); dl.appendChild(d);
+      });
+
+      if (hasStage) {
+        stage.setSpecimen(lot.hex, roast.rough, roast.oil);
+        stage.setSpecReveal(hasGSAP ? 0 : 1);
+      }
+
+      if (!hasGSAP) return;
+
+      stopTimeline();
+      tl = GS.timeline();
+
+      if (from) {
+        // the art opens out to full bleed, then dissolves off the bean
+        tl.to(flier, {
+          left: 0, top: 0, width: window.innerWidth, height: window.innerHeight,
+          duration: 0.9, ease: 'expo.inOut'
+        }, 0)
+          .to(flier, { opacity: 0, duration: 0.55, ease: 'power2.inOut' }, 0.55)
+          .set(flier, { display: 'none' }, 1.15);
+      }
+
+      if (hasStage) {
+        tl.to({ v: 0 }, {
+          v: 1, duration: 1.0, ease: 'back.out(1.5)',
+          onUpdate: function () { stage.setSpecReveal(this.targets()[0].v); }
+        }, 0.5);
+      }
+
+      tl.fromTo('.spec__head > *', { y: 22, opacity: 0 },
+                { y: 0, opacity: 1, duration: 0.7, stagger: 0.08, ease: 'power3.out' }, 0.75)
+        .fromTo('.spec__facts div', { y: 16, opacity: 0 },
+                { y: 0, opacity: 1, duration: 0.55, stagger: 0.07, ease: 'power3.out' }, 0.95)
+        .fromTo('.spec__hint', { opacity: 0 }, { opacity: 1, duration: 0.6 }, 1.3);
+    }
+
+    // turn the specimen by hand
+    var specGrab = $('#specGrab');
+    if (specGrab) {
+      var sDragging = false, sLastX = 0;
+      specGrab.addEventListener('pointerdown', function (e) {
+        sDragging = true; sLastX = e.clientX;
+        if (specGrab.setPointerCapture) specGrab.setPointerCapture(e.pointerId);
+      });
+      specGrab.addEventListener('pointermove', function (e) {
+        if (!sDragging || !hasStage) return;
+        stage.nudgeSpecimen((e.clientX - sLastX) * 0.011);
+        sLastX = e.clientX;
+      });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+        specGrab.addEventListener(ev, function () { sDragging = false; });
+      });
+    }
+
+    window.__openSpecimen = openSpecimen;
 
     /* ---------------- wiring --------------------------------------- */
     $$('[data-roast-open]').forEach(function (btn) {

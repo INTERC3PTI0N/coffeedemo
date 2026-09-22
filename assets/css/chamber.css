@@ -158,8 +158,8 @@
 .chamber__veil{
   position:absolute; inset:0;
   background:
-    radial-gradient(60% 55% at 50% 45%, rgba(58,36,22,.55), transparent 72%),
-    rgba(9,6,4,.94);
+    radial-gradient(60% 55% at 50% 45%, rgba(58,36,22,.5), transparent 72%),
+    rgba(9,6,4,.975);
   backdrop-filter:blur(6px);
   -webkit-backdrop-filter:blur(6px);
   opacity:0;
@@ -403,4 +403,67 @@
   .note{ padding:4px 9px 4px 7px; gap:6px; }
   .note__name{ font-size:8px; letter-spacing:.1em; }
   .note__val{ font-size:11px; }
+}
+
+/* =================================================================== */
+/* SPECIMEN — one bean, and as little else as possible                 */
+/* =================================================================== */
+.chamber__spec{
+  position:absolute; inset:0; z-index:3;
+  display:grid;
+  grid-template-rows:auto 1fr auto;
+  padding:clamp(18px,4vw,56px);
+  pointer-events:none;
+}
+.chamber__spec > *{ pointer-events:auto; }
+
+.spec__head{ text-align:center; }
+.spec__head .display{
+  font-size:clamp(30px,4.4vw,68px);
+  line-height:1;
+  margin-top:6px;
+}
+
+/* the whole middle band turns the bean */
+.spec__grab{
+  grid-row:2;
+  cursor:grab;
+}
+.spec__grab:active{ cursor:grabbing; }
+
+.spec__facts{
+  grid-row:3;
+  margin:0;
+  display:flex;
+  justify-content:center;
+  gap:clamp(20px,5vw,72px);
+  flex-wrap:wrap;
+  padding-top:18px;
+  border-top:1px solid rgba(242,231,214,.14);
+}
+.spec__facts div{ text-align:center; }
+.spec__facts dt{
+  font-family:var(--mono); font-size:8.5px;
+  letter-spacing:.16em; text-transform:uppercase;
+  color:rgba(242,231,214,.42);
+  margin-bottom:6px;
+}
+.spec__facts dd{
+  margin:0;
+  font-family:var(--serif); font-weight:400;
+  font-size:clamp(16px,1.8vw,24px);
+  line-height:1;
+}
+
+.spec__hint{
+  position:absolute;
+  left:50%; bottom:clamp(74px,11vh,132px);
+  transform:translateX(-50%);
+  color:rgba(242,231,214,.34);
+  pointer-events:none;
+}
+
+@media (max-width:900px){
+  .spec__facts{ gap:18px 26px; }
+  .spec__hint{ display:none; }
 }
