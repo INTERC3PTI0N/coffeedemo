@@ -55,10 +55,14 @@
      map between the printed outside and the shaded inside. */
   var INSIDE_V = OUTSIDE.length / (PROFILE.length - 1);
 
-  // the liquid sits a little below the rim, as a filled cup does
+  /* The liquid sits a little below the rim, as a filled cup does, and
+     curls up where it meets the wall. Eleven points rather than six: the
+     crema is a band a tenth of the radius wide, and on a coarse profile
+     it interpolates into a wash instead of a rim. */
   var LIQUID = [
-    [0.000, 0.845], [0.450, 0.848], [0.720, 0.856],
-    [0.850, 0.869], [0.893, 0.887], [0.901, 0.901]
+    [0.000, 0.8450], [0.260, 0.8455], [0.460, 0.8475], [0.600, 0.8505],
+    [0.700, 0.8545], [0.775, 0.8600], [0.832, 0.8670], [0.868, 0.8755],
+    [0.888, 0.8850], [0.897, 0.8950], [0.901, 0.9010]
   ];
 
   function outerRadius(y) {
@@ -213,11 +217,22 @@
     var inTop = 0, inBot = (1 - INSIDE_V) * H;
 
     var deep = g.createLinearGradient(0, inTop, 0, inBot);
-    deep.addColorStop(0.00, '#1d150e');      // the base, in shadow
-    deep.addColorStop(0.55, '#4a3b2c');
-    deep.addColorStop(1.00, '#9c8b76');      // up near the rim
+    deep.addColorStop(0.00, '#150f09');      // the base, in shadow
+    deep.addColorStop(0.55, '#413426');
+    deep.addColorStop(1.00, '#a0907b');      // up near the rim
     g.fillStyle = deep;
     g.fillRect(0, inTop, W, inBot);
+
+    /* The waterline. The coffee is a separate mesh, so nothing shadows the
+       wall behind it — this is the band of dark the liquid would throw,
+       painted where the profile reaches the fill height. */
+    var wl = inBot * 0.87;
+    var line = g.createLinearGradient(0, wl - inBot * 0.16, 0, wl + inBot * 0.05);
+    line.addColorStop(0.00, 'rgba(12,7,3,0)');
+    line.addColorStop(0.72, 'rgba(12,7,3,0.55)');
+    line.addColorStop(1.00, 'rgba(12,7,3,0.78)');
+    g.fillStyle = line;
+    g.fillRect(0, wl - inBot * 0.16, W, inBot * 0.21);
 
     // the outside: bleached board, faintly warm
     g.fillStyle = '#f4efe6';
@@ -323,37 +338,58 @@
     }
 
     function panel(cx) {
-      // the bean mark
+      // the bean mark, set in a ruled roundel
       g.save();
-      g.translate(cx, H * 0.135);
-      g.strokeStyle = INK; g.lineWidth = 2.8;
-      g.beginPath(); g.ellipse(0, 0, 17, 25, 0, 0, 6.283); g.stroke();
-      g.lineWidth = 2.2;
+      g.translate(cx, H * 0.125);
+      g.strokeStyle = 'rgba(37,23,10,0.30)';
+      g.lineWidth = 1.6;
+      g.beginPath(); g.arc(0, 0, 40, 0, 6.283); g.stroke();
+      g.strokeStyle = INK; g.lineWidth = 3;
+      g.beginPath(); g.ellipse(0, 0, 16, 24, 0, 0, 6.283); g.stroke();
+      g.lineWidth = 2.4;
       g.beginPath();
-      g.moveTo(0, -22); g.bezierCurveTo(7, -8, -7, 8, 0, 22); g.stroke();
+      g.moveTo(0, -21); g.bezierCurveTo(7, -8, -7, 8, 0, 21); g.stroke();
       g.restore();
 
-      var w = line('LATTECANO', cx, H * 0.335,
-        '700 54px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
-        13, INK);
+      var w = line('LATTECANO', cx, H * 0.315,
+        '800 56px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
+        14, INK);
 
-      g.strokeStyle = 'rgba(37,23,10,0.38)';
-      g.lineWidth = 2;
+      // a double rule, the way a letterpress panel is closed off
+      g.strokeStyle = 'rgba(37,23,10,0.44)';
+      g.lineWidth = 2.4;
       g.beginPath();
-      g.moveTo(cx - w / 2, H * 0.435); g.lineTo(cx + w / 2, H * 0.435);
+      g.moveTo(cx - w / 2, H * 0.400); g.lineTo(cx + w / 2, H * 0.400);
+      g.stroke();
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(cx - w / 2, H * 0.425); g.lineTo(cx + w / 2, H * 0.425);
       g.stroke();
 
-      line(product.name.toUpperCase(), cx, H * 0.555,
-        '600 36px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
-        6, 'rgba(37,23,10,0.92)');
+      line(product.name.toUpperCase(), cx, H * 0.525,
+        '600 38px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
+        7, 'rgba(37,23,10,0.94)');
 
-      line(product.roastLine, cx, H * 0.695,
-        '500 22px "JetBrains Mono", ui-monospace, monospace',
-        4, 'rgba(37,23,10,0.74)');
+      line(product.roastLine, cx, H * 0.635,
+        '500 21px "JetBrains Mono", ui-monospace, monospace',
+        5, 'rgba(37,23,10,0.70)');
 
-      line(product.lot || '', cx, H * 0.805,
-        '500 18px "JetBrains Mono", ui-monospace, monospace',
-        4, 'rgba(37,23,10,0.58)');
+      /* The roast as five dots, filled to the stop this coffee is taken
+         to. It is the one thing on the sleeve you can read at a glance
+         from across a table, which is what a sleeve is for. */
+      var lvl = product.roastLevel || 3;
+      var gap = 26, dots = 5;
+      var dx = cx - ((dots - 1) * gap) / 2;
+      for (var d = 0; d < dots; d++) {
+        g.beginPath();
+        g.arc(dx + d * gap, H * 0.730, 6.5, 0, 6.283);
+        if (d < lvl) { g.fillStyle = 'rgba(37,23,10,0.82)'; g.fill(); }
+        else { g.strokeStyle = 'rgba(37,23,10,0.42)'; g.lineWidth = 1.8; g.stroke(); }
+      }
+
+      line((product.lot || '') + '  \u00B7  SINGLE ORIGIN', cx, H * 0.835,
+        '500 17px "JetBrains Mono", ui-monospace, monospace',
+        4, 'rgba(37,23,10,0.55)');
     }
 
     // two wraps: one is always turned toward the reader
@@ -374,57 +410,81 @@
   /* band along the top, which is where it collects in a real cup.       */
   /* ------------------------------------------------------------------ */
   function cremaTexture(product) {
-    var W = 1024, H = 256;
+    var W = 1024, H = 512;
     var cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     var g = cv.getContext('2d');
 
     var c = new THREE.Color(product.hex);
-    var mid = c.clone().multiplyScalar(0.20).getStyle();
-    var foam = c.clone().lerp(new THREE.Color(0xffdfa8), 0.34).getStyle();
+    var lvl = product.roastLevel || 3;          // 1 light … 5 dark
+    // a darker roast pours a thicker, redder crema; a light one barely any
+    var thick = 0.055 + lvl * 0.016;
+    var foam = c.clone().lerp(new THREE.Color(0xffdcA0), 0.42 - lvl * 0.035).getStyle();
+    var mid = c.clone().multiplyScalar(0.19).getStyle();
 
-    /* Crema is a rim, not a wash. It collects in a band a few millimetres
-       wide against the wall and the rest of the surface is close to
-       black — spread any wider and the cup reads as milky. */
+    /* Crema is a rim, not a wash: it collects against the wall and the
+       rest of the surface is close to black. The very edge is darker
+       still — that is the shadow the paper throws on the liquid, and it
+       is what stops the surface reading as a sticker laid in the cup. */
     var band = g.createLinearGradient(0, 0, 0, H);
-    band.addColorStop(0.00, foam);
-    band.addColorStop(0.09, foam);
-    band.addColorStop(0.26, mid);
-    band.addColorStop(0.60, '#160c05');
-    band.addColorStop(1.00, '#0b0502');     // the middle, nearly black
+    band.addColorStop(0.000, '#1a0d05');
+    band.addColorStop(0.022, '#2a1609');
+    band.addColorStop(0.022 + thick * 0.35, foam);
+    band.addColorStop(0.022 + thick, foam);
+    band.addColorStop(0.10 + thick, mid);
+    band.addColorStop(0.46, '#170d05');
+    band.addColorStop(1.000, '#0a0402');
     g.fillStyle = band;
     g.fillRect(0, 0, W, H);
 
-    /* The swirl. Drawn as arcs that run off both edges and come back on
-       the other side, because u wraps — a stroke that stops at the edge
-       leaves a visible seam down the surface. */
+    /* Tiger striping. In this map u is the angle and v the radius, so a
+       streak running out from the middle of the cup is a vertical line
+       here — which is exactly how crema breaks up as it is poured. */
     g.lineCap = 'round';
-    for (var s = 0; s < 26; s++) {
-      var y = 10 + Math.random() * (H * 0.55);
-      var x0 = Math.random() * W;
-      var len = 120 + Math.random() * 420;
-      g.strokeStyle = Math.random() > 0.5
-        ? 'rgba(255,226,182,' + (0.05 + Math.random() * 0.13) + ')'
-        : 'rgba(26,14,6,' + (0.06 + Math.random() * 0.16) + ')';
-      g.lineWidth = 3 + Math.random() * 16;
+    var edge = (0.022 + thick) * H;
+    for (var s = 0; s < 140; s++) {
+      var x = Math.random() * W;
+      var top = edge * (0.15 + Math.random() * 0.7);
+      var len = edge * (0.5 + Math.random() * 2.6);
+      g.strokeStyle = Math.random() > 0.42
+        ? 'rgba(255,224,170,' + (0.05 + Math.random() * 0.20) + ')'
+        : 'rgba(26,12,4,' + (0.06 + Math.random() * 0.22) + ')';
+      g.lineWidth = 2 + Math.random() * 13;
       g.beginPath();
-      for (var k = 0; k <= 12; k++) {
-        var px = x0 + (len * k) / 12;
-        var py = y + Math.sin(k * 0.6 + s) * 9;
-        if (k === 0) g.moveTo(px % W, py); else g.lineTo(px % W, py);
+      g.moveTo(x, top);
+      g.bezierCurveTo(x + 6, top + len * 0.4, x - 6, top + len * 0.7, x, top + len);
+      g.stroke();
+    }
+
+    /* And the slow swirl of the pour, which runs the other way. It is
+       drawn modulo W because u wraps — a stroke that stops at the edge
+       leaves a visible seam down the surface. */
+    for (var w = 0; w < 18; w++) {
+      var y0 = edge * 0.5 + Math.random() * H * 0.42;
+      var x0 = Math.random() * W;
+      var run = 200 + Math.random() * 520;
+      g.strokeStyle = Math.random() > 0.5
+        ? 'rgba(255,226,182,' + (0.03 + Math.random() * 0.08) + ')'
+        : 'rgba(18,9,3,' + (0.05 + Math.random() * 0.14) + ')';
+      g.lineWidth = 6 + Math.random() * 22;
+      g.beginPath();
+      for (var k = 0; k <= 14; k++) {
+        var px = (x0 + (run * k) / 14) % W;
+        var py = y0 + Math.sin(k * 0.55 + w) * 11;
+        if (k === 0 || px < 2) g.moveTo(px, py); else g.lineTo(px, py);
       }
       g.stroke();
     }
 
-    // micro-bubbles, packed toward the rim where the foam is
-    for (var b = 0; b < 900; b++) {
+    // micro-bubbles, packed into the crema where the foam actually is
+    for (var b = 0; b < 1400; b++) {
       var bx = Math.random() * W;
-      var by = Math.pow(Math.random(), 2.1) * H * 0.62;
-      var br = 0.7 + Math.random() * 2.6;
-      g.fillStyle = 'rgba(255,238,206,' + (0.10 + Math.random() * 0.3) + ')';
+      var by = edge * (0.1 + Math.pow(Math.random(), 1.6) * 2.4);
+      var br = 0.6 + Math.random() * 2.3;
+      g.fillStyle = 'rgba(255,240,212,' + (0.10 + Math.random() * 0.34) + ')';
       g.beginPath(); g.arc(bx, by, br, 0, 6.2832); g.fill();
-      g.fillStyle = 'rgba(40,22,8,0.18)';
-      g.beginPath(); g.arc(bx + br * 0.4, by + br * 0.5, br * 0.7, 0, 6.2832); g.fill();
+      g.fillStyle = 'rgba(34,18,6,0.22)';
+      g.beginPath(); g.arc(bx + br * 0.35, by + br * 0.55, br * 0.72, 0, 6.2832); g.fill();
     }
 
     var tex = new THREE.CanvasTexture(cv);
@@ -494,9 +554,9 @@
       /* Glossy, but not a mirror: at full clearcoat the studio band
          lands on the surface as one flat grey plate and the cup reads as
          plastic. A little roughness breaks it into a sheen. */
-      roughness: 0.22, metalness: 0.0,
-      clearcoat: 0.85, clearcoatRoughness: 0.12,
-      envMapIntensity: 0.8,
+      roughness: 0.27, metalness: 0.0,
+      clearcoat: 0.8, clearcoatRoughness: 0.16,
+      envMapIntensity: 0.55,
       side: THREE.DoubleSide
     });
     shell.add(new THREE.Mesh(liquidGeometry(), coffeeMat));
@@ -669,7 +729,7 @@
         if (c.mats) {
           c.mats[0].envMapIntensity = 1.0 + c.hover * 0.7;
           c.mats[1].envMapIntensity = 0.7 + c.hover * 0.5;
-          c.mats[2].envMapIntensity = 0.8 + c.hover * 0.5;
+          c.mats[2].envMapIntensity = 0.55 + c.hover * 0.4;
         }
       }
 

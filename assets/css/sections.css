@@ -831,108 +831,8 @@ svg.hl{ width:128%; max-width:none; right:auto; height:auto; }
   max-width:46ch; margin:0 auto;
   font-size:13.5px; line-height:1.7; color:rgba(18,11,7,.7);
 }
-
-.journey__map{
-  position:relative;
-  min-height:88svh;
-  display:grid;
-  grid-template-columns:minmax(260px,380px) 1fr;
-  align-items:center;
-  gap:clamp(20px,4vw,70px);
-  padding:clamp(60px,9vh,120px) var(--gut);
-}
-
-/* CSS globe with real 3D rotation */
-.journey__globe{
-  position:absolute;
-  right:clamp(0px,2vw,40px); top:50%;
-  transform:translateY(-50%);
-  width:min(560px,48vw); aspect-ratio:1;
-  perspective:1200px;
-}
-.globe{
-  position:absolute; inset:0;
-  transform-style:preserve-3d;
-  transform:rotateX(14deg) rotateZ(-8deg);
-}
-.globe__sphere{
-  position:absolute; inset:8%;
-  border-radius:50%;
-  background:
-    radial-gradient(circle at 34% 28%, #4A3627 0%, #2A1B12 44%, #0D0805 80%);
-  box-shadow:
-    inset -30px -40px 90px rgba(0,0,0,.9),
-    inset 22px 26px 70px rgba(217,169,108,.10),
-    0 0 90px rgba(217,169,108,.10);
-}
-.globe__grid{
-  position:absolute; inset:8%;
-  border-radius:50%;
-  overflow:hidden;
-  opacity:.5;
-  background-image:
-    repeating-linear-gradient(0deg, rgba(217,169,108,.6) 0 1px, transparent 1px 8.5%),
-    repeating-linear-gradient(90deg, rgba(217,169,108,.42) 0 1px, transparent 1px 8.5%);
-  mask-image:radial-gradient(circle at 38% 34%, #000 30%, rgba(0,0,0,.25) 74%, transparent 92%);
-  -webkit-mask-image:radial-gradient(circle at 38% 34%, #000 30%, rgba(0,0,0,.25) 74%, transparent 92%);
-  animation:globeSpin 44s linear infinite;
-}
-@keyframes globeSpin{
-  from{ background-position:0 0, 0 0; }
-  to  { background-position:0 0, -340px 0; }
-}
-.globe__land{
-  position:absolute; inset:8%;
-  border-radius:50%;
-  opacity:.8;
-  background-image:
-    radial-gradient(42px 58px at 34% 40%, rgba(95,122,85,.9), transparent 68%),
-    radial-gradient(64px 46px at 52% 56%, rgba(95,122,85,.75), transparent 70%),
-    radial-gradient(38px 70px at 62% 34%, rgba(95,122,85,.6), transparent 70%),
-    radial-gradient(56px 40px at 26% 66%, rgba(95,122,85,.5), transparent 70%);
-  filter:blur(1px);
-  mask-image:radial-gradient(circle at 38% 34%, #000 46%, transparent 88%);
-  -webkit-mask-image:radial-gradient(circle at 38% 34%, #000 46%, transparent 88%);
-}
-.globe__glow{
-  position:absolute; inset:0;
-  border-radius:50%;
-  background:radial-gradient(circle at 36% 30%, rgba(217,169,108,.16), transparent 58%);
-  pointer-events:none;
-}
-
-.route{ position:absolute; inset:0; overflow:visible; }
-.route circle{ fill:var(--crema); }
-.route__pod{ fill:var(--cherry); filter:drop-shadow(0 0 7px rgba(195,60,43,.9)); }
-.route__a,.route__b{ opacity:.9; }
-
-.journey__facts{
-  position:relative; z-index:2;
-  display:grid; gap:1px;
-  background:rgba(242,231,214,.12);
-  border:1px solid rgba(242,231,214,.12);
-  border-radius:var(--rad);
-  overflow:hidden;
-  backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);
-}
-.fact{
-  background:rgba(18,11,7,.72);
-  padding:clamp(16px,1.8vw,26px);
-  display:flex; flex-direction:column; gap:8px;
-}
-.fact span{ color:rgba(242,231,214,.48); }
-.fact b{
-  font-family:var(--serif); font-weight:400;
-  font-size:clamp(22px,2.4vw,36px); line-height:1;
-}
-.fact--wide b{ font-family:var(--sans); font-size:14px; letter-spacing:.06em; font-weight:600; }
-
-@media (max-width:860px){
-  .journey__map{ grid-template-columns:1fr; min-height:auto; padding-bottom:120px; }
-  .journey__globe{ position:relative; right:auto; top:auto; transform:none;
-                   width:min(420px,88vw); margin:30px auto 0; }
-}
+/* the map used to carry the section's lower half; the caption closes it now */
+.journey__caption{ padding-bottom:clamp(70px,11vh,140px); }
 
 /* =================================================================== */
 /* 09 · BREW                                                           */
@@ -1166,7 +1066,6 @@ section, .footer{ position:relative; }
 .collection__rail,
 .journey__codes,
 .journey__caption,
-.journey__facts,
 .journey__globe,
 .brew__head,
 .brew__tool,

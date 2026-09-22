@@ -283,187 +283,32 @@
     return GEO[level];
   }
 
-  /* ================================================================== */
-  /* THE CUP                                                             */
-  /*                                                                     */
-  /* A takeaway cup, turned on a lathe the way a real one is drawn: one   */
-  /* profile swept around Y for the body, the same profile pushed out a   */
-  /* couple of millimetres for the sleeve, and a second for the lid.      */
-  /* ================================================================== */
-
-  // body silhouette, bottom to rim
-  var CUP_PROFILE = [
-    [0.00, -1.25], [0.60, -1.25], [0.66, -1.23], [0.69, -1.18],
-    [0.72, -1.00], [0.79, -0.60], [0.86, -0.18], [0.93,  0.28],
-    [0.99,  0.72], [1.03,  1.02], [1.06,  1.10], [1.07,  1.14],
-    [1.04,  1.16]
-  ];
-
-  function profileRadius(y) {
-    var P = CUP_PROFILE;
-    for (var i = 1; i < P.length; i++) {
-      if (y <= P[i][1]) {
-        var t = (y - P[i - 1][1]) / Math.max(1e-5, P[i][1] - P[i - 1][1]);
-        return lerp(P[i - 1][0], P[i][0], clamp(t, 0, 1));
-      }
-    }
-    return P[P.length - 1][0];
-  }
-
-  function lathe(points, segments) {
-    var v = [];
-    for (var i = 0; i < points.length; i++) v.push(new THREE.Vector2(points[i][0], points[i][1]));
-    return new THREE.LatheGeometry(v, segments || 72);
-  }
-
-  /* The printed sleeve. Drawn on a canvas and wrapped by the lathe's UVs,
-     so the brand is actually ON the cup rather than floating beside it. */
-  var SLEEVE = null;
-  function sleeveTexture() {
-    if (SLEEVE) return SLEEVE;
-    var W = 2048, H = 512;
-    var cv = document.createElement('canvas');
-    cv.width = W; cv.height = H;
-    var g = cv.getContext('2d');
-
-    g.fillStyle = '#efdcb4';
-    g.fillRect(0, 0, W, H);
-
-    // kraft board: flecks and a faint fibre grain
-    for (var i = 0; i < 2600; i++) {
-      var x = Math.random() * W, y = Math.random() * H;
-      g.fillStyle = Math.random() > 0.5
-        ? 'rgba(160,126,74,0.13)' : 'rgba(255,248,232,0.16)';
-      g.fillRect(x, y, 1 + Math.random() * 3, 1);
-    }
-
-    var INK = '#221509';
-
-    // the brand, twice around, so it is readable from either side
-    function stamp(cx) {
-      var word = 'LATTECANO';
-      g.save();
-      g.textBaseline = 'middle';
-      g.textAlign = 'center';
-
-      // letterspacing by hand — canvas letterSpacing is not dependable
-      /* The wrap is 2048px around the whole circumference, but only about a
-         third of that faces the camera. The stamp has to fit inside that
-         third or the brand is never readable in one view. */
-      g.font = '700 66px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif';
-      var track = 15;
-      var widths = [], total = 0, j;
-      for (j = 0; j < word.length; j++) {
-        widths[j] = g.measureText(word[j]).width;
-        total += widths[j] + track;
-      }
-      total -= track;
-      var x = cx - total / 2;
-      g.fillStyle = INK;
-      for (j = 0; j < word.length; j++) {
-        g.fillText(word[j], x + widths[j] / 2, H * 0.44);
-        x += widths[j] + track;
-      }
-
-      // rules above and below
-      g.strokeStyle = 'rgba(34,21,9,0.42)';
-      g.lineWidth = 3;
-      g.beginPath();
-      g.lineWidth = 2;
-      g.moveTo(cx - total / 2, H * 0.27); g.lineTo(cx + total / 2, H * 0.27);
-      g.moveTo(cx - total / 2, H * 0.60); g.lineTo(cx + total / 2, H * 0.60);
-      g.stroke();
-
-      // the strapline
-      g.font = '500 19px "JetBrains Mono", ui-monospace, monospace';
-      g.fillStyle = 'rgba(34,21,9,0.6)';
-      g.fillText('SINGLE ORIGIN  ·  ROASTED SLOW', cx, H * 0.745);
-
-      // the bean mark
-      g.save();
-      g.translate(cx, H * 0.145);
-      g.strokeStyle = INK; g.lineWidth = 2.6;
-      g.beginPath(); g.ellipse(0, 0, 17, 25, 0, 0, 6.283); g.stroke();
-      g.lineWidth = 2;
-      g.beginPath();
-      g.moveTo(0, -22); g.bezierCurveTo(7, -9, -7, 9, 0, 22);
-      g.stroke();
-      g.restore();
-      g.restore();
-    }
-    // three wraps, so however far the cup is spun a whole wordmark faces out
-    stamp(W / 6);
-    stamp(W / 2);
-    stamp(W * 5 / 6);
-
-    SLEEVE = new THREE.CanvasTexture(cv);
-    SLEEVE.colorSpace = THREE.SRGBColorSpace;
-    SLEEVE.anisotropy = 8;
-    return SLEEVE;
-  }
+  /* The hero's cup is the collection's cup. It used to be a separate
+     lathe with a lid on it, which meant two cups on one site that did not
+     match and only one of them any good. This one is built by the shelf's
+     module — same profile, same rolled rim, same corrugated sleeve, same
+     coffee — with steam added, because here it stands still long enough
+     for steam to read. */
+  var HERO_CUP = {
+    name: 'House Roast',
+    lot: 'LOT 04',
+    hex: 0x6E3E1D,
+    roastLevel: 3,
+    roastLine: 'SINGLE ORIGIN'
+  };
 
   function buildCup(scene) {
     var cup = new THREE.Group();
+    var vessel = null;
 
-    var bodyMat = new THREE.MeshPhysicalMaterial({
-      color: 0xe9eef3, roughness: 0.26, metalness: 0.0,
-      clearcoat: 0.72, clearcoatRoughness: 0.18,
-      envMapIntensity: 1.25, side: THREE.DoubleSide
-    });
-    var body = new THREE.Mesh(lathe(CUP_PROFILE, 84), bodyMat);
-    cup.add(body);
-
-    // the printed sleeve: the same silhouette, nudged outward
-    var sleevePts = [];
-    for (var y = -0.62; y <= 0.62001; y += 0.155) {
-      sleevePts.push([profileRadius(y) + 0.022, y]);
+    // a phone's hero pane is a tall slot; the same cup fills it twice over
+    var S = (global.innerWidth < 760) ? 2.15 : 2.72;
+    if (global.LattecanoShelf && global.LattecanoShelf.supported) {
+      vessel = global.LattecanoShelf.build(HERO_CUP);
+      vessel.group.scale.setScalar(S);
+      cup.add(vessel.group);
     }
-    var sleeveMat = new THREE.MeshPhysicalMaterial({
-      map: sleeveTexture(),
-      color: 0xffffff, roughness: 0.74, metalness: 0.0,
-      clearcoat: 0.10, clearcoatRoughness: 0.7,
-      envMapIntensity: 0.75, side: THREE.DoubleSide
-    });
-    var sleeve = new THREE.Mesh(lathe(sleevePts, 84), sleeveMat);
-    cup.add(sleeve);
-
-    // lid: a skirt that grips the rim, then a shallow dome
-    var lidPts = [
-      [1.10, 1.06], [1.12, 1.12], [1.12, 1.30], [1.10, 1.36],
-      [1.02, 1.42], [0.86, 1.48], [0.58, 1.52], [0.30, 1.54], [0.00, 1.545]
-    ];
-    var lidMat = new THREE.MeshPhysicalMaterial({
-      color: 0x39414a, roughness: 0.44, metalness: 0.05,
-      clearcoat: 0.35, clearcoatRoughness: 0.4, envMapIntensity: 0.9,
-      side: THREE.DoubleSide
-    });
-    var lid = new THREE.Mesh(lathe(lidPts, 84), lidMat);
-    cup.add(lid);
-
-    // the raised drinking tab
-    var tab = new THREE.Mesh(
-      new THREE.BoxGeometry(0.30, 0.09, 0.22),
-      new THREE.MeshPhysicalMaterial({
-        color: 0x424a54, roughness: 0.46, clearcoat: 0.3 }));
-    tab.position.set(0.52, 1.55, 0.06);
-    tab.rotation.z = -0.13;
-    cup.add(tab);
-
-    // the sip hole, and the moulded ring around the dome
-    var hole = new THREE.Mesh(
-      new THREE.CircleGeometry(0.15, 28),
-      new THREE.MeshBasicMaterial({ color: 0x14181c }));
-    hole.position.set(0.52, 1.585, 0.06);
-    hole.rotation.x = -Math.PI / 2 + 0.10;
-    hole.scale.set(1, 0.72, 1);
-    cup.add(hole);
-
-    var groove = new THREE.Mesh(
-      new THREE.TorusGeometry(0.74, 0.022, 8, 60),
-      new THREE.MeshPhysicalMaterial({ color: 0x2e353d, roughness: 0.5 }));
-    groove.position.y = 1.487;
-    groove.rotation.x = Math.PI / 2;
-    cup.add(groove);
+    var RIM = S * 0.62;                // where the steam leaves the cup
 
     /* Steam. Three soft plumes that rise and fade — the one cue that says
        the cup is full and hot rather than a prop. */
@@ -487,42 +332,56 @@
     }
     var sd2 = new THREE.Object3D();
 
-    // a real takeaway cup runs about 1.6 : 1 tall to wide; a lathe of this
-    // profile comes out squat, so the group carries the stretch
-    var BASE = new THREE.Vector3(1.0, 1.24, 1.0);
-    cup.scale.copy(BASE);
-    cup.rotation.set(0.05, 0, -0.20);       // the reference tilt
+    /* The cup comes out of the shelf already in proportion, so the group
+       carries no stretch — the old one was a squat lathe propped up by a
+       1 : 1.24 scale, which is what made its rim read as an oval. */
     cup.visible = false;
     scene.add(cup);
 
-    var drag = 0;
+    var drag = 0, spin = 0, lean = 0, leanTo = 0;
 
     return {
       group: cup,
       setVisible: function (v) { cup.visible = v; },
-      /* the hero cup can be spun by hand, which is the one bit of the page
-         that rewards just messing about with it */
-      nudge: function (dx) { drag += dx; },
+
+      /* Flick it and it keeps going. A drag that only moves the cup while
+         the pointer is down feels like a slider; carrying the velocity and
+         letting friction take it makes it feel like an object. */
+      nudge: function (dx) { spin += dx * 0.42; },
+
+      /* And it leans toward the pointer even when you are not holding it,
+         which is what makes the hero worth putting a cursor on at all. */
+      look: function (x) { leanTo = clamp(x, -1, 1); },
 
       update: function (t, reveal, dolly, dt) {
         if (!cup.visible) return;
-        /* It rocks around front rather than spinning: a cup that turns all
-           the way round shows its brand a third of the time. Dragging still
-           spins it fully, and it eases back to front when let go. */
-        drag += (0 - drag) * 0.006;
-        cup.rotation.y = Math.sin(t * 0.22) * 0.34 + drag;
-        cup.rotation.z = -0.20 + Math.sin(t * 0.4) * 0.03 - dolly * 0.16;
-        cup.position.y = Math.sin(t * 0.55) * 0.09 - dolly * 0.5;
-        cup.scale.set(BASE.x * reveal, BASE.y * reveal, BASE.z * reveal);
+        var f = Math.min((dt || 0.016) * 60, 3);
 
-        steamMat.opacity = reveal * 0.20;
+        /* It rocks around front rather than spinning: a cup that turns all
+           the way round shows its brand a third of the time. A flick still
+           spins it fully, then friction and a soft pull bring it home. */
+        spin *= Math.pow(0.935, f);
+        spin += (-drag) * 0.0022 * f;
+        drag += spin * f;
+
+        lean += (leanTo - lean) * (1 - Math.pow(0.90, f));
+
+        cup.rotation.y = Math.sin(t * 0.22) * 0.30 + drag + lean * 0.30;
+        /* Tipped toward the reader: it is the only angle from which the
+           coffee in it is visible at all. */
+        cup.rotation.x = 0.30 + Math.sin(t * 0.33) * 0.022 - dolly * 0.10;
+        cup.rotation.z = -0.13 + Math.sin(t * 0.4) * 0.025 - dolly * 0.16;
+        cup.position.y = Math.sin(t * 0.55) * 0.09 - dolly * 0.5;
+        cup.scale.setScalar(reveal);
+
+        steamMat.opacity = reveal * 0.26;
         for (var i = 0; i < puffs.length; i++) {
           var q = puffs[i];
           q.life += (dt || 0.016) * 0.16;
           if (q.life > 1) q.life -= 1;
           sd2.position.set(
             q.x + Math.sin(t * 0.7 + i) * 0.28 * q.life * q.sway,
-            1.62 + q.life * 2.6,
+            RIM + q.life * 2.6,
             q.z
           );
           sd2.scale.setScalar(q.size * (0.35 + q.life * 1.8));
@@ -1264,6 +1123,7 @@
       },
 
       nudgeCup: function (dx) { cup.nudge(dx); },
+      lookCup: function (x) { cup.look(x); },
 
       /* for diagnostics: what the field currently thinks it is doing */
       debug: function () {

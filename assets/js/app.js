@@ -415,9 +415,17 @@
         if (cupGrab.setPointerCapture) cupGrab.setPointerCapture(e.pointerId);
       });
       cupGrab.addEventListener('pointermove', function (e) {
+        var r = cupGrab.getBoundingClientRect();
+        // it leans toward the pointer whether or not you are holding it
+        if (beans.lookCup) {
+          beans.lookCup((e.clientX - r.left) / Math.max(1, r.width) * 2 - 1);
+        }
         if (!cupDragging) return;
         beans.nudgeCup((e.clientX - cupLastX) * 0.010);
         cupLastX = e.clientX;
+      });
+      cupGrab.addEventListener('pointerleave', function () {
+        if (beans.lookCup) beans.lookCup(0);
       });
       ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
         cupGrab.addEventListener(ev, function () { cupDragging = false; });
@@ -632,25 +640,25 @@
     { name: 'Cascara Morning', hex: 0xC9A06A,
       desc: 'Jasmine, white peach and a lime-leaf finish that stays bright as it cools.',
       facts: [['Process','Washed'],['Altitude','2,150 m'],['Varietal','Heirloom'],['Roast','Light']],
-      lot: 'LOT 01', glow: 'rgba(232,207,166,0.55)', roastLine: 'LIGHT \u00B7 WASHED',
+      roastLevel: 1, lot: 'LOT 01', glow: 'rgba(232,207,166,0.55)', roastLine: 'LIGHT \u00B7 WASHED',
       coord: '[ 06\u00B0 09\u2032 N, 38\u00B0 12\u2032 E ]',
       notes: ['Jasmine', 'White peach', 'Lime leaf'] },
     { name: 'Terrace No. 7', hex: 0xA9773C,
       desc: 'Apricot and brown sugar over a soft, tea-like body. Sixteen days of rest.',
       facts: [['Process','Honey'],['Altitude','2,080 m'],['Varietal','Kurume'],['Roast','Med-light']],
-      lot: 'LOT 02', glow: 'rgba(216,178,124,0.50)', roastLine: 'MED-LIGHT \u00B7 HONEY',
+      roastLevel: 2, lot: 'LOT 02', glow: 'rgba(216,178,124,0.50)', roastLine: 'MED-LIGHT \u00B7 HONEY',
       coord: '[ 06\u00B0 11\u2032 N, 38\u00B0 15\u2032 E ]',
       notes: ['Apricot', 'Brown sugar', 'Black tea'] },
     { name: 'Canopy Blend', hex: 0x6E3E1D,
       desc: 'Cocoa, hazelnut and dried fig. Two farms, one drum, roasted every Tuesday.',
       facts: [['Process','Mixed'],['Altitude','1,900 m'],['Varietal','Blend'],['Roast','Medium']],
-      lot: 'LOT 03', glow: 'rgba(192,143,82,0.45)', roastLine: 'MEDIUM \u00B7 BLEND',
+      roastLevel: 3, lot: 'LOT 03', glow: 'rgba(192,143,82,0.45)', roastLine: 'MEDIUM \u00B7 BLEND',
       coord: '[ 06\u00B0 04\u2032 N, 38\u00B0 02\u2032 E ]',
       notes: ['Cocoa', 'Hazelnut', 'Dried fig'] },
     { name: 'Night Terminal', hex: 0x3F1E0D,
       desc: 'Dark chocolate, molasses and walnut. Built to hold its own under milk.',
       facts: [['Process','Natural'],['Altitude','1,840 m'],['Varietal','Bourbon'],['Roast','Dark']],
-      lot: 'LOT 04', glow: 'rgba(196,72,52,0.42)', roastLine: 'DARK \u00B7 NATURAL',
+      roastLevel: 5, lot: 'LOT 04', glow: 'rgba(196,72,52,0.42)', roastLine: 'DARK \u00B7 NATURAL',
       coord: '[ 05\u00B0 58\u2032 N, 37\u00B0 54\u2032 E ]',
       notes: ['Dark chocolate', 'Molasses', 'Walnut'] }
   ];
@@ -1497,44 +1505,6 @@
       scrollTrigger: { trigger: '.journey__caption', start: 'top 80%' }
     });
 
-    // globe tips and turns as you move past it
-    GS.fromTo('.globe',
-      { rotateX: 26, rotateZ: -18, scale: 0.9 },
-      {
-        rotateX: 6, rotateZ: 6, scale: 1.03, ease: 'none',
-        scrollTrigger: { trigger: '.journey__map', start: 'top bottom', end: 'bottom top', scrub: 0.8 }
-      });
-
-    GS.from('.fact', {
-      y: 36, opacity: 0, duration: 0.9, stagger: 0.09, ease: 'power3.out',
-      scrollTrigger: { trigger: '.journey__facts', start: 'top 82%' }
-    });
-
-    // draw the shipping route, then run a marker along it
-    var path = $('#routePath');
-    var pod = $('.route__pod');
-    if (path && pod) {
-      var len = path.getTotalLength();
-      GS.set(path, { strokeDasharray: len, strokeDashoffset: len });
-      GS.set(['.route__a', '.route__b'], { scale: 0, transformOrigin: 'center' });
-
-      var tl = GS.timeline({
-        scrollTrigger: { trigger: '.journey__map', start: 'top 62%' }
-      });
-      tl.to('.route__a', { scale: 1, duration: 0.5, ease: 'back.out(2)' })
-        .to(path, { strokeDashoffset: 0, duration: 2, ease: 'power2.inOut' }, 0.1)
-        .to('.route__b', { scale: 1, duration: 0.5, ease: 'back.out(2)' }, 1.7);
-
-      var pos = { t: 0 };
-      GS.to(pos, {
-        t: 1, duration: 4.5, repeat: -1, ease: 'power1.inOut', repeatDelay: 0.4,
-        onUpdate: function () {
-          var pt = path.getPointAtLength(len * pos.t);
-          pod.setAttribute('cx', pt.x);
-          pod.setAttribute('cy', pt.y);
-        }
-      });
-    }
   }
 
   /* ================================================================= */

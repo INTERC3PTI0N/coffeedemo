@@ -23,7 +23,7 @@ Ten sections, each with its own motion idea rather than one effect repeated:
 | 05 | Founder quote | Line-by-line mask reveal and a signature that draws itself |
 | 06 | Roast Lab | The field forms a ring around one large bean you can drag; the slider re-roasts every bean on the page |
 | 07 | The Collection | Pinned horizontal scroll; the shelf holds real 3D cups, and clicking one sends it into a deck of cups while a paper docket falls in with the notes |
-| 08 | Bean to Cup | Parallax airport-code slab, a CSS globe that turns with scroll, and beans travelling the shipping arc |
+| 08 | Bean to Cup | Parallax airport-code slab, closing on the traceability note |
 | 09 | Brew Guide | Working calculator — method × servings → dose, water, ratio, grind, temp, time and steps |
 | 10 | Subscribe | Parallax field, validated form, footer |
 
@@ -80,11 +80,11 @@ colour of a ripe coffee cherry, which is where the accent came from.
 | `--ink` | `#120B07` | Espresso black — dark sections |
 | `--roast` | `#4A2A18` | Mid roast |
 | `--cocoa` | `#7A4A2E` | Drawn flourishes |
-| `--crema` | `#D9A96C` | Highlights, route, globe light |
+| `--crema` | `#D9A96C` | Highlights, rules, the crema on a cup |
 | `--oat` | `#F2E7D6` | Oat milk — text on dark, footer |
 | `--cream` / `--paper` | `#FBF5EC` / `#FFFCF7` | Light sections |
 | `--cherry` | `#C33C2B` | Accent: rail tab, eyebrows, CTA |
-| `--leaf` | `#5F7A55` | Arabica leaf — highlands, globe land |
+| `--leaf` | `#5F7A55` | Arabica leaf — the highlands |
 
 ## How the 3D works
 
@@ -236,13 +236,27 @@ dark toward the base on its own.
 The sleeve's flutes are geometry, not a bump map. A bump would fake them from
 straight on and lose them exactly where they matter, on the silhouette, so the
 radius itself is modulated: forty-eight flutes at six samples each, below which
-the corrugation aliases into a moiré. The print — brand, coffee, roast, lot —
-is wrapped twice, so however far a cup is turned a whole panel faces out.
+the corrugation aliases into a moiré. The print is wrapped twice, so however
+far a cup is turned a whole panel faces out, and it carries the roast as five
+dots filled to the stop that coffee is taken to — the one thing on a sleeve you
+can read at a glance from across a table, which is what a sleeve is for.
 
-The coffee is lathed too, which puts its map in (angle, radius) space: crema is
-a band along one edge of the canvas and near-black along the other, so it
-collects at the wall the way it does in a cup rather than washing over the
-whole surface. Tipping the rim toward the reader is the only way any of it is
+**The hero drinks from the same cup.** It used to be a separate lathe with a
+lid on it, which meant two cups on one site that did not match and only one of
+them any good. The hero now builds the shelf's cup and adds steam, because
+there it stands still long enough for steam to read. Flick it and it keeps
+going — friction and a soft pull bring it back to front — and it leans toward
+the pointer whether or not you are holding it.
+
+The coffee is lathed too, which puts its map in (angle, radius) space. That is
+what makes the surface work: crema is a band along one edge of the canvas and
+near-black along the other, so it collects at the wall the way it does in a
+cup rather than washing over the whole surface; a radial streak is a vertical
+line, which is exactly how tiger striping breaks up as it is poured; and the
+darkest ring of all sits at the very edge, where the paper throws a shadow on
+the liquid. Without that ring the surface reads as a sticker laid in the cup.
+The wall behind it carries a painted waterline for the same reason — nothing
+in this scene casts a shadow, so the darkness under the rim has to be drawn. Tipping the rim toward the reader is the only way any of it is
 visible — the camera sits at the cup's mid-height and cannot rise, because the
 whole screen mapping hangs off it being at zero — so a cup tips as it reaches
 the middle of the screen and stands straight again as it leaves. Hovering tips
