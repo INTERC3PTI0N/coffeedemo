@@ -289,13 +289,7 @@
      module — same profile, same rolled rim, same corrugated sleeve, same
      coffee — with steam added, because here it stands still long enough
      for steam to read. */
-  var HERO_CUP = {
-    name: 'House Roast',
-    lot: 'LOT 04',
-    hex: 0x6E3E1D,
-    roastLevel: 3,
-    roastLine: 'SINGLE ORIGIN'
-  };
+  var HERO_CUP = { name: 'Lattecano', hex: 0x6E3E1D, roastLevel: 3 };
 
   function buildCup(scene) {
     var cup = new THREE.Group();
@@ -303,12 +297,19 @@
 
     // a phone's hero pane is a tall slot; the same cup fills it twice over
     var S = (global.innerWidth < 760) ? 2.15 : 2.72;
+    /* Lidded and printed with the house and nothing else. The shelf's
+       cups are open, because there the coffee inside is the product; here
+       it is the brand, and a lid is what a cup handed over the counter
+       actually has on it. */
+    var RIM = S * 0.90, SPOUT = 0;
     if (global.LattecanoShelf && global.LattecanoShelf.supported) {
-      vessel = global.LattecanoShelf.build(HERO_CUP);
+      vessel = global.LattecanoShelf.build(HERO_CUP, { lid: true, brandOnly: true });
       vessel.group.scale.setScalar(S);
       cup.add(vessel.group);
+      // steam leaves through the sip hole, not off the whole rim
+      RIM = vessel.spout * S;
+      SPOUT = vessel.spoutR * S;
     }
-    var RIM = S * 0.62;                // where the steam leaves the cup
 
     /* Steam. Three soft plumes that rise and fade — the one cue that says
        the cup is full and hot rather than a prop. */
@@ -323,8 +324,11 @@
     var puffs = [];
     for (var sp = 0; sp < 14; sp++) {
       puffs.push({
-        x: (hash3(sp, 5, 2) - 0.5) * 0.7,
-        z: (hash3(sp, 9, 4) - 0.5) * 0.5,
+        /* It leaves through the sip hole, which is a thumb's width across
+           — a plume spread over the whole rim is what an open cup does,
+           and a lidded one plainly does not. */
+        x: (hash3(sp, 5, 2) - 0.5) * 0.16,
+        z: (hash3(sp, 9, 4) - 0.5) * 0.16,
         life: hash3(sp, 13, 6),
         size: 0.5 + hash3(sp, 17, 8) * 0.7,
         sway: (hash3(sp, 21, 10) - 0.5) * 1.4
@@ -369,7 +373,10 @@
         cup.rotation.y = Math.sin(t * 0.22) * 0.30 + drag + lean * 0.30;
         /* Tipped toward the reader: it is the only angle from which the
            coffee in it is visible at all. */
-        cup.rotation.x = 0.30 + Math.sin(t * 0.33) * 0.022 - dolly * 0.10;
+        /* Barely tipped. The shelf's cups lean well over because the
+           coffee in them is the point; this one has a lid on, so leaning
+           it only shows you the top of that. */
+        cup.rotation.x = 0.11 + Math.sin(t * 0.33) * 0.022 - dolly * 0.10;
         cup.rotation.z = -0.13 + Math.sin(t * 0.4) * 0.025 - dolly * 0.16;
         cup.position.y = Math.sin(t * 0.55) * 0.09 - dolly * 0.5;
         cup.scale.setScalar(reveal);
@@ -382,7 +389,7 @@
           sd2.position.set(
             q.x + Math.sin(t * 0.7 + i) * 0.28 * q.life * q.sway,
             RIM + q.life * 2.6,
-            q.z
+            SPOUT + q.z
           );
           sd2.scale.setScalar(q.size * (0.35 + q.life * 1.8));
           sd2.updateMatrix();

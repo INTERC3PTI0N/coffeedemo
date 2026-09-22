@@ -241,12 +241,21 @@ far a cup is turned a whole panel faces out, and it carries the roast as five
 dots filled to the stop that coffee is taken to — the one thing on a sleeve you
 can read at a glance from across a table, which is what a sleeve is for.
 
-**The hero drinks from the same cup.** It used to be a separate lathe with a
-lid on it, which meant two cups on one site that did not match and only one of
-them any good. The hero now builds the shelf's cup and adds steam, because
-there it stands still long enough for steam to read. Flick it and it keeps
-going — friction and a soft pull bring it back to front — and it leans toward
-the pointer whether or not you are holding it.
+**The hero drinks from the same cup**, built by the same module with two
+things turned on. It takes a travel lid — a skirt that grips down over the
+rolled rim, a moulded step, then a shallow dome, with the sip hole set on the
+side the print faces so the cup has a front — and the coffee mesh is dropped,
+since with a lid on there is nothing to see. And it is printed with the house
+and nothing else: no coffee, no roast, no lot, because a cup you meet before
+you have read a word about the coffee should carry the name and stop there.
+The board under the sleeve carries a tone-on-tone repeat of the mark, set
+barely darker than the stock so it reads as printed on it rather than stuck
+to it.
+
+Steam leaves through the sip hole rather than off the whole rim — a plume
+spread across the top is what an open cup does, and a lidded one plainly does
+not. Flick the cup and it keeps going; friction and a soft pull bring it back
+to front, and it leans toward the pointer whether or not you are holding it.
 
 The coffee is lathed too, which puts its map in (angle, radius) space. That is
 what makes the surface work: crema is a band along one edge of the canvas and

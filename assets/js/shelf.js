@@ -160,6 +160,78 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* THE LID                                                             */
+  /*                                                                    */
+  /* A travel lid, in the same units as the cup: a skirt that grips down */
+  /* over the rolled rim, a moulded step, then a shallow dome. Single    */
+  /* surface — the wall of a real one is thinner than a pixel at this    */
+  /* size, and tracing it back down doubles the geometry to draw nothing.*/
+  /* ------------------------------------------------------------------ */
+  var LID = [
+    [1.062, 1.150], [1.086, 1.176], [1.089, 1.236], [1.076, 1.288],
+    [1.052, 1.316], [1.006, 1.334], [0.946, 1.346],
+    // the moulded step the lid is stacked by
+    [0.938, 1.368], [0.906, 1.380], [0.878, 1.386],
+    // the dome
+    [0.760, 1.408], [0.560, 1.432], [0.320, 1.448], [0.000, 1.454]
+  ];
+  var LID_TOP = 1.454;
+
+  var LID_GEO = null;
+  function lidGeometry() {
+    if (!LID_GEO) LID_GEO = lathe(LID, 96);
+    return LID_GEO;
+  }
+
+  /* The sip hole, and the tab beside it. A hole cut through a lathe is a
+     lot of work for something read at this size; a dark disc laid on the
+     dome and a raised lip beside it say the same thing. */
+  function buildLid() {
+    var group = new THREE.Group();
+
+    var shellMat = new THREE.MeshPhysicalMaterial({
+      color: 0x17120f, roughness: 0.46, metalness: 0.05,
+      clearcoat: 0.5, clearcoatRoughness: 0.32,
+      envMapIntensity: 0.75, side: THREE.DoubleSide
+    });
+    group.add(new THREE.Mesh(lidGeometry(), shellMat));
+
+    // the concentric moulding that runs round the dome
+    var ringMat = new THREE.MeshPhysicalMaterial({
+      color: 0x1b1512, roughness: 0.5, metalness: 0.05, clearcoat: 0.4
+    });
+    var ring = new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.017, 8, 72), ringMat);
+    ring.position.y = 1.424;
+    ring.rotation.x = Math.PI / 2;
+    group.add(ring);
+
+    /* The sip hole goes on the side the print faces — put the two
+       together and the cup has a front. That side is local +X: the shell
+       is turned a quarter to bring the sleeve's u = 0.25 panel round to
+       the camera, and this rides the same turn. */
+    var hx = 0.60, hz = 0;
+
+    var lip = new THREE.Mesh(
+      new THREE.TorusGeometry(0.135, 0.028, 8, 30),
+      new THREE.MeshPhysicalMaterial({
+        color: 0x2c2420, roughness: 0.4, clearcoat: 0.5 }));
+    lip.position.set(hx, 1.430, hz);
+    lip.rotation.x = Math.PI / 2 - 0.16;
+    lip.scale.set(1.35, 1, 1);
+    group.add(lip);
+
+    var hole = new THREE.Mesh(
+      new THREE.CircleGeometry(0.125, 32),
+      new THREE.MeshBasicMaterial({ color: 0x090705 }));
+    hole.position.set(hx, 1.426, hz);
+    hole.rotation.x = -Math.PI / 2 + 0.16;
+    hole.scale.set(1.35, 1, 1);
+    group.add(hole);
+
+    return { group: group, materials: [shellMat, ringMat] };
+  }
+
+  /* ------------------------------------------------------------------ */
   /* The studio: a bright band that rakes across as the cup turns.       */
   /* ------------------------------------------------------------------ */
   function studio(renderer) {
@@ -203,9 +275,10 @@
   /* is the printed outside, above it the interior, which has to go dark */
   /* toward the base because nothing in here casts an occlusion.         */
   /* ------------------------------------------------------------------ */
-  var PAPER = null;
-  function paperTexture() {
-    if (PAPER) return PAPER;
+  var PAPER = {};
+  function paperTexture(brand) {
+    var key = brand ? 'brand' : 'plain';
+    if (PAPER[key]) return PAPER[key];
     var W = 1024, H = 1024;
     var cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
@@ -253,10 +326,46 @@
       g.fillRect(x, y, 1 + Math.random() * 4, 1);
     }
 
-    PAPER = new THREE.CanvasTexture(cv);
-    PAPER.colorSpace = THREE.SRGBColorSpace;
-    PAPER.anisotropy = 8;
-    return PAPER;
+    /* The hero's cup is printed board rather than plain: a tone-on-tone
+       repeat above the sleeve and the wordmark low on the body, both set
+       barely darker than the stock so they read as printed on it rather
+       than stuck to it. */
+    if (brand) {
+      var wallTop = inBot, wallBot = H;
+
+      g.save();
+      g.globalAlpha = 0.16;
+      g.strokeStyle = '#6b5636';
+      for (var bx = 0; bx < 16; bx++) {
+        for (var by = 0; by < 5; by++) {
+          var mx = (bx + (by % 2) * 0.5) * (W / 16);
+          var my = wallTop + 26 + by * 52;
+          if (my > wallBot - 30) continue;
+          g.save();
+          g.translate(mx, my);
+          g.lineWidth = 2;
+          g.beginPath(); g.ellipse(0, 0, 5.5, 8, 0, 0, 6.283); g.stroke();
+          g.restore();
+        }
+      }
+      g.restore();
+
+      g.save();
+      g.globalAlpha = 0.20;
+      g.fillStyle = '#6b5636';
+      g.textAlign = 'center';
+      g.font = '800 44px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif';
+      for (var k = 0; k < 4; k++) {
+        g.fillText('LATTECANO', (k + 0.5) * (W / 4), wallBot - 96);
+      }
+      g.restore();
+    }
+
+    var tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    PAPER[key] = tex;
+    return tex;
   }
 
   var PAPER_BUMP = null;
@@ -288,7 +397,7 @@
   /* ------------------------------------------------------------------ */
   /* The sleeve print — one per coffee                                   */
   /* ------------------------------------------------------------------ */
-  function sleeveTexture(product) {
+  function sleeveTexture(product, brandOnly) {
     var W = 2048, H = 512;
     var cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
@@ -392,14 +501,69 @@
         4, 'rgba(37,23,10,0.55)');
     }
 
+    /* The hero's sleeve says one thing. With a lid on the cup there is no
+       coffee to look at, so the print is the whole object — and a cup you
+       meet before you have read a word about the coffee should carry the
+       name of the house and nothing else. */
+    function brandPanel(cx) {
+      g.save();
+      g.translate(cx, H * 0.170);
+      g.strokeStyle = 'rgba(37,23,10,0.26)';
+      g.lineWidth = 1.6;
+      g.beginPath(); g.arc(0, 0, 46, 0, 6.283); g.stroke();
+      g.strokeStyle = INK; g.lineWidth = 3.4;
+      g.beginPath(); g.ellipse(0, 0, 19, 28, 0, 0, 6.283); g.stroke();
+      g.lineWidth = 2.6;
+      g.beginPath();
+      g.moveTo(0, -25); g.bezierCurveTo(8, -9, -8, 9, 0, 25); g.stroke();
+      g.restore();
+
+      var bw = line('LATTECANO', cx, H * 0.450,
+        '800 72px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
+        18, INK);
+
+      g.strokeStyle = 'rgba(37,23,10,0.46)';
+      g.lineWidth = 2.6;
+      g.beginPath();
+      g.moveTo(cx - bw / 2, H * 0.560); g.lineTo(cx + bw / 2, H * 0.560);
+      g.stroke();
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(cx - bw / 2, H * 0.590); g.lineTo(cx + bw / 2, H * 0.590);
+      g.stroke();
+    }
+
+    if (brandOnly) {
+      brandPanel(W * 0.25);
+      brandPanel(W * 0.75);
+
+      /* A micro-repeat that runs the whole way round rather than sitting
+         inside a panel, so there is no seam to line up and the band reads
+         as continuous however far the cup is turned. */
+      g.save();
+      g.font = '600 20px "JetBrains Mono", ui-monospace, monospace';
+      g.fillStyle = 'rgba(37,23,10,0.46)';
+      g.textAlign = 'left';
+      var word = 'LATTECANO   \u00B7   ';
+      var step = g.measureText(word).width;
+      for (var rx = -step; rx < W + step; rx += step) {
+        g.fillText(word, rx, H * 0.735);
+      }
+      g.restore();
+      return finish();
+    }
+
     // two wraps: one is always turned toward the reader
     panel(W * 0.25);
     panel(W * 0.75);
+    return finish();
 
-    var tex = new THREE.CanvasTexture(cv);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
-    return tex;
+    function finish() {
+      var tex = new THREE.CanvasTexture(cv);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      return tex;
+    }
   }
 
   /* ------------------------------------------------------------------ */
@@ -496,9 +660,9 @@
   /* ------------------------------------------------------------------ */
   /* ONE CUP                                                             */
   /* ------------------------------------------------------------------ */
-  function paperMaterial() {
+  function paperMaterial(brand) {
     return new THREE.MeshPhysicalMaterial({
-      map: paperTexture(),
+      map: paperTexture(brand),
       bumpMap: paperBump(),
       bumpScale: 0.55,
       color: 0xffffff,
@@ -522,7 +686,11 @@
     });
   }
 
-  function buildCup(product) {
+  /* `opts.lid` puts a travel lid on it and drops the coffee, since there
+     is then nothing to see; `opts.brandOnly` prints the house and nothing
+     else, on the sleeve and on the board itself. */
+  function buildCup(product, opts) {
+    opts = opts || {};
     var geo = bodyGeometry();          // also fills METRICS, used just below
     var group = new THREE.Group();
     var shell = new THREE.Group();
@@ -531,15 +699,19 @@
        0.75, would start off edge-on. A quarter turn brings a whole panel
        to the front. */
     shell.rotation.y = -Math.PI / 2;
-    shell.position.y = METRICS.lift;
+    /* METRICS.lift is in profile units and everything under the shell is
+       scaled, so the centring has to be scaled with it. A lid pushes the
+       silhouette up, and the object drops by half of what it gained. */
+    shell.position.y = (METRICS.lift - (opts.lid ? (LID_TOP - 1.276) / 2 : 0)) *
+                       METRICS.scale;
     shell.scale.setScalar(METRICS.scale);
     group.add(shell);
 
-    var bodyMat = paperMaterial();
+    var bodyMat = paperMaterial(opts.brandOnly);
     shell.add(new THREE.Mesh(geo, bodyMat));
 
     var sleeveMat = new THREE.MeshPhysicalMaterial({
-      map: sleeveTexture(product),
+      map: sleeveTexture(product, opts.brandOnly),
       color: 0xffffff,
       roughness: 0.88, metalness: 0.0,
       sheen: 0.45, sheenRoughness: 0.9,
@@ -548,25 +720,39 @@
     });
     shell.add(new THREE.Mesh(sleeveGeometry(), sleeveMat));
 
-    var coffeeMat = new THREE.MeshPhysicalMaterial({
-      map: cremaTexture(product),
-      color: 0xffffff,
-      /* Glossy, but not a mirror: at full clearcoat the studio band
-         lands on the surface as one flat grey plate and the cup reads as
-         plastic. A little roughness breaks it into a sheen. */
-      roughness: 0.27, metalness: 0.0,
-      clearcoat: 0.8, clearcoatRoughness: 0.16,
-      envMapIntensity: 0.55,
-      side: THREE.DoubleSide
-    });
-    shell.add(new THREE.Mesh(liquidGeometry(), coffeeMat));
+    var mats = [bodyMat, sleeveMat];
+
+    if (opts.lid) {
+      var lid = buildLid();
+      shell.add(lid.group);
+      mats = mats.concat(lid.materials);
+    } else {
+      var coffeeMat = new THREE.MeshPhysicalMaterial({
+        map: cremaTexture(product),
+        color: 0xffffff,
+        /* Glossy, but not a mirror: at full clearcoat the studio band
+           lands on the surface as one flat grey plate and the cup reads
+           as plastic. A little roughness breaks it into a sheen. */
+        roughness: 0.27, metalness: 0.0,
+        clearcoat: 0.8, clearcoatRoughness: 0.16,
+        envMapIntensity: 0.55,
+        side: THREE.DoubleSide
+      });
+      shell.add(new THREE.Mesh(liquidGeometry(), coffeeMat));
+      mats.push(coffeeMat);
+    }
 
     return {
       group: group,
-      materials: [bodyMat, sleeveMat, coffeeMat],
+      materials: mats,
+      // where the steam leaves, in the group's own units
+      spout: (opts.lid ? LID_TOP : 0.90) * METRICS.scale,
+      spoutR: (opts.lid ? 0.60 : 0) * METRICS.scale,
       setEnv: function (env) {
-        bodyMat.envMap = sleeveMat.envMap = coffeeMat.envMap = env;
-        bodyMat.needsUpdate = sleeveMat.needsUpdate = coffeeMat.needsUpdate = true;
+        for (var i = 0; i < mats.length; i++) {
+          mats[i].envMap = env;
+          mats[i].needsUpdate = true;
+        }
       }
     };
   }
