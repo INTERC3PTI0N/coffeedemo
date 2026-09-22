@@ -275,6 +275,27 @@ All easing is frame-rate independent — a per-frame "move 5% of the way" rate i
 converted for the frame actually drawn, so transitions take the same wall-clock
 time at 30fps as at 144.
 
+**The page ends in the cup.** The footer is a surface of coffee stretching
+away into the dark: real geometry rippling under one low warm light, with the
+crema turning on it, beans riding the swell and steam off the near edge. Touch
+it and it takes the ring. Nothing here is driven by scroll position and nothing
+has an end state — it is the one part of the site that is just weather.
+
+Three things make it read as coffee rather than as water. The swell is three
+travelling sine waves, not noise, because a sine sum differentiates in closed
+form: the surface normals come out of the same cosines that made the heights,
+and recomputing normals from the triangles every frame is the one thing that
+would make this expensive. The environment is a narrow band rather than a lamp,
+so its reflection is a single streak running back toward the reader with black
+either side of it. And the clearcoat is almost off — at a grazing angle, which
+is nearly all of this surface, it throws a white Fresnel sheen over everything
+and the pool reads as a misty lake, which is exactly what the first pass looked
+like.
+
+`#beanField` is fixed at z-index 2 and runs the whole page, so the footer's
+canvas has to meet it at the same level and win on DOM order. Anything lower
+and the page's beans swim over the coffee.
+
 ## Structure
 
 ```
@@ -286,6 +307,7 @@ assets/
   js/scene.js         three.js — bean geometry, textures, the page-wide field
   js/chamber.js       the drum / deck stage, and the still bean-bed renders
   js/shelf.js         the cup — profile, sleeve, crema — and the shelf
+  js/footer.js        the surface of coffee the page ends on
   js/app.js           Lenis + GSAP/ScrollTrigger, Roast Lab, Brew Guide
   img/favicon.svg
   vendor/             GSAP 3.12.5 + ScrollTrigger, Lenis 1.1.13, three.js r160

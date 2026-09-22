@@ -1216,6 +1216,68 @@
   }
 
   /* ================================================================= */
+  /* 8c2 · The footer's surface of coffee                              */
+  /* ================================================================= */
+  var footer = null;
+
+  function initFooter() {
+    if (footer) return;
+    if (!window.LattecanoFooter || !window.LattecanoFooter.supported) return;
+
+    var sec = $('.footer');
+    var canvas = $('#footerCanvas');
+    if (!sec || !canvas) return;
+
+    try { footer = window.LattecanoFooter.create(canvas); }
+    catch (e) { footer = null; }
+    if (!footer) return;
+
+    sec.classList.add('is-live');
+
+    /* It is the last thing on the page, so it only ever draws when the
+       page has actually reached it — the rest of the time this is three
+       canvases' worth of coffee nobody is looking at. */
+    function watch() {
+      var r = sec.getBoundingClientRect();
+      footer.setVisible(r.top < window.innerHeight + 120 && r.bottom > -120);
+    }
+    watch();
+    if (hasGSAP && ST) {
+      ST.create({
+        trigger: sec, start: 'top bottom', end: 'bottom top',
+        onToggle: function (self) { footer.setVisible(self.isActive); }
+      });
+    } else {
+      window.addEventListener('scroll', watch, { passive: true });
+    }
+
+    sec.addEventListener('pointermove', function (e) {
+      var r = sec.getBoundingClientRect();
+      var nx = (e.clientX - r.left) / Math.max(1, r.width);
+      var ny = (e.clientY - r.top) / Math.max(1, r.height);
+      footer.setPointer(nx * 2 - 1, ny * 2 - 1);
+    });
+    sec.addEventListener('pointerleave', function () { footer.setPointer(0, 0); });
+
+    // a touch leaves a ring on it, the way a cup does on a table
+    sec.addEventListener('pointerdown', function (e) {
+      var r = sec.getBoundingClientRect();
+      footer.ring((e.clientX - r.left) / Math.max(1, r.width),
+                  (e.clientY - r.top) / Math.max(1, r.height), 0.20);
+    });
+    $$('.footer__col a, .footer__brand').forEach(function (el) {
+      el.addEventListener('pointerenter', function (e) {
+        var r = sec.getBoundingClientRect();
+        footer.ring((e.clientX - r.left) / Math.max(1, r.width),
+                    (e.clientY - r.top) / Math.max(1, r.height), 0.10);
+      });
+    });
+
+    window.addEventListener('resize', function () { footer.resize(); });
+    if (hasGSAP && ST) ST.addEventListener('refresh', function () { footer.resize(); });
+  }
+
+  /* ================================================================= */
   /* 8d · The collection's cups, drawn in 3D                           */
   /* ================================================================= */
   function initShelf() {
@@ -1714,6 +1776,7 @@
     initLoader(function () {
       if (window.__heroIntro) window.__heroIntro.play();
       initShelf();
+      initFooter();
       // still renders are decoration; let the page settle first
       setTimeout(initBeanArt, 400);
     });

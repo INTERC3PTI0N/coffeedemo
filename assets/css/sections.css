@@ -1007,41 +1007,81 @@ svg.hl{ width:128%; max-width:none; right:auto; height:auto; }
 .cta__form input:focus{ border-color:var(--crema); }
 .cta__note{ margin-top:16px; min-height:14px; color:var(--crema); }
 
+/* The page ends in the cup. The footer is a surface of coffee — the
+   gradient below is the fallback the WebGL layer paints over, and it is
+   what the type is legible against when there is no WebGL at all. */
 .footer{
-  background:var(--oat); color:var(--ink);
-  padding:clamp(50px,7vw,90px) var(--gut) clamp(24px,3vw,40px);
+  background:
+    radial-gradient(70% 90% at 30% 108%, rgba(120,58,22,.5), transparent 70%),
+    linear-gradient(to bottom, #120B07 0%, #1B0F07 42%, #0B0704 100%);
+  color:var(--oat);
+  padding:clamp(190px,30vh,380px) var(--gut) clamp(24px,3vw,40px);
   display:grid;
   grid-template-columns:minmax(180px,1.2fr) repeat(3,1fr);
   gap:clamp(24px,3vw,50px);
+  overflow:hidden;
 }
-.footer__brand svg{ width:44px; height:28px; color:var(--roast); margin-bottom:14px; }
+.footer__gl{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  z-index:2;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity 1.1s var(--ease);
+}
+.footer.is-live .footer__gl{ opacity:1; }
+/* A scrim between the coffee and the copy. The surface runs right up to
+   the top of the footer, and the links have to sit on something. */
+.footer::before{
+  content:"";
+  position:absolute; inset:0; z-index:2;
+  pointer-events:none;
+  background:linear-gradient(to bottom,
+    rgba(10,6,4,.94) 0%, rgba(10,6,4,.74) 32%,
+    rgba(10,6,4,.34) 58%, rgba(10,6,4,0) 78%);
+}
+
+.footer__brand svg{ width:44px; height:28px; color:var(--crema); margin-bottom:14px; }
 .footer__brand p{
   font-family:var(--serif); font-style:italic;
-  font-size:14px; line-height:1.6; color:rgba(18,11,7,.7);
+  font-size:14px; line-height:1.6; color:rgba(242,231,214,.72);
 }
 .footer__col h4{
   font-family:var(--serif); font-style:italic;
   font-weight:400; font-size:17px; margin-bottom:14px;
+  color:var(--crema);
 }
 .footer__col a{
   display:block;
+  width:fit-content;
   font-size:12.5px; line-height:2.1;
-  color:rgba(18,11,7,.66);
+  color:rgba(242,231,214,.66);
   transition:color .3s, transform .35s var(--ease);
 }
-.footer__col a:hover{ color:var(--cherry); transform:translateX(5px); }
+.footer__col a:hover{ color:var(--crema); transform:translateX(5px); }
 
 .footer__end{
   grid-column:1/-1;
   display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap;
   padding-top:clamp(24px,3vw,44px);
   margin-top:clamp(12px,2vw,24px);
-  border-top:1px solid rgba(18,11,7,.14);
-  color:var(--muted);
+  border-top:1px solid rgba(242,231,214,.16);
+  color:rgba(242,231,214,.46);
 }
 
 @media (max-width:860px){
-  .footer{ grid-template-columns:repeat(2,1fr); }
+  .footer{
+    grid-template-columns:repeat(2,1fr);
+    padding-top:clamp(150px,30vh,260px);
+  }
+  /* A phone stacks the columns down into the bright part of the surface,
+     so the scrim holds much further down and only the last of the streak
+     comes through under the small print. */
+  .footer::before{
+    background:linear-gradient(to bottom,
+      rgba(10,6,4,.96) 0%, rgba(10,6,4,.90) 46%,
+      rgba(10,6,4,.70) 74%, rgba(10,6,4,.24) 93%, rgba(10,6,4,0) 100%);
+  }
 }
 
 
@@ -1066,14 +1106,26 @@ section, .footer{ position:relative; }
 .collection__rail,
 .journey__codes,
 .journey__caption,
-.journey__globe,
 .brew__head,
 .brew__tool,
 .cta__inner,
-.footer > *{
+/* the footer's own canvas is the exception: it belongs behind the copy */
+.footer > *:not(.footer__gl){
   position:relative;
   z-index:3;
 }
 
 /* scenery stays under the beans */
 .highlands{ z-index:1; }
+
+/* =================================================================== */
+/* The footer is its own world                                         */
+/*                                                                     */
+/* #beanField is fixed at z-index 2 and runs the length of the page, so */
+/* the footer's surface has to meet it at the same level and win on DOM */
+/* order — at anything lower the page's beans swim over the coffee. The */
+/* scrim and the copy then stack above it.                              */
+/* =================================================================== */
+.footer__gl{ z-index:2; }
+.footer::before{ z-index:3; }
+.footer > *:not(.footer__gl){ z-index:4; }
