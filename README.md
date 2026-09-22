@@ -203,6 +203,20 @@ has to exceed how wide a clump of beans actually is, or six clusters read as
 one. Labels are DOM pinned each frame to projected 3D positions — cheaper than
 text in WebGL, and it stays crisp.
 
+**The collection's cards are real objects.** Each one is a bevelled slab with
+rounded corners and printed faces, lit by an environment map built around a
+single bright band — which is what puts a hard specular edge across a card as
+it turns. The pinned horizontal scroll, the layout and the hit targets all stay
+in the DOM; every frame the layer reads where a card's box has landed and puts
+its 3D card there, so nothing about the scroll has to know WebGL exists.
+
+The turning is asymmetric on purpose. A card still to come is swung right
+round, so what you meet first is its back and its tasting notes; it turns over
+as it reaches the middle of the screen, then leans away rather than closing up
+again on the far side. Both halves are zero at dead centre, so nothing jumps as
+a card crosses it. Hovering straightens a card early; under
+`prefers-reduced-motion` they simply face front.
+
 All easing is frame-rate independent — a per-frame "move 5% of the way" rate is
 converted for the frame actually drawn, so transitions take the same wall-clock
 time at 30fps as at 144.
@@ -217,6 +231,7 @@ assets/
   css/chamber.css     the takeover, plus the two product sections
   js/scene.js         three.js — bean geometry, textures, the page-wide field
   js/chamber.js       the drum / pour stage, and the still bean-bed renders
+  js/cards.js         the collection's cards, drawn as real 3D objects
   js/app.js           Lenis + GSAP/ScrollTrigger, Roast Lab, Brew Guide
   img/favicon.svg
   vendor/             GSAP 3.12.5 + ScrollTrigger, Lenis 1.1.13, three.js r160

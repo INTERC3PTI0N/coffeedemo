@@ -632,22 +632,35 @@
     { name: 'Cascara Morning', hex: 0xC9A06A, bag: 0xE8CFA6,
       desc: 'Jasmine, white peach and a lime-leaf finish that stays bright as it cools.',
       axes: { Floral: 92, Fruit: 84, Sweet: 62, Nutty: 22, Cocoa: 14, Body: 34 },
-      facts: [['Process','Washed'],['Altitude','2,150 m'],['Varietal','Heirloom'],['Roast','Light']] },
+      facts: [['Process','Washed'],['Altitude','2,150 m'],['Varietal','Heirloom'],['Roast','Light']],
+      glow: 'rgba(232,207,166,0.55)', roastLine: 'LIGHT \u00B7 WASHED',
+      coord: '[ 06\u00B0 09\u2032 N, 38\u00B0 12\u2032 E ]',
+      notes: ['Jasmine', 'White peach', 'Lime leaf'] },
     { name: 'Terrace No. 7', hex: 0xA9773C, bag: 0xD8B27C,
       desc: 'Apricot and brown sugar over a soft, tea-like body. Sixteen days of rest.',
       axes: { Floral: 58, Fruit: 88, Sweet: 82, Nutty: 40, Cocoa: 28, Body: 52 },
-      facts: [['Process','Honey'],['Altitude','2,080 m'],['Varietal','Kurume'],['Roast','Med-light']] },
+      facts: [['Process','Honey'],['Altitude','2,080 m'],['Varietal','Kurume'],['Roast','Med-light']],
+      glow: 'rgba(216,178,124,0.50)', roastLine: 'MED-LIGHT \u00B7 HONEY',
+      coord: '[ 06\u00B0 11\u2032 N, 38\u00B0 15\u2032 E ]',
+      notes: ['Apricot', 'Brown sugar', 'Black tea'] },
     { name: 'Canopy Blend', hex: 0x6E3E1D, bag: 0xC08F52,
       desc: 'Cocoa, hazelnut and dried fig. Two farms, one drum, roasted every Tuesday.',
       axes: { Floral: 24, Fruit: 46, Sweet: 74, Nutty: 86, Cocoa: 90, Body: 78 },
-      facts: [['Process','Mixed'],['Altitude','1,900 m'],['Varietal','Blend'],['Roast','Medium']] },
+      facts: [['Process','Mixed'],['Altitude','1,900 m'],['Varietal','Blend'],['Roast','Medium']],
+      glow: 'rgba(192,143,82,0.45)', roastLine: 'MEDIUM \u00B7 BLEND',
+      coord: '[ 06\u00B0 04\u2032 N, 38\u00B0 02\u2032 E ]',
+      notes: ['Cocoa', 'Hazelnut', 'Dried fig'] },
     { name: 'Night Terminal', hex: 0x3F1E0D, bag: 0x8E6236,
       desc: 'Dark chocolate, molasses and walnut. Built to hold its own under milk.',
       axes: { Floral: 10, Fruit: 22, Sweet: 60, Nutty: 72, Cocoa: 96, Body: 94 },
-      facts: [['Process','Natural'],['Altitude','1,840 m'],['Varietal','Bourbon'],['Roast','Dark']] }
+      facts: [['Process','Natural'],['Altitude','1,840 m'],['Varietal','Bourbon'],['Roast','Dark']],
+      glow: 'rgba(196,72,52,0.42)', roastLine: 'DARK \u00B7 NATURAL',
+      coord: '[ 05\u00B0 58\u2032 N, 37\u00B0 54\u2032 E ]',
+      notes: ['Dark chocolate', 'Molasses', 'Walnut'] }
   ];
 
   var chamber = null;
+  var cardLayer = null;
 
   function initChamber() {
     var root = $('#chamber');
@@ -684,6 +697,7 @@
       document.body.classList.remove('no-scroll');
       if (lenis) lenis.start();
       if (stage) stage.setOpen(false);
+      if (cardLayer) cardLayer.unmuteAll();
       if (lastFocus && lastFocus.focus) lastFocus.focus();
 
       var hidden = false;
@@ -843,7 +857,24 @@
       var from = inner ? inner.getBoundingClientRect() : null;
       flier.innerHTML = '';
       if (inner && hasGSAP) {
-        flier.appendChild(inner.cloneNode(true));
+        var clone = inner.cloneNode(true);
+        flier.appendChild(clone);
+
+        /* What the reader is looking at is the WebGL card, so the still
+           that flies to the chamber has to carry its painted face — and
+           the card itself drops out of the scene for the trip, or the two
+           would be on screen at the same time. */
+        if (cardLayer) {
+          var faceURL = cardLayer.faceURL(index);
+          var bagEl = clone.querySelector('.card__bag');
+          if (faceURL && bagEl) {
+            bagEl.innerHTML = '';
+            bagEl.style.background = 'url(' + faceURL + ') center/cover no-repeat';
+            bagEl.style.transform = 'none';
+          }
+          cardLayer.mute(index, true);
+        }
+
         GS.set(flier, {
           left: from.left, top: from.top, width: from.width, height: from.height,
           opacity: 1, rotateY: 0, scale: 1
@@ -1091,10 +1122,13 @@
         art.classList.add('is-bed');
       });
     });
+    /* The cards want the same bean bed the CSS bag uses, so it is rendered
+       once here and handed to the 3D layer rather than drawn twice. */
     $$('.card__bed').forEach(function (bed, i) {
       jobs.push(function () {
         var url = render(PRODUCTS[i] ? PRODUCTS[i].hex : 0x6e3e1d, 420, 520, i + 9);
         bed.style.backgroundImage = 'url(' + url + ')';
+        if (cardLayer) cardLayer.setBed(i, url);
       });
     });
 
@@ -1104,6 +1138,71 @@
       try { job(); } catch (e) { /* decoration only */ }
       if (jobs.length) setTimeout(next, 16);
     })();
+  }
+
+  /* ================================================================= */
+  /* 8d · The collection's cards, drawn in 3D                          */
+  /* ================================================================= */
+  function initCards() {
+    if (cardLayer) return;
+    if (!window.LattecanoCards || !window.LattecanoCards.supported) return;
+
+    var sec = $('.collection');
+    var canvas = $('#cardCanvas');
+    if (!sec || !canvas) return;
+
+    try {
+      cardLayer = window.LattecanoCards.create(canvas, PRODUCTS, []);
+    } catch (e) {
+      cardLayer = null;
+    }
+    if (!cardLayer) return;
+
+    /* Each 3D card rides on the box the CSS bag still occupies. The DOM
+       keeps the layout and the hit target; the layer only draws. */
+    var hosts = [];
+    $$('[data-pour]').forEach(function (card) {
+      var i = +card.dataset.pour;
+      var bag = $('.card__bag', card);
+      if (!bag) return;
+      hosts[i] = bag;
+      cardLayer.bind(i, bag);
+
+      card.addEventListener('pointerenter', function () { cardLayer.setHover(i, true); });
+      card.addEventListener('pointerleave', function () { cardLayer.setHover(i, false); });
+      card.addEventListener('focus', function () { cardLayer.setHover(i, true); });
+      card.addEventListener('blur', function () { cardLayer.setHover(i, false); });
+    });
+    if (!hosts.length) return;
+
+    sec.classList.add('is-3d');
+
+    sec.addEventListener('pointermove', function (e) {
+      var r = sec.getBoundingClientRect();
+      cardLayer.setPointer(
+        (e.clientX - r.left) / r.width * 2 - 1,
+        (e.clientY - r.top) / r.height * 2 - 1
+      );
+    });
+
+    /* Only draw while the section is actually on screen — this canvas is
+       full-bleed and the page has a second one running all the time. */
+    function watch() {
+      var r = sec.getBoundingClientRect();
+      cardLayer.setVisible(r.bottom > -200 && r.top < window.innerHeight + 200);
+    }
+    watch();
+    if (hasGSAP && ST) {
+      ST.create({
+        trigger: sec, start: 'top bottom', end: 'bottom top',
+        onToggle: function (self) { cardLayer.setVisible(self.isActive); }
+      });
+    } else {
+      window.addEventListener('scroll', watch, { passive: true });
+    }
+
+    window.addEventListener('resize', function () { cardLayer.resize(); });
+    if (hasGSAP && ST) ST.addEventListener('refresh', function () { cardLayer.resize(); });
   }
 
   /* ================================================================= */
@@ -1273,8 +1372,16 @@
     $$('[data-tilt]').forEach(function (card) {
       var inner = $('.card__inner', card);
       if (!inner) return;
+      /* A card the 3D layer draws tilts in WebGL instead; tilting the DOM
+         box as well would resize the very rect the layer measures. The
+         layer comes up later than this wiring, so the check is made on
+         the event, not on the binding. */
+      var owned = function () {
+        return !!cardLayer && card.hasAttribute('data-pour');
+      };
 
       card.addEventListener('pointermove', function (e) {
+        if (owned()) return;
         var r = card.getBoundingClientRect();
         var px = (e.clientX - r.left) / r.width - 0.5;
         var py = (e.clientY - r.top) / r.height - 0.5;
@@ -1286,6 +1393,7 @@
         }
       });
       card.addEventListener('pointerleave', function () {
+        if (owned()) return;
         if (hasGSAP) GS.to(inner, { rotateY: 0, rotateX: 0, duration: 0.8, ease: 'elastic.out(1,0.6)' });
       });
     });
@@ -1568,6 +1676,7 @@
 
     initLoader(function () {
       if (window.__heroIntro) window.__heroIntro.play();
+      initCards();
       // still renders are decoration; let the page settle first
       setTimeout(initBeanArt, 400);
     });

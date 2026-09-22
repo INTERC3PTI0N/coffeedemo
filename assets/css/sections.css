@@ -612,6 +612,19 @@ svg.hl{ width:128%; max-width:none; right:auto; height:auto; }
   opacity:.7;
 }
 
+/* The WebGL card layer. It sits over the section art and under the
+   track, because everything the track still owns — the titles, the
+   coordinates, the hit boxes — belongs in front of the cards it draws. */
+.collection__gl{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  z-index:2;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .6s var(--ease);
+}
+.collection.is-3d .collection__gl{ opacity:1; }
+
 .collection__track{
   position:relative; z-index:2;
   display:flex; align-items:center;
@@ -721,6 +734,34 @@ svg.hl{ width:128%; max-width:none; right:auto; height:auto; }
   font-size:clamp(24px,2.5vw,36px); line-height:1.05;
 }
 .card--cta p{ font-size:13px; line-height:1.62; color:rgba(242,231,214,.7); }
+
+/* ------------------------------------------------------------------ */
+/* When the 3D layer is up, the CSS bag stops drawing itself and stays  */
+/* on only as the box the layer tracks — same layout, same hit target,  */
+/* nothing painted. The frame goes too, so the card can lean out of it. */
+/* ------------------------------------------------------------------ */
+.collection.is-3d .card__inner{
+  background:none;
+  border-color:transparent;
+  overflow:visible;
+  transform:none !important;
+}
+.collection.is-3d .card:hover .card__inner{
+  box-shadow:none;
+  border-color:transparent;
+}
+.collection.is-3d .card--cta .card__inner{
+  background:linear-gradient(160deg, rgba(195,60,43,.22), rgba(242,231,214,.04));
+  border-color:rgba(242,231,214,.12);
+}
+.collection.is-3d .card__bag{
+  background:none;
+  box-shadow:none;
+  transform:none;
+}
+.collection.is-3d .card__bag::before,
+.collection.is-3d .card__bag::after{ display:none; }
+.collection.is-3d .card__bag > *{ opacity:0; visibility:hidden; }
 
 .collection__rail{
   position:absolute; z-index:3;
