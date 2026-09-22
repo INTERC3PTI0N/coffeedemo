@@ -615,7 +615,7 @@
   // Each roast: where it sits on the scale, how hot and how long it runs,
   // and the colour it lands on.
   var LOTS = [
-    { name: 'Cascara Morning', hex: 0xC9A06A, bag: 0xE8CFA6, temp: 196, secs: 550,
+    { name: 'Cascara Morning', hex: 0xC9A06A, temp: 196, secs: 550,
       note: 'Dropped early, while the acidity is still in front.' },
     { name: 'Terrace No. 7',   hex: 0xA9773C, temp: 205, secs: 630,
       note: 'A slow ramp through drying to keep the honey sweetness.' },
@@ -629,30 +629,26 @@
 
   // Flavour axes for the wheel, 0–100
   var PRODUCTS = [
-    { name: 'Cascara Morning', hex: 0xC9A06A, bag: 0xE8CFA6,
+    { name: 'Cascara Morning', hex: 0xC9A06A,
       desc: 'Jasmine, white peach and a lime-leaf finish that stays bright as it cools.',
-      axes: { Floral: 92, Fruit: 84, Sweet: 62, Nutty: 22, Cocoa: 14, Body: 34 },
       facts: [['Process','Washed'],['Altitude','2,150 m'],['Varietal','Heirloom'],['Roast','Light']],
       glow: 'rgba(232,207,166,0.55)', roastLine: 'LIGHT \u00B7 WASHED',
       coord: '[ 06\u00B0 09\u2032 N, 38\u00B0 12\u2032 E ]',
       notes: ['Jasmine', 'White peach', 'Lime leaf'] },
-    { name: 'Terrace No. 7', hex: 0xA9773C, bag: 0xD8B27C,
+    { name: 'Terrace No. 7', hex: 0xA9773C,
       desc: 'Apricot and brown sugar over a soft, tea-like body. Sixteen days of rest.',
-      axes: { Floral: 58, Fruit: 88, Sweet: 82, Nutty: 40, Cocoa: 28, Body: 52 },
       facts: [['Process','Honey'],['Altitude','2,080 m'],['Varietal','Kurume'],['Roast','Med-light']],
       glow: 'rgba(216,178,124,0.50)', roastLine: 'MED-LIGHT \u00B7 HONEY',
       coord: '[ 06\u00B0 11\u2032 N, 38\u00B0 15\u2032 E ]',
       notes: ['Apricot', 'Brown sugar', 'Black tea'] },
-    { name: 'Canopy Blend', hex: 0x6E3E1D, bag: 0xC08F52,
+    { name: 'Canopy Blend', hex: 0x6E3E1D,
       desc: 'Cocoa, hazelnut and dried fig. Two farms, one drum, roasted every Tuesday.',
-      axes: { Floral: 24, Fruit: 46, Sweet: 74, Nutty: 86, Cocoa: 90, Body: 78 },
       facts: [['Process','Mixed'],['Altitude','1,900 m'],['Varietal','Blend'],['Roast','Medium']],
       glow: 'rgba(192,143,82,0.45)', roastLine: 'MEDIUM \u00B7 BLEND',
       coord: '[ 06\u00B0 04\u2032 N, 38\u00B0 02\u2032 E ]',
       notes: ['Cocoa', 'Hazelnut', 'Dried fig'] },
-    { name: 'Night Terminal', hex: 0x3F1E0D, bag: 0x8E6236,
+    { name: 'Night Terminal', hex: 0x3F1E0D,
       desc: 'Dark chocolate, molasses and walnut. Built to hold its own under milk.',
-      axes: { Floral: 10, Fruit: 22, Sweet: 60, Nutty: 72, Cocoa: 96, Body: 94 },
       facts: [['Process','Natural'],['Altitude','1,840 m'],['Varietal','Bourbon'],['Roast','Dark']],
       glow: 'rgba(196,72,52,0.42)', roastLine: 'DARK \u00B7 NATURAL',
       coord: '[ 05\u00B0 58\u2032 N, 37\u00B0 54\u2032 E ]',
@@ -673,6 +669,8 @@
     var hud = $('#chamberHud');
     var sheet = $('#chamberSheet');
     var spec = $('#chamberSpec');
+    var flier = $('#chamberFlier');   // the still that carries you into the specimen
+    var grab = $('#chamberGrab');
     var veil = $('.chamber__veil', root);
     var phases = $$('#chPhases li');
     var curve = $('#chCurve');
@@ -687,7 +685,6 @@
     function close() {
       if (!root.classList.contains('is-open')) return;
       stopTimeline();
-      stopNotes();
 
       /* Release everything that traps the user up front. If this waited on a
          tween's onComplete and the ticker stalled — a heavy frame, a
@@ -729,8 +726,12 @@
       if (lenis) lenis.stop();
 
       hud.style.display   = mode === 'drum' ? '' : 'none';
-      sheet.style.display = mode === 'bloom' ? '' : 'none';
+      sheet.style.display = mode === 'card' ? '' : 'none';
       spec.style.display  = mode === 'specimen' ? '' : 'none';
+      /* The grab covers the whole stage, so it has to be out of the way in
+         the other two modes or it would swallow the click on the backdrop
+         that closes them. */
+      if (grab) grab.style.display = mode === 'card' ? '' : 'none';
 
       if (hasStage) {
         stage = window.LattecanoChamber.getStage(canvas);
@@ -816,88 +817,28 @@
         }, 0.35);
     }
 
-    /* ---------------- bloom: open a bag ---------------------------- */
-    var flier = $('#chamberFlier');
-    var notesLayer = $('#chamberNotes');
-    var noteEls = [];
-    var noteRaf = 0;
-
-    function stopNotes() {
-      if (noteRaf) { cancelAnimationFrame(noteRaf); noteRaf = 0; }
-    }
-
-    /* The labels are DOM, pinned every frame to where their cluster actually
-       is in the scene. Cheaper than text in WebGL, and it stays crisp. */
-    function trackNotes() {
-      stopNotes();
-      (function loop() {
-        noteRaf = requestAnimationFrame(loop);
-        if (!stage || !stage.clusterScreen) return;
-        // Label tracking is cosmetic. It runs on the same tick that opens the
-        // panel, so anything thrown here must not take the opening with it.
-        var pts;
-        try { pts = stage.clusterScreen(); } catch (e) { return; }
-        if (!pts) return;
-        for (var i = 0; i < noteEls.length && i < pts.length; i++) {
-          var el = noteEls[i], pt = pts[i];
-          el.style.left = pt.x + 'px';
-          el.style.top = pt.y + 'px';
-          // behind the bag reads as further away
-          el.style.zIndex = String(1000 - Math.round(pt.depth * 1000));
-          el.style.filter = pt.depth > 0.62 ? 'opacity(.45)' : '';
-        }
-      })();
-    }
-
-    function openBag(index, cardEl) {
+    /* ---------------- card: open a card ----------------------------
+       Clicking a card sends it into the deck: it comes out of the depth
+       spinning, unwinds, and settles face-on while blanks tumble past the
+       camera. The card is a real object throughout — there is no still,
+       no clone and no handoff, so nothing has to be made to match. */
+    function openCard(index, cardEl) {
       var prod = PRODUCTS[index] || PRODUCTS[0];
 
-      /* 1 · take a still of the card and pin it exactly where it sits */
-      var inner = cardEl && cardEl.querySelector('.card__inner');
-      var from = inner ? inner.getBoundingClientRect() : null;
-      flier.innerHTML = '';
-      if (inner && hasGSAP) {
-        var clone = inner.cloneNode(true);
-        flier.appendChild(clone);
+      // the shelf's copy steps aside; the chamber has its own
+      if (cardLayer) cardLayer.mute(index, true);
 
-        /* What the reader is looking at is the WebGL card, so the still
-           that flies to the chamber has to carry its painted face — and
-           the card itself drops out of the scene for the trip, or the two
-           would be on screen at the same time. */
-        if (cardLayer) {
-          var faceURL = cardLayer.faceURL(index);
-          var bagEl = clone.querySelector('.card__bag');
-          if (faceURL && bagEl) {
-            bagEl.innerHTML = '';
-            bagEl.style.background = 'url(' + faceURL + ') center/cover no-repeat';
-            bagEl.style.transform = 'none';
-          }
-          cardLayer.mute(index, true);
-        }
-
-        GS.set(flier, {
-          left: from.left, top: from.top, width: from.width, height: from.height,
-          opacity: 1, rotateY: 0, scale: 1
-        });
-        flier.style.display = 'block';
-      } else {
-        flier.style.display = 'none';
+      var staged = false;
+      if (hasStage) {
+        stage = window.LattecanoChamber.getStage(canvas);
+        staged = stage.prepareCard(prod, cardLayer ? cardLayer.bedURL(index) : '');
       }
 
-      open('bloom');
+      open('card');
 
       $('#poTitle').textContent = prod.name;
       $('#poDesc').textContent = prod.desc;
 
-      if (hasStage) {
-        stage.setTarget(prod.hex);
-        stage.setBagColour(prod.bag);
-        stage.state.roastT = 1;             // already roasted; this is the bag
-        stage.prepareBloom(prod.axes);
-        stage.setBloomPhase(0);
-      }
-
-      // facts
       var dl = $('#poFacts');
       dl.innerHTML = '';
       prod.facts.forEach(function (f) {
@@ -907,68 +848,65 @@
         d.appendChild(dt); d.appendChild(dd); dl.appendChild(d);
       });
 
-      // the cluster labels
-      notesLayer.innerHTML = '';
-      noteEls = Object.keys(prod.axes).map(function (k) {
-        var el = document.createElement('div');
-        el.className = 'note';
-        el.innerHTML = '<span class="note__dot"></span>' +
-                       '<span class="note__name"></span>' +
-                       '<span class="note__val"></span>';
-        el.querySelector('.note__name').textContent = k;
-        el.querySelector('.note__val').textContent = prod.axes[k];
-        notesLayer.appendChild(el);
-        return el;
-      });
-      trackNotes();
-
-      if (!hasGSAP) {
-        if (hasStage) stage.setBloomPhase(1);
-        noteEls.forEach(function (el) { el.style.opacity = 1; });
+      if (!staged) {
+        // no WebGL: the panel is the whole interaction, so it just appears
+        if (hasGSAP) GS.set(sheet, { opacity: 1, x: 0 });
         return;
       }
 
-      /* 2 · fly it to the middle, turn it edge-on, and hand over to WebGL */
-      var vw = window.innerWidth, vh = window.innerHeight;
-      var tw = Math.min(330, vw * 0.62);
-      var th = tw * (from ? from.height / from.width : 1.5);
-
-      // land on the bag, not on the middle of the window
-      var subject = (hasStage && stage.subjectScreen)
-        ? stage.subjectScreen() : { x: vw / 2, y: vh / 2 };
-
-      var phase = { b: 0 };
-      stopTimeline();
-      tl = GS.timeline();
-
-      if (from) {
-        tl.to(flier, {
-          left: subject.x - tw / 2, top: subject.y - th / 2,
-          width: tw, height: th,
-          duration: 0.78, ease: 'expo.inOut'
-        }, 0)
-          .to(flier, { rotateY: -92, duration: 0.6, ease: 'power3.inOut' }, 0.42)
-          .to(flier, { opacity: 0, duration: 0.25, ease: 'power2.in' }, 0.78)
-          .set(flier, { display: 'none' }, 1.05);
+      if (!hasGSAP || reduced) {
+        stage.setCardPhase(1);
+        if (hasGSAP) GS.set(sheet, { opacity: 1, x: 0 });
+        return;
       }
 
+      var phase = { t: 0 };
+      stopTimeline();
+      tl = GS.timeline();
       tl.to(phase, {
-        b: 1, duration: 3.4, ease: 'power2.inOut',
-        onUpdate: function () { if (hasStage) stage.setBloomPhase(phase.b); }
-      }, from ? 0.86 : 0.1);
-
-      // the labels arrive as their clusters form
-      tl.to(noteEls, {
-        opacity: 1, duration: 0.5, stagger: 0.07, ease: 'power2.out'
-      }, from ? 3.0 : 2.2);
+        t: 1, duration: 1.5, ease: 'power3.out',
+        onUpdate: function () { stage.setCardPhase(phase.t); }
+      }, 0);
 
       tl.fromTo(sheet, { opacity: 0, x: 40 },
-                       { opacity: 1, x: 0, duration: 0.8, ease: 'expo.out' }, 1.0)
+                       { opacity: 1, x: 0, duration: 0.8, ease: 'expo.out' }, 0.55)
         .fromTo('.po-facts div', { opacity: 0, y: 14 },
-                { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out' }, 1.3)
+                { opacity: 1, y: 0, duration: 0.5, stagger: 0.06, ease: 'power3.out' }, 0.85)
         .fromTo('#poCta', { opacity: 0, y: 14 },
-                { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 1.55);
+                { opacity: 1, y: 0, duration: 0.5, ease: 'power3.out' }, 1.1);
     }
+
+    /* Drag anywhere on the stage to turn the card. Pointer capture keeps
+       the gesture alive if it wanders off the element mid-drag. */
+    (function cardDrag() {
+      if (!grab) return;
+      var lastX = 0, travel = 0, dragging = false;
+
+      grab.addEventListener('pointerdown', function (e) {
+        dragging = true;
+        lastX = e.clientX;
+        travel = 0;
+        if (grab.setPointerCapture) grab.setPointerCapture(e.pointerId);
+      });
+      grab.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        var dx = e.clientX - lastX;
+        travel += Math.abs(dx);
+        lastX = e.clientX;
+        if (stage && stage.nudgeCard) stage.nudgeCard(dx * 0.012);
+      });
+      function release(e) {
+        if (!dragging) return;
+        dragging = false;
+        if (e && grab.hasPointerCapture && grab.hasPointerCapture(e.pointerId)) {
+          grab.releasePointerCapture(e.pointerId);
+        }
+        // a click on the backdrop still closes; a drag does not
+        if (travel < 6) close();
+      }
+      grab.addEventListener('pointerup', release);
+      grab.addEventListener('pointercancel', function () { dragging = false; });
+    })();
 
     /* ---------------- specimen: look at one bean -------------------- */
 
@@ -1083,12 +1021,12 @@
     $$('[data-pour]').forEach(function (card) {
       card.addEventListener('click', function (e) {
         if (e.target.closest('a')) return;
-        openBag(+card.dataset.pour, card);
+        openCard(+card.dataset.pour, card);
       });
       card.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();
-          openBag(+card.dataset.pour, card);
+          openCard(+card.dataset.pour, card);
         }
       });
     });

@@ -159,7 +159,7 @@
   position:absolute; inset:0;
   background:
     radial-gradient(60% 55% at 50% 45%, rgba(58,36,22,.5), transparent 72%),
-    rgba(9,6,4,.975);
+    rgba(9,6,4,.99);
   backdrop-filter:blur(6px);
   -webkit-backdrop-filter:blur(6px);
   opacity:0;
@@ -348,7 +348,7 @@
 
 
 /* =================================================================== */
-/* THE OPENING — the clicked card flies in, then hands over to WebGL   */
+/* THE OPENING — the panel art opens out, then hands over to WebGL     */
 /* =================================================================== */
 .chamber__flier{
   position:fixed; z-index:5;
@@ -366,44 +366,13 @@
 .chamber__flier *{ transition:none !important; animation:none !important; }
 .chamber__flier .card__cue{ display:none; }
 
-/* the flavour clusters get plain DOM labels pinned to their 3D positions */
-.chamber__notes{
-  position:absolute; inset:0; z-index:4;
-  pointer-events:none;
+/* the card turns under the pointer; the grab sits under the panel so a
+   drag that starts on the sheet does not also spin the card */
+.chamber__grab{
+  position:absolute; inset:0; z-index:2;
+  cursor:grab;
 }
-.note{
-  position:absolute;
-  transform:translate(-50%,-50%);
-  display:flex; align-items:center; gap:9px;
-  padding:6px 12px 6px 9px;
-  border-radius:100px;
-  background:rgba(12,8,5,.72);
-  border:1px solid rgba(242,231,214,.18);
-  backdrop-filter:blur(8px);
-  -webkit-backdrop-filter:blur(8px);
-  white-space:nowrap;
-  opacity:0;
-}
-.note__dot{
-  width:6px; height:6px; border-radius:50%;
-  background:var(--crema);
-  flex:none;
-}
-.note__name{
-  font-family:var(--mono); font-size:9px;
-  letter-spacing:.14em; text-transform:uppercase;
-  color:var(--oat);
-}
-.note__val{
-  font-family:var(--serif); font-size:13px; line-height:1;
-  color:var(--crema);
-}
-
-@media (max-width:900px){
-  .note{ padding:4px 9px 4px 7px; gap:6px; }
-  .note__name{ font-size:8px; letter-spacing:.1em; }
-  .note__val{ font-size:11px; }
-}
+.chamber__grab:active{ cursor:grabbing; }
 
 /* =================================================================== */
 /* SPECIMEN — one bean, and as little else as possible                 */

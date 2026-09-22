@@ -723,17 +723,6 @@ svg.hl{ width:128%; max-width:none; right:auto; height:auto; }
   color:rgba(242,231,214,.4);
   font-size:8.5px;
 }
-.card--cta .card__inner{
-  justify-content:center; align-items:flex-start;
-  padding:clamp(22px,2.4vw,34px);
-  gap:14px;
-  background:linear-gradient(160deg, rgba(195,60,43,.22), rgba(242,231,214,.04));
-}
-.card--cta h3{
-  font-family:var(--serif); font-weight:400;
-  font-size:clamp(24px,2.5vw,36px); line-height:1.05;
-}
-.card--cta p{ font-size:13px; line-height:1.62; color:rgba(242,231,214,.7); }
 
 /* ------------------------------------------------------------------ */
 /* When the 3D layer is up, the CSS bag stops drawing itself and stays  */
@@ -749,10 +738,6 @@ svg.hl{ width:128%; max-width:none; right:auto; height:auto; }
 .collection.is-3d .card:hover .card__inner{
   box-shadow:none;
   border-color:transparent;
-}
-.collection.is-3d .card--cta .card__inner{
-  background:linear-gradient(160deg, rgba(195,60,43,.22), rgba(242,231,214,.04));
-  border-color:rgba(242,231,214,.12);
 }
 .collection.is-3d .card__bag{
   background:none;

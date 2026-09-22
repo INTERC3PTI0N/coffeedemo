@@ -22,7 +22,7 @@ Ten sections, each with its own motion idea rather than one effect repeated:
 | 04 | Our Roasts | Five panels that expand on hover/focus over beds of real beans; clicking the open one opens that bean as a specimen, "Roast this lot" opens the drum |
 | 05 | Founder quote | Line-by-line mask reveal and a signature that draws itself |
 | 06 | Roast Lab | The field forms a ring around one large bean you can drag; the slider re-roasts every bean on the page |
-| 07 | The Collection | Pinned horizontal scroll, cards tilt in 3D; clicking a card flies it into the stage and blooms the beans into a flavour radar |
+| 07 | The Collection | Pinned horizontal scroll; the cards are real 3D objects, and clicking one sends it into a deck of cards tumbling past the camera |
 | 08 | Bean to Cup | Parallax airport-code slab, a CSS globe that turns with scroll, and beans travelling the shipping arc |
 | 09 | Brew Guide | Working calculator — method × servings → dose, water, ratio, grind, temp, time and steps |
 | 10 | Subscribe | Parallax field, validated form, footer |
@@ -51,13 +51,12 @@ Four, all real rather than decorative:
   loss, the five roast phases and a curve that draws itself. Each lot has its
   own drop temperature and time.
 
-- **The Opening** (`#collection` → click a bag) — the card you clicked is the
-  thing that animates. It flies to the middle of the stage, turns edge-on, and
-  hands over to WebGL at the moment it is side-on. A bag arrives, its seal
-  peels back, and the beans burst out — then settle into a **3D radar of the
-  cup**: one cluster per flavour axis, each as far out and as large as that
-  note scores, with labels pinned to the clusters' real positions in the
-  scene. A cocoa-heavy blend grows a visibly bigger cocoa cluster.
+- **The Deck** (`#collection` → click a card) — the card you clicked is the
+  thing that animates, and it stays the same object throughout: no still, no
+  clone, no handoff. It comes out of the depth already spinning, unwinds
+  through two and a half turns so its back and its tasting notes pass the
+  camera, and settles face-on while a field of blank cards keeps tumbling past
+  the lens. Drag anywhere on the stage to turn it.
 
 - **Brew Guide** (`#brew`) — pick V60, AeroPress, French Press, Espresso or
   Cold Brew, set servings, and get the dose, water, ratio, grind, temperature,
@@ -189,19 +188,19 @@ data URL, which becomes the background of the roast panels and the collection
 bags. They are photographs of the actual geometry, so the five roast levels
 differ because the beans differ — not because a gradient was tinted.
 
-**The Chamber** shares one renderer across three takeovers, with two solvers
-and one standalone mesh (the specimen gets its own highest-detail geometry and
-material, because it is the only view where the surface is the whole point). The drum is force-based: gravity, wall
-constraints and the drum's tangential drag. The bloom is target-based: one
-outward impulse when the seal lets go, then springs that pull each bean first
-to a point on a Fibonacci shell and then to its flavour cluster. Both run an
-O(n²) separation pass, which is what stops the arrangement reading as one
-brown mass — at 150 beans it costs nothing.
+**The Chamber** shares one renderer across three takeovers. The drum is
+force-based: gravity, wall constraints and the drum's tangential drag, plus an
+O(n²) separation pass, which is what stops the charge reading as one brown
+mass — at 150 beans it costs nothing. The specimen gets its own highest-detail
+geometry and material, because it is the only view where the surface is the
+whole point. The deck builds its card through the collection's own module, in
+the chamber's renderer, because a texture cannot cross WebGL contexts.
 
-Cluster spacing is deliberate: adjacent clusters sit `RMIN` apart, and `RMIN`
-has to exceed how wide a clump of beans actually is, or six clusters read as
-one. Labels are DOM pinned each frame to projected 3D positions — cheaper than
-text in WebGL, and it stays crisp.
+The deck's blanks sit on a ring, and the ring splays as they come forward.
+Behind the card the radius holds, so the depth stays populated; from just
+behind it forward they fan out and leave the frame at its edges. On a fixed
+radius they would sweep straight across the middle, and the one thing that
+view cannot afford is something crossing in front of the card you asked to see.
 
 **The collection's cards are real objects.** Each one is a bevelled slab with
 rounded corners and printed faces, lit by an environment map built around a
@@ -230,8 +229,8 @@ assets/
   css/sections.css    the ten sections
   css/chamber.css     the takeover, plus the two product sections
   js/scene.js         three.js — bean geometry, textures, the page-wide field
-  js/chamber.js       the drum / pour stage, and the still bean-bed renders
-  js/cards.js         the collection's cards, drawn as real 3D objects
+  js/chamber.js       the drum / deck stage, and the still bean-bed renders
+  js/cards.js         the cards themselves — geometry, artwork and the shelf
   js/app.js           Lenis + GSAP/ScrollTrigger, Roast Lab, Brew Guide
   img/favicon.svg
   vendor/             GSAP 3.12.5 + ScrollTrigger, Lenis 1.1.13, three.js r160

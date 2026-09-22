@@ -42,6 +42,9 @@
     return s;
   }
 
+  var RATIO = 1.61;              // card height / width
+  var FACE_Z = 0.0262;           // clear of the slab's bevel
+
   var SLAB = null, FACE = null;
   function slabGeometry(ratio) {
     if (SLAB) return SLAB;
@@ -266,6 +269,62 @@
     return tex;
   }
 
+  /* ------------------------------------------------------------------ */
+  /* One card. The collection builds four of these; the takeover builds   */
+  /* its own, in its own renderer, from the same parts.                   */
+  /* ------------------------------------------------------------------ */
+  function blankMaterial() {
+    return new THREE.MeshPhysicalMaterial({
+      color: 0x14100c, roughness: 0.28, metalness: 0.55,
+      clearcoat: 0.9, clearcoatRoughness: 0.12, envMapIntensity: 1.5
+    });
+  }
+
+  function buildCard(product, bedURL) {
+    var slab = slabGeometry(RATIO);
+    var face = faceGeometry(RATIO);
+    var group = new THREE.Group();
+
+    var edgeMat = blankMaterial();
+    group.add(new THREE.Mesh(slab, edgeMat));
+
+    var fTex = frontTexture(product, bedURL);
+    var fMat = new THREE.MeshPhysicalMaterial({
+      map: fTex,
+      roughness: 0.22, metalness: 0.25,
+      clearcoat: 1.0, clearcoatRoughness: 0.07,
+      envMapIntensity: 1.35
+    });
+    /* The bevelled slab runs to ±(depth/2 + bevelThickness) = ±0.025, so
+       anything nearer than that is buried inside it — which is exactly
+       where the artwork was, and why every face came out plain black. */
+    var front = new THREE.Mesh(face, fMat);
+    front.position.z = FACE_Z;
+    group.add(front);
+
+    var bTex = backTexture(product);
+    var bMat = new THREE.MeshPhysicalMaterial({
+      map: bTex,
+      roughness: 0.34, metalness: 0.2,
+      clearcoat: 0.8, clearcoatRoughness: 0.16,
+      envMapIntensity: 1.0
+    });
+    var back = new THREE.Mesh(face, bMat);
+    back.position.z = -FACE_Z;
+    back.rotation.y = Math.PI;
+    group.add(back);
+
+    return {
+      group: group, frontTex: fTex,
+      materials: [edgeMat, fMat, bMat],
+      setEnv: function (env) {
+        edgeMat.envMap = fMat.envMap = bMat.envMap = env;
+        edgeMat.needsUpdate = fMat.needsUpdate = bMat.needsUpdate = true;
+      },
+      setBed: function (url) { fTex.setBed(url); }
+    };
+  }
+
   /* ================================================================== */
   /* THE LAYER                                                          */
   /* ================================================================== */
@@ -295,56 +354,19 @@
     var rim = new THREE.DirectionalLight(0xd9a96c, 1.1);
     rim.position.set(6, -3, 4); scene.add(rim);
 
-    var RATIO = 1.61;                       // card height / width
-    var FACE_Z = 0.0262;                    // clear of the slab's bevel
-    var slab = slabGeometry(RATIO);
-    var face = faceGeometry(RATIO);
-
-    var edgeMat = new THREE.MeshPhysicalMaterial({
-      color: 0x14100c, roughness: 0.28, metalness: 0.55,
-      clearcoat: 0.9, clearcoatRoughness: 0.12, envMapIntensity: 1.5
-    });
-
     var cards = [];
     products.forEach(function (prod, i) {
-      var group = new THREE.Group();
-
-      var body = new THREE.Mesh(slab, edgeMat);
-      group.add(body);
-
-      var fTex = frontTexture(prod, bedURLs && bedURLs[i]);
-      var fMat = new THREE.MeshPhysicalMaterial({
-        map: fTex,
-        roughness: 0.22, metalness: 0.25,
-        clearcoat: 1.0, clearcoatRoughness: 0.07,
-        envMapIntensity: 1.35
-      });
-      /* The bevelled slab runs to ±(depth/2 + bevelThickness) = ±0.025, so
-         anything nearer than that is buried inside it — which is exactly
-         where the artwork was, and why every face came out plain black. */
-      var front = new THREE.Mesh(face, fMat);
-      front.position.z = FACE_Z;
-      group.add(front);
-
-      var bMat = new THREE.MeshPhysicalMaterial({
-        map: backTexture(prod),
-        roughness: 0.34, metalness: 0.2,
-        clearcoat: 0.8, clearcoatRoughness: 0.16,
-        envMapIntensity: 1.0
-      });
-      var back = new THREE.Mesh(face, bMat);
-      back.position.z = -FACE_Z;
-      back.rotation.y = Math.PI;
-      group.add(back);
-
+      var built = buildCard(prod, bedURLs && bedURLs[i]);
+      var group = built.group;
       group.visible = false;
       scene.add(group);
 
       cards.push({
         group: group,
-        frontTex: fTex,
+        frontTex: built.frontTex,
         // every card tumbles on its own clock, as in the reference
         phase: i * 1.7,
+        bed: '',
         focus: 0, turn: 0, intro: 1, muted: false,
         hover: 0, hoverTarget: 0
       });
@@ -480,28 +502,33 @@
       bind: function (i, el) { if (cards[i]) cards[i].host = el; },
       setHover: function (i, v) { if (cards[i]) cards[i].hoverTarget = v ? 1 : 0; },
 
-      /* Drop a card out of the scene while the DOM flies a still of it to
-         the chamber, so the two never draw the same card at once. */
+      /* Drop a card out of the shelf while the takeover has its own copy
+         of it on screen, so the two are never up at the same time. */
       mute: function (i, v) { if (cards[i]) cards[i].muted = !!v; },
 
-      /* Hand a card its bean bed once the still render is done. */
+      /* Hand a card its bean bed once the still render is done; the
+         takeover asks for it back, to paint its own copy of the card. */
       setBed: function (i, url) {
-        if (cards[i] && cards[i].frontTex) cards[i].frontTex.setBed(url);
+        if (!cards[i]) return;
+        cards[i].bed = url || '';
+        if (cards[i].frontTex) cards[i].frontTex.setBed(url);
       },
+      bedURL: function (i) { return cards[i] ? cards[i].bed : ''; },
       unmuteAll: function () {
         cards.forEach(function (c) { c.muted = false; });
       },
 
-      /* The painted front, for the DOM to borrow during that handoff. */
-      faceURL: function (i) {
-        var c = cards[i];
-        if (!c || !c.frontTex || !c.frontTex.image) return '';
-        try { return c.frontTex.image.toDataURL('image/jpeg', 0.86); }
-        catch (e) { return ''; }
-      },
       count: cards.length
     };
   }
 
-  global.LattecanoCards = { supported: true, create: create };
+  global.LattecanoCards = {
+    supported: true,
+    create: create,
+    build: buildCard,
+    blankMaterial: blankMaterial,
+    slabGeometry: function () { return slabGeometry(RATIO); },
+    studio: studio,
+    ratio: RATIO
+  };
 })(window);

@@ -448,14 +448,6 @@
         </div>
       </article>
 
-      <article class="card card--cta" data-tilt data-cursor="link">
-        <div class="card__inner">
-          <h3>Can't choose?</h3>
-          <p>The Season Box ships all four, 150g each, on the first Friday of
-             every month.</p>
-          <a class="btn" href="#cta" data-cursor="link">Take the box</a>
-        </div>
-      </article>
     </div>
 
     <div class="collection__rail" aria-hidden="true">
@@ -714,9 +706,11 @@
     <span class="spec__hint mono">DRAG TO TURN</span>
   </div>
 
-  <!-- bloom mode: the card flies here, then the bag opens -->
+  <!-- specimen mode: the panel art opens out to full bleed and dissolves -->
   <div class="chamber__flier" id="chamberFlier" aria-hidden="true"></div>
-  <div class="chamber__notes" id="chamberNotes" aria-hidden="true"></div>
+
+  <!-- card mode: drag anywhere on the stage to turn the card -->
+  <div class="chamber__grab" id="chamberGrab" aria-hidden="true"></div>
 
   <div class="chamber__sheet" id="chamberSheet">
     <span class="eyebrow mono">FRESHLY OPENED</span>
@@ -733,8 +727,8 @@
 <script src="assets/vendor/lenis.min.js"></script>
 <script src="assets/vendor/three.min.js"></script>
 <script src="assets/js/scene.js"></script>
-<script src="assets/js/chamber.js"></script>
 <script src="assets/js/cards.js"></script>
+<script src="assets/js/chamber.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
 </html>
