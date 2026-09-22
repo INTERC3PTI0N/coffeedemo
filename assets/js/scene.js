@@ -44,10 +44,19 @@
   /* ------------------------------------------------------------------ */
   /* Cheap deterministic noise — used for wrinkles and colour mottling   */
   /* ------------------------------------------------------------------ */
+  /* The obvious version of this — plain `*` on large constants, then a
+     shift — loses precision in JS floats and comes back biased: over the
+     inputs used here it never exceeded 0.5, so every per-bean "random" in
+     the scene was squeezed into the bottom half of its range. Math.imul
+     keeps the multiply in 32-bit integer space, which fixes the spread. */
   function hash3(x, y, z) {
-    var h = x * 374761393 + y * 668265263 + z * 1442695040;
-    h = (h ^ (h >> 13)) * 1274126177;
-    return ((h ^ (h >> 16)) >>> 0) / 4294967295;
+    var h = Math.imul(x | 0, 374761393) ^
+            Math.imul(y | 0, 668265263) ^
+            Math.imul(z | 0, 1442695040);
+    h = Math.imul(h ^ (h >>> 15), 2246822519);
+    h = Math.imul(h ^ (h >>> 13), 3266489917);
+    h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
   }
 
   function vnoise3(x, y, z) {
@@ -261,6 +270,192 @@
     return GEO[level];
   }
 
+  /* ================================================================== */
+  /* THE CUP                                                             */
+  /*                                                                     */
+  /* A takeaway cup, turned on a lathe the way a real one is drawn: one   */
+  /* profile swept around Y for the body, the same profile pushed out a   */
+  /* couple of millimetres for the sleeve, and a second for the lid.      */
+  /* ================================================================== */
+
+  // body silhouette, bottom to rim
+  var CUP_PROFILE = [
+    [0.00, -1.25], [0.60, -1.25], [0.66, -1.23], [0.69, -1.18],
+    [0.72, -1.00], [0.79, -0.60], [0.86, -0.18], [0.93,  0.28],
+    [0.99,  0.72], [1.03,  1.02], [1.06,  1.10], [1.07,  1.14],
+    [1.04,  1.16]
+  ];
+
+  function profileRadius(y) {
+    var P = CUP_PROFILE;
+    for (var i = 1; i < P.length; i++) {
+      if (y <= P[i][1]) {
+        var t = (y - P[i - 1][1]) / Math.max(1e-5, P[i][1] - P[i - 1][1]);
+        return lerp(P[i - 1][0], P[i][0], clamp(t, 0, 1));
+      }
+    }
+    return P[P.length - 1][0];
+  }
+
+  function lathe(points, segments) {
+    var v = [];
+    for (var i = 0; i < points.length; i++) v.push(new THREE.Vector2(points[i][0], points[i][1]));
+    return new THREE.LatheGeometry(v, segments || 72);
+  }
+
+  function buildCup(scene) {
+    var cup = new THREE.Group();
+
+    var bodyMat = new THREE.MeshPhysicalMaterial({
+      color: 0xe9eef3, roughness: 0.26, metalness: 0.0,
+      clearcoat: 0.72, clearcoatRoughness: 0.18,
+      envMapIntensity: 1.25, side: THREE.DoubleSide
+    });
+    var body = new THREE.Mesh(lathe(CUP_PROFILE, 84), bodyMat);
+    cup.add(body);
+
+    // the printed sleeve: the same silhouette, nudged outward
+    var sleevePts = [];
+    for (var y = -0.62; y <= 0.62001; y += 0.155) {
+      sleevePts.push([profileRadius(y) + 0.022, y]);
+    }
+    var sleeveMat = new THREE.MeshPhysicalMaterial({
+      color: 0xf2dca6, roughness: 0.62, metalness: 0.0,
+      clearcoat: 0.18, envMapIntensity: 0.9, side: THREE.DoubleSide
+    });
+    var sleeve = new THREE.Mesh(lathe(sleevePts, 84), sleeveMat);
+    cup.add(sleeve);
+
+    // lid: a skirt that grips the rim, then a shallow dome
+    var lidPts = [
+      [1.10, 1.06], [1.12, 1.12], [1.12, 1.30], [1.10, 1.36],
+      [1.02, 1.42], [0.86, 1.48], [0.58, 1.52], [0.30, 1.54], [0.00, 1.545]
+    ];
+    var lidMat = new THREE.MeshPhysicalMaterial({
+      color: 0x39414a, roughness: 0.44, metalness: 0.05,
+      clearcoat: 0.35, clearcoatRoughness: 0.4, envMapIntensity: 0.9,
+      side: THREE.DoubleSide
+    });
+    var lid = new THREE.Mesh(lathe(lidPts, 84), lidMat);
+    cup.add(lid);
+
+    // the raised drinking tab
+    var tab = new THREE.Mesh(
+      new THREE.BoxGeometry(0.30, 0.09, 0.22),
+      new THREE.MeshPhysicalMaterial({
+        color: 0x424a54, roughness: 0.46, clearcoat: 0.3 }));
+    tab.position.set(0.52, 1.55, 0.06);
+    tab.rotation.z = -0.13;
+    cup.add(tab);
+
+    // a real takeaway cup runs about 1.6 : 1 tall to wide; a lathe of this
+    // profile comes out squat, so the group carries the stretch
+    var BASE = new THREE.Vector3(1.0, 1.24, 1.0);
+    cup.scale.copy(BASE);
+    cup.rotation.set(0.05, 0, -0.20);       // the reference tilt
+    cup.visible = false;
+    scene.add(cup);
+
+    return {
+      group: cup,
+      setVisible: function (v) { cup.visible = v; },
+      update: function (t, reveal, dolly) {
+        if (!cup.visible) return;
+        cup.rotation.y = t * 0.24;
+        cup.rotation.z = -0.20 + Math.sin(t * 0.4) * 0.03 - dolly * 0.16;
+        cup.position.y = Math.sin(t * 0.55) * 0.09 - dolly * 0.5;
+        cup.scale.set(BASE.x * reveal, BASE.y * reveal, BASE.z * reveal);
+      }
+    };
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* The sun behind it, plus the dust it lights                          */
+  /* ------------------------------------------------------------------ */
+  function buildSky(scene) {
+    var sky = new THREE.Group();
+
+    var glow = new THREE.Mesh(
+      new THREE.PlaneGeometry(9, 9),
+      new THREE.MeshBasicMaterial({
+        map: sunTexture(), transparent: true, depthWrite: false,
+        blending: THREE.AdditiveBlending, toneMapped: false,
+        color: 0xffd9a0, opacity: 0
+      }));
+    glow.position.set(6.4, 3.6, -16);
+    sky.add(glow);
+
+    var core = new THREE.Mesh(
+      new THREE.PlaneGeometry(2.1, 2.1),
+      new THREE.MeshBasicMaterial({
+        map: sunTexture(), transparent: true, depthWrite: false,
+        blending: THREE.AdditiveBlending, toneMapped: false,
+        color: 0xfff3d2, opacity: 0
+      }));
+    core.position.set(6.4, 3.6, -15.8);
+    sky.add(core);
+
+    // a thin anamorphic streak, the way a wide lens smears a highlight
+    var streak = new THREE.Mesh(
+      new THREE.PlaneGeometry(26, 0.5),
+      new THREE.MeshBasicMaterial({
+        map: sunTexture(), transparent: true, depthWrite: false,
+        blending: THREE.AdditiveBlending, toneMapped: false,
+        color: 0xffcf96, opacity: 0
+      }));
+    streak.position.set(6.4, 3.6, -15.9);
+    sky.add(streak);
+
+    var N = 420;
+    var pos = new Float32Array(N * 3);
+    for (var i = 0; i < N; i++) {
+      pos[i * 3]     = (hash3(i, 3, 1) - 0.5) * 70;
+      pos[i * 3 + 1] = (hash3(i, 7, 2) - 0.5) * 42;
+      pos[i * 3 + 2] = -6 - hash3(i, 11, 3) * 34;
+    }
+    var pg = new THREE.BufferGeometry();
+    pg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    var stars = new THREE.Points(pg, new THREE.PointsMaterial({
+      color: 0xfff0d8, size: 0.06, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending
+    }));
+    sky.add(stars);
+
+    sky.visible = false;
+    scene.add(sky);
+
+    return {
+      group: sky,
+      setVisible: function (v) { sky.visible = v; },
+      update: function (t, reveal) {
+        if (!sky.visible) return;
+        var flicker = 0.9 + Math.sin(t * 1.7) * 0.1;
+        glow.material.opacity = reveal * 0.58 * flicker;
+        core.material.opacity = reveal * 0.95 * flicker;
+        streak.material.opacity = reveal * 0.20 * flicker;
+        stars.material.opacity = reveal * 0.55;
+      }
+    };
+  }
+
+  var SUNTEX = null;
+  function sunTexture() {
+    if (SUNTEX) return SUNTEX;
+    var n = 128;
+    var cv = document.createElement('canvas');
+    cv.width = cv.height = n;
+    var g = cv.getContext('2d');
+    var rg = g.createRadialGradient(n / 2, n / 2, 0, n / 2, n / 2, n / 2);
+    rg.addColorStop(0.00, 'rgba(255,255,255,1)');
+    rg.addColorStop(0.12, 'rgba(255,244,222,0.92)');
+    rg.addColorStop(0.36, 'rgba(255,205,140,0.34)');
+    rg.addColorStop(1.00, 'rgba(255,180,110,0)');
+    g.fillStyle = rg;
+    g.fillRect(0, 0, n, n);
+    SUNTEX = new THREE.CanvasTexture(cv);
+    return SUNTEX;
+  }
+
   /* ------------------------------------------------------------------ */
   /* CLOUDS                                                              */
   /*                                                                     */
@@ -465,17 +660,30 @@
      clear of text therefore place themselves in screen fractions, and this
      converts those back to world units at whatever depth they chose. */
   var FORMATIONS = {
-    // hero: a cloud in depth that the camera flies into
+    /* hero: a ring of beans orbiting the cup. The ring is tilted almost
+       edge-on so beans sweep behind the cup and back in front of it —
+       that pass is what reads as depth rather than as a flat halo. */
     swarm: function (b, i, n, t, p, view) {
-      if (i === 0) return { x: -0.25, y: -0.1, z: 1.6, s: 0.92 };
-      var k = (i - 1) / (n - 1);
-      var a = i * GOLD + t * 0.03;
-      var r = 2.7 + Math.sqrt(k) * 5.1 + (b.r1 - 0.5) * 1.0;
+      /* Golden-angle spacing, not evenly-indexed arcs: a projected circle
+         crowds its own turning points, so evenly spaced beans pile into two
+         clumps at the left and right edges. This keeps the sweep even, and
+         the jitter gives it body, so it reads as a swirl around the cup
+         rather than as a wire hoop. */
+      var a = i * GOLD + t * 0.30;
+      var R = 2.6 + b.r1 * 2.1 - p * 0.3;
+      var u = Math.cos(a) * R;
+      var v = Math.sin(a) * R;
+      var tilt = 1.16;                         // near edge-on
+
       return {
-        x: Math.cos(a) * r,
-        y: Math.sin(a) * r * 0.60,
-        z: 0.6 - k * 23,
-        s: b.size
+        x: u + (b.r2 - 0.5) * 1.4,
+        y: v * Math.sin(tilt) * 0.40 + (b.r3 - 0.5) * 2.5 + 0.1,
+        // a deep sweep, so beans pass plainly in front of and behind the cup
+        // the ring sits a little behind the cup, so fewer beans swell up
+        // right at the lens
+        z: v * Math.cos(tilt) * 1.5 + (b.r2 - 0.5) * 1.6 - 0.9,
+        // small against the cup, the way they are in the reference
+        s: b.size * 0.34
       };
     },
 
@@ -623,10 +831,12 @@
     scene.add(cherry);
 
     var clouds = buildClouds(scene);
+    var cup = buildCup(scene);
+    var sky = buildSky(scene);
 
     /* --- the pool --------------------------------------------------- */
     var small = global.innerWidth < 760;
-    var COUNT = small ? 20 : 34;
+    var COUNT = small ? 24 : 44;
 
     var baseColour = new THREE.Color(0x6b3d20);
     var grain = grainTexture();
@@ -692,6 +902,7 @@
       pointer: { x: 0, y: 0 }, smooth: { x: 0, y: 0 },
       camZ: 12,
       cloudCur: 0,
+      heroCur: 0,
       light: 0,            // 0 = dark section, 1 = light section
       lightCur: 0,
       roast: { target: new THREE.Color(0x6b3d20), cur: new THREE.Color(0x6b3d20),
@@ -758,10 +969,20 @@
 
       // The dolly belongs to the hero alone. Without this the camera stays
       // parked at hero-close range and every later section renders enormous.
-      var camTarget = state.formation === 'swarm' ? lerp(12, 1.6, state.heroDolly) : 12;
+      // it closes on the cup rather than passing through it
+      var camTarget = state.formation === 'swarm' ? lerp(12, 7.4, state.heroDolly) : 12;
       state.camZ = lerp(state.camZ, camTarget, damp(0.07, dt));
       camera.position.z = state.camZ;
       camera.lookAt(state.smooth.x * 0.35, state.smooth.y * -0.25, camera.position.z - 9);
+
+      /* the cup and its sun belong to the hero */
+      var wantHero = state.formation === 'swarm' ? 1 : 0;
+      state.heroCur = lerp(state.heroCur, wantHero, damp(0.06, dt));
+      var heroOn = state.heroCur > 0.01;
+      cup.setVisible(heroOn);
+      sky.setVisible(heroOn);
+      cup.update(t, state.heroCur, state.heroDolly);
+      sky.update(t, state.heroCur);
 
       /* The bank belongs to the harvest section alone. The canvas is fixed and
          full-viewport, so without fading at both ends the clouds spill over
@@ -791,7 +1012,10 @@
       R.oilCur = lerp(R.oilCur, R.oil, kRoast);
       R.roughCur = lerp(R.roughCur, R.rough, kRoast);
 
-      var kMove = damp(0.055, dt);
+      /* The hero ring is driven — its targets orbit continuously — so a slow
+         follow lags behind and the ring collapses toward the middle. Static
+         formations keep the softer rate. */
+      var kMove = damp(state.formation === 'swarm' ? 0.20 : 0.055, dt);
       var kScale = damp(0.075, dt);
 
       for (var i = 0; i < beans.length; i++) {
@@ -874,9 +1098,19 @@
 
       /* for diagnostics: what the field currently thinks it is doing */
       debug: function () {
+        var xs = [], ys = [], zs = [], ss = [];
+        for (var i = 0; i < beans.length; i++) {
+          xs.push(beans[i].cur.x); ys.push(beans[i].cur.y);
+          zs.push(beans[i].cur.z); ss.push(beans[i].curS);
+        }
+        var rng = function (a) {
+          return [Math.min.apply(null, a).toFixed(2),
+                  Math.max.apply(null, a).toFixed(2)].join(' … ');
+        };
         return { formation: state.formation, prev: state.prevFormation,
                  blend: state.blend, local: state.local, camZ: state.camZ,
-                 light: state.lightCur };
+                 light: state.lightCur, hero: state.heroCur, count: beans.length,
+                 x: rng(xs), y: rng(ys), z: rng(zs), scale: rng(ss) };
       },
 
       dispose: function () { state.running = false; renderer.dispose(); }

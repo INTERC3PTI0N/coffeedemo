@@ -16,7 +16,7 @@ Ten sections, each with its own motion idea rather than one effect repeated:
 
 | # | Section | Motion |
 |---|---------|--------|
-| 01 | Hero | The framed window opens to full bleed while the camera flies into the bean field and the wordmark scales past you |
+| 01 | Hero | A takeaway cup turned on a lathe, orbited by beans, lit by a sun flare; the framed window opens to full bleed as the camera closes on it |
 | 02 | Manifesto | Per-word `rotateX` reveal through a clipping mask; beans loiter in the margins |
 | 03 | The Harvest | A WebGL cloud bank you look down onto, with distant peaks behind it and the terraces in front; beans rain through all three |
 | 04 | Our Roasts | Five panels that expand on hover/focus, over beds of real beans rendered at each roast level; "Roast this lot" opens the drum |
@@ -117,6 +117,20 @@ sections.
 **Detail levels.** Three geometries (34 / 54 / 96 segments) are built once and
 shared; the feature bean gets the high one, its neighbours the middle, the rest
 the low.
+
+**The cup.** The hero centrepiece is a takeaway cup built the way a real one
+is drawn: one profile swept around Y on a lathe for the body, the same profile
+pushed out two millimetres for the printed sleeve, and a second for the lid's
+skirt and dome. A lathe of that profile comes out squat, so the group carries a
+1.24 vertical stretch to reach the 1.6 : 1 a real cup has. Behind it sits a
+sun flare with an anamorphic streak and a starfield.
+
+Beans orbit it on a near edge-on ring, spaced by golden angle rather than by
+index — a projected circle crowds its own turning points, so evenly indexed
+beans pile into two clumps at the left and right edges instead of sweeping
+round. The ring is a driven formation, so it follows its targets about four
+times faster than the static ones; chased at the slow rate it lags and
+collapses toward the middle.
 
 **Clouds.** The harvest section's middle distance is a bank of ~360 soft
 billboards rather than stacked SVG waves. Volume comes from many small
