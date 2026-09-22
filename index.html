@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0B0E11" />
+<title>999 — Nine Nine Nine</title>
+<meta name="description" content="999 — the hallmark of absolute purity. An altitude, a standard, a refusal to be diluted." />
+<link rel="preload" href="/fonts/jost-var.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/azeret-mono-var.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230B0E11'/%3E%3Ctext x='16' y='22' font-family='monospace' font-size='13' fill='%23C8A24C' text-anchor='middle'%3E999%3C/text%3E%3C/svg%3E" />
+<link rel="stylesheet" href="/src/styles/main.css" />
+</head>
+<body>
+
+<!-- ─────────────────────────  PRELOADER  ───────────────────────── -->
+<div class="preloader" id="preloader">
+  <div class="preloader__inner">
+    <div class="preloader__mark" aria-hidden="true">
+      <span class="preloader__digit" data-digit>9</span>
+      <span class="preloader__digit" data-digit>9</span>
+      <span class="preloader__digit" data-digit>9</span>
+    </div>
+    <div class="preloader__meta">
+      <span class="preloader__label">Assaying purity</span>
+      <span class="preloader__count"><span id="preload-count">000</span><i>‰</i></span>
+    </div>
+    <div class="preloader__bar"><i id="preload-bar"></i></div>
+  </div>
+</div>
+
+<!-- ─────────────────────────  3D CANVAS  ───────────────────────── -->
+<canvas id="gl" aria-hidden="true"></canvas>
+<div class="grain" aria-hidden="true"></div>
+<div class="vignette" aria-hidden="true"></div>
+
+<!-- ─────────────────────────  CURSOR  ───────────────────────── -->
+<div class="cursor" id="cursor" aria-hidden="true">
+  <svg class="cursor__ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="21"/></svg>
+  <span class="cursor__dot"></span>
+  <span class="cursor__label"></span>
+</div>
+
+<!-- ─────────────────────────  NAV  ───────────────────────── -->
+<header class="nav" id="nav">
+  <a class="nav__brand" href="#ch-01" data-cursor="home">
+    <svg class="nav__glyph" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 2 L21 7 V17 L12 22 L3 17 V7 Z"/>
+      <path d="M12 7.5 L16.6 10 V15 L12 17.5 L7.4 15 V10 Z" class="nav__glyph-in"/>
+    </svg>
+    <span class="nav__rule"></span>
+    <span class="nav__word">999</span>
+  </a>
+
+  <nav class="nav__links" aria-label="Primary">
+    <a href="#ch-02" class="nav__link is-active" data-chapter="2"><span>Standard</span></a>
+    <a href="#ch-03" class="nav__link" data-chapter="3"><span>The Mark</span></a>
+    <a href="#ch-04" class="nav__link" data-chapter="4"><span>Divisions</span></a>
+    <a href="#ch-05" class="nav__link" data-chapter="5"><span>The Vault</span></a>
+    <a href="#ch-06" class="nav__link" data-chapter="6"><span>Horizon</span></a>
+  </nav>
+
+  <div class="nav__aside">
+    <a href="#ch-06" class="nav__news" data-cursor="dispatch">
+      <span>Dispatch</span><i class="nav__badge">09</i>
+    </a>
+    <button class="nav__menu" id="menu-toggle" aria-label="Open menu" aria-expanded="false">
+      <span>Menu</span>
+      <i class="nav__dots"><b></b><b></b></i>
+    </button>
+  </div>
+</header>
+
+<!-- ─────────────────────────  OVERLAY MENU  ───────────────────────── -->
+<div class="menu" id="menu" aria-hidden="true">
+  <div class="menu__grid">
+    <div class="menu__col menu__col--index">
+      <span class="eyebrow">Index</span>
+      <ul class="menu__list">
+        <li><a href="#ch-01" data-menu-link><i>01</i><span>Ascent</span></a></li>
+        <li><a href="#ch-02" data-menu-link><i>02</i><span>The Standard</span></a></li>
+        <li><a href="#ch-03" data-menu-link><i>03</i><span>The Mark</span></a></li>
+        <li><a href="#ch-04" data-menu-link><i>04</i><span>Divisions</span></a></li>
+        <li><a href="#ch-05" data-menu-link><i>05</i><span>The Vault</span></a></li>
+        <li><a href="#ch-06" data-menu-link><i>06</i><span>Horizon</span></a></li>
+      </ul>
+    </div>
+    <div class="menu__col menu__col--meta">
+      <span class="eyebrow">Assay office</span>
+      <p class="menu__addr">Level 999<br/>Kirchstrasse 14<br/>Zug, Switzerland</p>
+      <span class="eyebrow">Contact</span>
+      <p class="menu__addr"><a href="mailto:office@999.std">office@999.std</a><br/>+41 00 999 99 99</p>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────────────────  SIDE RAILS  ───────────────────────── -->
+<aside class="rail rail--left" aria-hidden="true">
+  <span class="rail__label">Altitude</span>
+  <span class="rail__value" id="altitude">0000</span><span class="rail__unit">m</span>
+</aside>
+
+<aside class="rail rail--right" aria-hidden="true">
+  <ol class="rail__ticks" id="rail-ticks">
+    <li data-tick="1"><b>01</b></li>
+    <li data-tick="2"><b>02</b></li>
+    <li data-tick="3"><b>03</b></li>
+    <li data-tick="4"><b>04</b></li>
+    <li data-tick="5"><b>05</b></li>
+    <li data-tick="6"><b>06</b></li>
+  </ol>
+  <div class="rail__progress"><i id="rail-progress"></i></div>
+</aside>
+
+<!-- ─────────────────────────  CHAPTERS  ───────────────────────── -->
+<main id="scroll">
+
+  <!-- 01 ─ ASCENT -->
+  <section class="chapter chapter--hero" id="ch-01" data-chapter="1" data-theme="frost">
+    <div class="hero">
+      <div class="hero__mark">
+        <svg class="hero__sigil" viewBox="0 0 120 120" aria-hidden="true">
+          <circle cx="60" cy="60" r="52" class="sigil-ring"/>
+          <circle cx="60" cy="60" r="40" class="sigil-ring sigil-ring--2"/>
+          <path d="M60 12 L103 36 V84 L60 108 L17 84 V36 Z" class="sigil-hex"/>
+        </svg>
+        <h1 class="hero__word" aria-label="999">
+          <span class="hero__digit" data-hero-digit>9</span>
+          <span class="hero__digit" data-hero-digit>9</span>
+          <span class="hero__digit" data-hero-digit>9</span>
+        </h1>
+      </div>
+      <p class="hero__tag" data-split>Fine to the third decimal.</p>
+    </div>
+
+    <div class="hero__foot">
+      <a href="#ch-02" class="scroll-cue" data-cursor="descend">
+        <span class="scroll-cue__text">Scroll down to descend</span>
+        <span class="scroll-cue__line"><i></i></span>
+      </a>
+      <span class="hero__coord">46.8°N / 9.8°E · 4 478 m</span>
+    </div>
+  </section>
+
+  <!-- 02 ─ THE STANDARD -->
+  <section class="chapter chapter--manifesto" id="ch-02" data-chapter="2" data-theme="mist">
+    <div class="wrap">
+      <div class="manifesto">
+        <span class="eyebrow" data-reveal>01 — The Standard</span>
+        <h2 class="display" data-split-lines>
+          999 is not a name. It is a threshold that almost nothing survives.
+        </h2>
+        <div class="manifesto__body">
+          <p data-reveal>
+            Three nines. Nine hundred and ninety-nine parts in a thousand. The assay mark struck
+            into metal that has given up everything it was carrying — every trace, every
+            convenience, every softening compromise.
+          </p>
+          <p data-reveal>
+            We build to that figure and no other. What cannot hold the mark is returned to the fire.
+          </p>
+          <a class="link-pill" href="#ch-03" data-reveal data-cursor="read">
+            <span>Who we are</span><i>+</i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 ─ THE MARK -->
+  <section class="chapter chapter--mark" id="ch-03" data-chapter="3" data-theme="slate">
+    <div class="wrap">
+      <div class="mark__head">
+        <span class="eyebrow" data-reveal>02 — The Mark</span>
+        <h2 class="display display--md" data-split-lines>
+          Purity is measured where the air gives out.
+        </h2>
+      </div>
+
+      <div class="assay" id="assay">
+        <div class="assay__dial">
+          <svg viewBox="0 0 240 240" class="assay__svg" aria-hidden="true">
+            <circle cx="120" cy="120" r="104" class="assay__track"/>
+            <circle cx="120" cy="120" r="104" class="assay__fill" id="assay-fill"/>
+            <circle cx="120" cy="120" r="82"  class="assay__inner"/>
+          </svg>
+          <div class="assay__readout">
+            <span class="assay__num" id="assay-num">99.9</span>
+            <span class="assay__pct">%</span>
+            <span class="assay__cap">Fineness</span>
+          </div>
+        </div>
+
+        <ul class="assay__list">
+          <li class="assay__item is-active" data-assay data-value="99.9" data-cursor="assay">
+            <i>Au</i>
+            <div>
+              <h3>Refusal</h3>
+              <p>We decline more than we accept. The ledger of what 999 has turned away is longer than its catalogue.</p>
+            </div>
+          </li>
+          <li class="assay__item" data-assay data-value="92.5" data-cursor="assay">
+            <i>Ag</i>
+            <div>
+              <h3>Restraint</h3>
+              <p>No ornament survives the assay. Every element left standing is load-bearing, or it is not there.</p>
+            </div>
+          </li>
+          <li class="assay__item" data-assay data-value="95.0" data-cursor="assay">
+            <i>Pt</i>
+            <div>
+              <h3>Endurance</h3>
+              <p>A standard is only a standard if it holds in weather. Ours is tested at altitude, in the worst of it.</p>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04 ─ DIVISIONS -->
+  <section class="chapter chapter--divisions" id="ch-04" data-chapter="4" data-theme="storm">
+    <div class="wrap">
+      <span class="eyebrow eyebrow--light" data-reveal>03 — Divisions</span>
+      <h2 class="display display--md display--light" data-split-lines>
+        Four houses. One mark between them.
+      </h2>
+
+      <div class="divisions">
+        <article class="division" data-division data-cursor="enter">
+          <span class="division__idx"><i>1</i></span>
+          <span class="division__kicker">999 Assay</span>
+          <h3 class="division__title">Proving what a material claims about itself.</h3>
+          <span class="division__cta"><span>999 Assay</span><i>→</i></span>
+          <span class="division__rule"></span>
+        </article>
+        <article class="division" data-division data-cursor="enter">
+          <span class="division__idx"><i>2</i></span>
+          <span class="division__kicker">999 Vault</span>
+          <h3 class="division__title">Holding value still while the weather moves.</h3>
+          <span class="division__cta"><span>999 Vault</span><i>→</i></span>
+          <span class="division__rule"></span>
+        </article>
+        <article class="division" data-division data-cursor="enter">
+          <span class="division__idx"><i>3</i></span>
+          <span class="division__kicker">999 Atelier</span>
+          <h3 class="division__title">Making the few objects that earn the mark.</h3>
+          <span class="division__cta"><span>999 Atelier</span><i>→</i></span>
+          <span class="division__rule"></span>
+        </article>
+        <article class="division" data-division data-cursor="enter">
+          <span class="division__idx"><i>4</i></span>
+          <span class="division__kicker">999 Meridian</span>
+          <h3 class="division__title">Moving the refined across difficult ground.</h3>
+          <span class="division__cta"><span>999 Meridian</span><i>→</i></span>
+          <span class="division__rule"></span>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 ─ THE VAULT -->
+  <section class="chapter chapter--vault" id="ch-05" data-chapter="5" data-theme="vault">
+    <div class="wrap wrap--split">
+      <div class="vault__copy">
+        <span class="eyebrow eyebrow--light" data-reveal>04 — The Vault</span>
+        <h2 class="display display--md display--light" data-split-lines>
+          One ingot. Struck once, in 1999.
+        </h2>
+        <p class="vault__text" data-reveal>
+          The reference bar against which everything we make is measured. It has never been sold,
+          never been alloyed, never left the chamber. Drag it — it is the only thing here that
+          answers to a hand.
+        </p>
+        <dl class="specs">
+          <div data-reveal><dt>Fineness</dt><dd>999.9</dd></div>
+          <div data-reveal><dt>Mass</dt><dd>12.441 kg</dd></div>
+          <div data-reveal><dt>Struck</dt><dd>IX · MCMXCIX</dd></div>
+          <div data-reveal><dt>Serial</dt><dd>000 / 999</dd></div>
+        </dl>
+      </div>
+      <div class="vault__stage" id="vault-stage" data-cursor="drag">
+        <span class="vault__hint">Drag to rotate</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 ─ HORIZON -->
+  <section class="chapter chapter--horizon" id="ch-06" data-chapter="6" data-theme="dawn">
+    <div class="wrap">
+      <div class="horizon">
+        <span class="eyebrow" data-reveal>05 — Horizon</span>
+        <h2 class="display" data-split-lines>
+          If it holds at 999, we would like to see it.
+        </h2>
+        <a class="big-link" href="mailto:office@999.std" data-cursor="write">
+          <span class="big-link__text">office@999.std</span>
+          <span class="big-link__rule"></span>
+        </a>
+      </div>
+
+      <footer class="foot">
+        <div class="foot__col">
+          <span class="eyebrow">Assay office</span>
+          <p>Level 999, Kirchstrasse 14<br/>6300 Zug, Switzerland</p>
+        </div>
+        <div class="foot__col">
+          <span class="eyebrow">Elsewhere</span>
+          <p><a href="#ch-01">Index</a> · <a href="#ch-04">Divisions</a> · <a href="#ch-05">Vault</a></p>
+        </div>
+        <div class="foot__col foot__col--end">
+          <span class="foot__mark">999</span>
+          <p>© MMXXVI · All parts in a thousand</p>
+        </div>
+      </footer>
+    </div>
+  </section>
+
+</main>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
