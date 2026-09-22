@@ -154,7 +154,7 @@ export function createClouds({
 
     seeds[i]  = Math.random();
     rots[i]   = Math.random() * Math.PI * 2;
-    alphas[i] = 0.16 + (1.0 - Math.abs(bias)) * 0.42 * (0.7 + t * 0.3);
+    alphas[i] = 0.22 + (1.0 - Math.abs(bias)) * 0.52 * (0.7 + t * 0.3);
   }
 
   geometry.setAttribute('aOffset', new THREE.InstancedBufferAttribute(offsets, 3));

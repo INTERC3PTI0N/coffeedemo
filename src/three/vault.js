@@ -93,6 +93,7 @@ export function createVault(container, { reducedMotion = false } = {}) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.88;
+  renderer.setClearColor(0x000000, 0);
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
@@ -146,11 +147,11 @@ export function createVault(container, { reducedMotion = false } = {}) {
 
   // a faint plinth glow under the bar
   const halo = new THREE.Mesh(
-    new THREE.CircleGeometry(2.6, 48),
+    new THREE.CircleGeometry(1.75, 48),
     new THREE.MeshBasicMaterial({
       color: '#c8a24c',
       transparent: true,
-      opacity: 0.055,
+      opacity: 0.07,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     }),

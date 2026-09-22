@@ -39,19 +39,22 @@ const GRADE = [
     density: 1.05, cast: '#b9c8d4', castAmt: 0.24, lift: 0.010, sat: 0.80, vig: 0.54, bloom: 0.36, exposure: 0.92 },
   { t: 0.72, bg: '#141c24', fog: '#131b23', cLight: '#62727f', cDark: '#1a232c', tint: '#5c6c7a', tintAmt: 0.18,
     density: 0.86, cast: '#9fb0be', castAmt: 0.28, lift: 0.006, sat: 0.78, vig: 0.62, bloom: 0.42, exposure: 0.90 },
-  { t: 0.88, bg: '#100f0d', fog: '#14120e', cLight: '#6b5c3c', cDark: '#191713', tint: '#c8a24c', tintAmt: 0.34,
+  { t: 0.83, bg: '#100f0d', fog: '#14120e', cLight: '#6b5c3c', cDark: '#191713', tint: '#c8a24c', tintAmt: 0.34,
     density: 0.72, cast: '#e6c88e', castAmt: 0.30, lift: 0.008, sat: 0.86, vig: 0.60, bloom: 0.52, exposure: 0.94 },
+  { t: 0.93, bg: '#6e6152', fog: '#75685a', cLight: '#e8cda0', cDark: '#5d5244', tint: '#e0bd7c', tintAmt: 0.40,
+    density: 0.86, cast: '#f6ddb0', castAmt: 0.32, lift: 0.014, sat: 0.92, vig: 0.48, bloom: 0.52, exposure: 1.00 },
   { t: 1.00, bg: '#d9d2c4', fog: '#dcd4c5', cLight: '#fff4de', cDark: '#b6a68c', tint: '#e7ce92', tintAmt: 0.38,
-    density: 0.92, cast: '#fff1d8', castAmt: 0.26, lift: 0.026, sat: 0.94, vig: 0.34, bloom: 0.44, exposure: 1.04 },
+    density: 0.92, cast: '#fff1d8', castAmt: 0.26, lift: 0.026, sat: 0.94, vig: 0.34, bloom: 0.40, exposure: 1.04 },
 ];
 
 /* text colour per chapter, pushed into CSS custom properties */
 const UI_THEME = [
-  { t: 0.00, fg: '#1b2430', soft: '#5f7285', faint: '#93a3b2', rule: 'rgba(27,36,48,.18)',    accent: '#a8842f', scrim: '#e1e8ed' },
-  { t: 0.30, fg: '#16202b', soft: '#4d6074', faint: '#7f91a2', rule: 'rgba(22,32,43,.20)',    accent: '#9d7a2a', scrim: '#c4d0da' },
+  { t: 0.00, fg: '#1b2430', soft: '#4b5e71', faint: '#93a3b2', rule: 'rgba(27,36,48,.18)',    accent: '#a8842f', scrim: '#e1e8ed' },
+  { t: 0.30, fg: '#16202b', soft: '#3c4f62', faint: '#7f91a2', rule: 'rgba(22,32,43,.20)',    accent: '#9d7a2a', scrim: '#c4d0da' },
   { t: 0.50, fg: '#f2f6f8', soft: '#b3c1cd', faint: '#7f8e9c', rule: 'rgba(242,246,248,.18)', accent: '#c8a24c', scrim: '#28333d' },
-  { t: 0.88, fg: '#f6f2e8', soft: '#bdb39d', faint: '#8a806c', rule: 'rgba(246,242,232,.16)', accent: '#e7ce92', scrim: '#100f0d' },
-  { t: 1.00, fg: '#1e1b14', soft: '#5b5445', faint: '#8d8676', rule: 'rgba(30,27,20,.20)',    accent: '#8a6c28', scrim: '#d9d2c4' },
+  { t: 0.86, fg: '#f6f2e8', soft: '#bdb39d', faint: '#8a806c', rule: 'rgba(246,242,232,.16)', accent: '#e7ce92', scrim: '#100f0d' },
+  { t: 0.95, fg: '#f8f3e6', soft: '#d6cbb2', faint: '#a79c84', rule: 'rgba(248,243,230,.20)', accent: '#f0d9a2', scrim: '#6e6152' },
+  { t: 1.00, fg: '#26211a', soft: '#5b5445', faint: '#8d8676', rule: 'rgba(38,33,26,.22)',    accent: '#8a6c28', scrim: '#d9d2c4' },
 ];
 
 /* ------------------------------------------------------------------ *
@@ -92,6 +95,7 @@ function sampleFlight(t, outPos, outLook) {
 
 const _cA = new THREE.Color();
 const _cB = new THREE.Color();
+const _cC = new THREE.Color();
 
 /* Reusable result objects — sampleGrade/sampleUI run every frame, so nothing
    in here allocates. */
@@ -130,14 +134,21 @@ function sampleUI(t) {
   const { a, b, s } = segment(UI_THEME, t);
   const e = s * s * (3 - 2 * s);
   const mixHex = (ka, kb) => '#' + _cA.set(ka).lerp(_cB.set(kb), e).getHexString();
-  const c = _cA.set(a.scrim).lerp(_cB.set(b.scrim), e);
+
+  // _cC, not _cA: mixHex below reuses _cA, so sharing it here would hand the
+  // scrim whichever colour was mixed last.
+  const scrimCol = _cC.set(a.scrim).lerp(_cB.set(b.scrim), e);
+  const scrim = `${Math.round(scrimCol.r * 255)}, `
+              + `${Math.round(scrimCol.g * 255)}, `
+              + `${Math.round(scrimCol.b * 255)}`;
+
   // rule colours are rgba strings — swap at the midpoint rather than parse them
   return {
     fg:     mixHex(a.fg, b.fg),
     soft:   mixHex(a.soft, b.soft),
     faint:  mixHex(a.faint, b.faint),
     accent: mixHex(a.accent, b.accent),
-    scrim:  `${Math.round(c.r * 255)}, ${Math.round(c.g * 255)}, ${Math.round(c.b * 255)}`,
+    scrim,
     rule:   e < 0.5 ? a.rule : b.rule,
   };
 }
@@ -206,18 +217,20 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
   scene.add(dawnRidge.mesh);
 
   const clouds = createClouds({
-    count: perfTier < 0.8 ? 420 : 940,
+    // Overlapping transparent quads are pure fill rate, so the deck runs to a
+    // budget: enough puffs to read as volume, few enough to hold frame rate.
+    count: perfTier < 0.8 ? 190 : 420,
     spread: 7600,
     deckY: DECK_Y,
     thickness: 430,
-    minScale: 250,
-    maxScale: 880,
+    minScale: 320,
+    maxScale: 1180,
   });
   scene.add(clouds.mesh);
 
   // a thin upper veil so there is weather above the camera too
   const veil = createClouds({
-    count: perfTier < 0.8 ? 90 : 190,
+    count: perfTier < 0.8 ? 50 : 110,
     spread: 8400,
     deckY: 1250,
     thickness: 340,
@@ -297,12 +310,12 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
 
     // the sea only exists under the weather
     const seaIn = THREE.MathUtils.smoothstep(t, 0.50, 0.66);
-    const seaOut = 1 - THREE.MathUtils.smoothstep(t, 0.90, 0.97);
+    const seaOut = 1 - THREE.MathUtils.smoothstep(t, 0.80, 0.90);
     ocean.uniforms.uOpacity.value = seaIn * seaOut;
     ocean.mesh.visible = ocean.uniforms.uOpacity.value > 0.01;
 
     // and a new range rises for the last chapter
-    const dawnIn = THREE.MathUtils.smoothstep(t, 0.88, 0.99);
+    const dawnIn = THREE.MathUtils.smoothstep(t, 0.82, 0.94);
     dawnRidge.uniforms.uOpacity.value = dawnIn;
     dawnRidge.mesh.visible = dawnIn > 0.01;
 
