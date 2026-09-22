@@ -18,7 +18,7 @@ Ten sections, each with its own motion idea rather than one effect repeated:
 |---|---------|--------|
 | 01 | Hero | The framed window opens to full bleed while the camera flies into the bean field and the wordmark scales past you |
 | 02 | Manifesto | Per-word `rotateX` reveal through a clipping mask; beans loiter in the margins |
-| 03 | The Harvest | Five highland layers scrubbed at different rates, with beans raining through them |
+| 03 | The Harvest | A WebGL cloud bank you look down onto, with distant peaks behind it and the terraces in front; beans rain through all three |
 | 04 | Our Roasts | Five panels that expand on hover/focus, over beds of real beans rendered at each roast level; "Roast this lot" opens the drum |
 | 05 | Founder quote | Line-by-line mask reveal and a signature that draws itself |
 | 06 | Roast Lab | The field forms a ring around one large bean you can drag; the slider re-roasts every bean on the page |
@@ -117,6 +117,27 @@ sections.
 **Detail levels.** Three geometries (34 / 54 / 96 segments) are built once and
 shared; the feature bean gets the high one, its neighbours the middle, the rest
 the low.
+
+**Clouds.** The harvest section's middle distance is a bank of ~360 soft
+billboards rather than stacked SVG waves. Volume comes from many small
+overlapping puffs — a few large ones only ever read as a grey smear — and the
+parallax comes from drifting each one at a speed tied to its depth. Tops are
+lit near-white and undersides are a cool blue-grey; that split is what makes a
+billboard read as cloud. They are sorted back-to-front once at build (instanced
+transparency has no per-instance sort, and the puffs only move sideways, so the
+order holds), and they fade at both ends of the section because the canvas is
+fixed and would otherwise spill into the next one.
+
+The section also has a real aerial gradient now — warm at the horizon, cool and
+deep where the bank sits — because white cloud cannot read against a cream
+page. The one remaining distant ridge is tinted blue for the same reason real
+far mountains are.
+
+**The roaster.** The drum is perforated sheet with scorch marks painted into
+its colour, bump and roughness maps, set inside a housing with legs and a
+burner that glows under the shell. Chaff peaks during drying and stops once
+there is none left to shed; smoke only arrives with first crack; the burner
+eases off afterwards, the way a roaster backs the gas down.
 
 **Section art is rendered, not drawn.** `assets/js/chamber.js` renders a still
 bed of ~430 beans at each roast level once at load and hands it back as a JPEG

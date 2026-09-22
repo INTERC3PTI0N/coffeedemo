@@ -58,6 +58,31 @@
     return rt.texture;
   }
 
+  var SPRITE = null;
+  function puffSprite() {
+    if (SPRITE) return SPRITE;
+    var n = 128;
+    var cv = document.createElement('canvas');
+    cv.width = cv.height = n;
+    var ctx = cv.getContext('2d');
+    var img = ctx.createImageData(n, n);
+    var d = img.data;
+    for (var y = 0; y < n; y++) {
+      for (var x = 0; x < n; x++) {
+        var u = (x / n - 0.5) * 2, v = (y / n - 0.5) * 2;
+        var r = Math.sqrt(u * u + v * v);
+        var a = Math.max(0, 1 - r);
+        a = a * a * a;
+        var k = (y * n + x) * 4;
+        d[k] = d[k + 1] = d[k + 2] = 255;
+        d[k + 3] = Math.round(a * 255);
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    SPRITE = new THREE.CanvasTexture(cv);
+    return SPRITE;
+  }
+
   function beanMaterial(count) {
     return new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
@@ -184,7 +209,7 @@
     scene.environment = studioEnv(renderer);
 
     var camera = new THREE.PerspectiveCamera(42, 1, 0.1, 80);
-    camera.position.set(0, 0.4, 16.5);
+    camera.position.set(0, 0.4, 19.5);
 
     scene.add(new THREE.AmbientLight(0xffe4c4, 0.8));
     var key = new THREE.DirectionalLight(0xfff0d8, 3.0);
@@ -198,9 +223,54 @@
     var DRUM_R = 4.3, DRUM_D = 2.6;
     var drum = new THREE.Group();
 
+    // A roasting drum is perforated sheet, not polished metal. The holes and
+    // the wear are painted into maps so the wall catches light unevenly.
+    function drumSkin() {
+      var n = 512;
+      var cv = document.createElement('canvas');
+      cv.width = cv.height = n;
+      var g = cv.getContext('2d');
+      g.fillStyle = '#2b2118'; g.fillRect(0, 0, n, n);
+
+      // staggered perforations
+      var step = 26;
+      for (var row = 0; row * step < n + step; row++) {
+        for (var cl = 0; cl * step < n + step; cl++) {
+          var px = cl * step + (row % 2 ? step / 2 : 0);
+          var py = row * step;
+          var rg = g.createRadialGradient(px, py, 1, px, py, 7);
+          rg.addColorStop(0, '#0a0705');
+          rg.addColorStop(0.65, '#140e09');
+          rg.addColorStop(1, 'rgba(43,33,24,0)');
+          g.fillStyle = rg;
+          g.beginPath(); g.arc(px, py, 7, 0, 6.29); g.fill();
+        }
+      }
+      // scorching and scuffs
+      for (var i = 0; i < 90; i++) {
+        var x = Math.random() * n, y = Math.random() * n;
+        var r = 12 + Math.random() * 46;
+        var sg = g.createRadialGradient(x, y, 1, x, y, r);
+        var warm = Math.random() > 0.5;
+        sg.addColorStop(0, warm ? 'rgba(92,60,32,.30)' : 'rgba(12,8,5,.34)');
+        sg.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = sg;
+        g.beginPath(); g.arc(x, y, r, 0, 6.29); g.fill();
+      }
+      var tex = new THREE.CanvasTexture(cv);
+      tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(5, 2);
+      return tex;
+    }
+
+    var skin = drumSkin();
     var shellMat = new THREE.MeshPhysicalMaterial({
-      color: 0x2b2118, metalness: 0.85, roughness: 0.44,
-      side: THREE.DoubleSide, envMapIntensity: 1.1
+      map: skin,
+      bumpMap: skin,
+      bumpScale: 0.06,
+      roughnessMap: skin,
+      color: 0x6b5744, metalness: 0.88, roughness: 0.62,
+      side: THREE.DoubleSide, envMapIntensity: 1.2
     });
     var shell = new THREE.Mesh(
       new THREE.CylinderGeometry(DRUM_R, DRUM_R, DRUM_D, 72, 1, true), shellMat);
@@ -235,6 +305,43 @@
     drum.add(rimRing);
 
     scene.add(drum);
+
+    /* The drum alone floats in the dark. A housing, a hopper throat and a
+       glowing burner slot underneath give it somewhere to be. */
+    var rig = new THREE.Group();
+    var caseMat = new THREE.MeshPhysicalMaterial({
+      color: 0x241a12, metalness: 0.7, roughness: 0.58, envMapIntensity: 0.8 });
+
+    var housing = new THREE.Mesh(
+      new THREE.CylinderGeometry(DRUM_R + 0.75, DRUM_R + 0.75, DRUM_D + 1.5, 64, 1, true),
+      new THREE.MeshPhysicalMaterial({
+        color: 0x1a120c, metalness: 0.6, roughness: 0.7,
+        side: THREE.BackSide, envMapIntensity: 0.5 }));
+    housing.rotation.x = Math.PI / 2;
+    housing.position.z = -0.6;
+    rig.add(housing);
+
+    var faceRing = new THREE.Mesh(
+      new THREE.RingGeometry(DRUM_R + 0.18, DRUM_R + 1.5, 64), caseMat);
+    faceRing.position.z = DRUM_D / 2 + 0.16;
+    rig.add(faceRing);
+
+    // burner slot: a bar that glows when the gas is on
+    // a soft glow, not a lit rectangle
+    var burnerMat = new THREE.MeshBasicMaterial({
+      map: puffSprite(), color: 0xff6a24, transparent: true, opacity: 0,
+      depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false });
+    var burner = new THREE.Mesh(new THREE.PlaneGeometry(DRUM_R * 2.1, 2.2), burnerMat);
+    burner.position.set(0, -DRUM_R - 0.7, DRUM_D / 2 + 0.2);
+    rig.add(burner);
+
+    var legMat = caseMat;
+    for (var lg = -1; lg <= 1; lg += 2) {
+      var leg = new THREE.Mesh(new THREE.BoxGeometry(0.42, 2.4, 0.42), legMat);
+      leg.position.set(lg * (DRUM_R * 0.62), -DRUM_R - 2.2, 0);
+      rig.add(leg);
+    }
+    scene.add(rig);
 
     /* --- the bag (pour mode) ------------------------------------------
        A pouch: a box whose top is pinched into a fin seal. Tipped over the
@@ -288,6 +395,52 @@
     bag.position.set(0, -4.3, -1.2);
     bag.visible = false;
     scene.add(bag);
+
+    /* --- chaff and smoke ---------------------------------------------
+       Silverskin flakes off during drying and lifts on the draught; smoke
+       thickens after first crack. Both are what make a roast look hot
+       rather than like beans in a spinning tube. */
+    var CHAFF = 120;
+    var chaffGeo = new THREE.PlaneGeometry(0.13, 0.07);
+    var chaffMat = new THREE.MeshBasicMaterial({
+      color: 0xd8c3a0, transparent: true, opacity: 0,
+      side: THREE.DoubleSide, depthWrite: false, toneMapped: false });
+    var chaff = new THREE.InstancedMesh(chaffGeo, chaffMat, CHAFF);
+    chaff.frustumCulled = false;
+    scene.add(chaff);
+
+    var chaffP = [];
+    for (var ci = 0; ci < CHAFF; ci++) {
+      chaffP.push({
+        a: Math.random() * 6.28, r: Math.random() * DRUM_R * 0.9,
+        z: (Math.random() - 0.5) * DRUM_D,
+        vy: 0.5 + Math.random() * 1.6,
+        rot: Math.random() * 6.28, spin: (Math.random() - 0.5) * 7,
+        life: Math.random()
+      });
+    }
+
+    var SMOKE = 46;
+    var smokeMat = new THREE.MeshBasicMaterial({
+      map: puffSprite(), transparent: true, opacity: 0,
+      depthWrite: false, toneMapped: false, color: 0x8d8073 });
+    var smoke = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), smokeMat, SMOKE);
+    smoke.frustumCulled = false;
+    smoke.renderOrder = 2;
+    scene.add(smoke);
+
+    var smokeP = [];
+    for (var si = 0; si < SMOKE; si++) {
+      smokeP.push({
+        x: (Math.random() - 0.5) * DRUM_R * 1.3,
+        y: -1 + Math.random() * 2,
+        z: DRUM_D * 0.5 + Math.random() * 2,
+        vy: 0.7 + Math.random() * 1.1,
+        size: 1.6 + Math.random() * 3.2,
+        rot: Math.random() * 6.28,
+        life: Math.random()
+      });
+    }
 
     /* --- the beans --------------------------------------------------- */
     var COUNT = global.innerWidth < 760 ? 90 : 150;
@@ -614,10 +767,72 @@
 
       if (st.mode === 'drum') {
         drum.rotation.z += st.drumSpin * dt;
-        flights.rotation.z = 0;
         drum.visible = true;
-        fire.intensity = st.roastT > 0.02 ? 12 + Math.sin(clock.elapsedTime * 9) * 5 : 0;
+        rig.visible = true;
+        chaff.visible = true;
+        smoke.visible = true;
+
+        var T = st.roastT;
+
+        // the burner runs hard through drying and eases off after the crack
+        var gas = T < 0.02 ? 0 : (T < 0.62 ? 1 : 1 - (T - 0.62) * 0.9);
+        fire.intensity = gas * (16 + Math.sin(clock.elapsedTime * 9) * 5);
+        burnerMat.opacity = gas * (0.42 + Math.sin(clock.elapsedTime * 11) * 0.12);
+
+        // chaff peaks through drying, then there is none left to shed
+        var chaffAmt = Math.max(0, Math.sin(clamp(T / 0.72, 0, 1) * Math.PI)) * 0.85;
+        chaffMat.opacity = chaffAmt;
+        if (chaffAmt > 0.01) {
+          for (var c = 0; c < CHAFF; c++) {
+            var cp = chaffP[c];
+            cp.life += dt * 0.42;
+            if (cp.life > 1) {
+              cp.life = 0;
+              cp.a = Math.random() * 6.28;
+              cp.r = Math.random() * DRUM_R * 0.9;
+            }
+            var ca = cp.a + st.drumSpin * clock.elapsedTime * 0.5;
+            var crad = cp.r * (1 - cp.life * 0.35);
+            dummy.position.set(
+              Math.cos(ca) * crad,
+              Math.sin(ca) * crad + cp.life * cp.vy * 2.4,
+              cp.z + cp.life * 1.2
+            );
+            dummy.rotation.set(0, 0, cp.rot + clock.elapsedTime * cp.spin);
+            dummy.scale.setScalar(1 - cp.life * 0.3);
+            dummy.updateMatrix();
+            chaff.setMatrixAt(c, dummy.matrix);
+          }
+          chaff.instanceMatrix.needsUpdate = true;
+        }
+
+        // smoke only really arrives with first crack
+        var smokeAmt = clamp((T - 0.5) / 0.35, 0, 1) * 0.30;
+        smokeMat.opacity = smokeAmt;
+        if (smokeAmt > 0.005) {
+          for (var sm = 0; sm < SMOKE; sm++) {
+            var sp = smokeP[sm];
+            sp.life += dt * 0.19;
+            if (sp.life > 1) {
+              sp.life = 0;
+              sp.x = (Math.random() - 0.5) * DRUM_R * 1.3;
+            }
+            dummy.position.set(
+              sp.x + Math.sin(clock.elapsedTime * 0.5 + sm) * 0.7 * sp.life,
+              sp.y + sp.life * sp.vy * 7,
+              sp.z + sp.life * 1.6
+            );
+            dummy.rotation.set(0, 0, sp.rot + sp.life * 0.8);
+            dummy.scale.setScalar(sp.size * (0.5 + sp.life * 1.7));
+            dummy.updateMatrix();
+            smoke.setMatrixAt(sm, dummy.matrix);
+          }
+          smoke.instanceMatrix.needsUpdate = true;
+        }
       } else {
+        rig.visible = false;
+        chaff.visible = false;
+        smoke.visible = false;
         drum.visible = false;
         fire.intensity = 0;
         // the bag turns slowly, and its seal peels back as the beans leave
@@ -646,7 +861,7 @@
       paint();
 
       var wide = camera.aspect > 1.15;
-      var wantZ = st.mode === 'drum' ? 16.5 : 21.0;
+      var wantZ = st.mode === 'drum' ? 19.5 : 21.0;
       // in bloom the sheet owns the right third, so the subject sits left
       var wantX = (st.mode === 'drum' || !wide) ? 0 : 3.9;
       camera.position.z = lerp(camera.position.z, wantZ, 1 - Math.pow(0.9, dt * 60));

@@ -499,8 +499,8 @@
       ['.hl--r4', 120, 1.02],
       ['.hl--r3', 200, 1.05],
       ['.hl--r2', 300, 1.09],
-      ['.hl--r1', 420, 1.14],
-      ['.hl--rows', 470, 1.16]
+      ['.foreground .hl--r1', 420, 1.14],
+      ['.foreground .hl--rows', 470, 1.16]
     ];
 
     // each ridge rises at its own rate — that difference is the depth

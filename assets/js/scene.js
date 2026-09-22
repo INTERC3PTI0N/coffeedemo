@@ -262,6 +262,151 @@
   }
 
   /* ------------------------------------------------------------------ */
+  /* CLOUDS                                                              */
+  /*                                                                     */
+  /* Coffee this good grows above the cloud line, so the harvest section  */
+  /* sits in it. Each cloud is a mass of soft billboards rather than one  */
+  /* sprite — overlapping puffs at different depths are what give it      */
+  /* volume, and drifting them at speeds tied to their distance is what   */
+  /* sells the parallax.                                                  */
+  /* ------------------------------------------------------------------ */
+  var PUFF = null;
+  function puffTexture() {
+    if (PUFF) return PUFF;
+    var n = 256;
+    var cv = document.createElement('canvas');
+    cv.width = cv.height = n;
+    var ctx = cv.getContext('2d');
+    var img = ctx.createImageData(n, n);
+    var d = img.data;
+
+    for (var y = 0; y < n; y++) {
+      for (var x = 0; x < n; x++) {
+        var u = (x / n - 0.5) * 2, v = (y / n - 0.5) * 2;
+        var r = Math.sqrt(u * u + v * v);
+
+        // a soft disc, eaten into by noise so the edge is ragged not round
+        // a firm core with a ragged falloff: overlapping cores build a solid
+        // body, and only the rim stays wispy
+        var edge = 1 - smooth(clamp((r - 0.30) / 0.70, 0, 1));
+        edge = Math.pow(edge, 0.72);
+        var lumps = fbm3(u * 2.9 + 11, v * 2.9 + 3, 0.7, 4);
+        var a = edge * (0.86 + lumps * 0.62) - 0.05;
+        a = clamp(a, 0, 1);
+        a = a * a * (3 - 2 * a);
+
+        var k = (y * n + x) * 4;
+        d[k] = d[k + 1] = d[k + 2] = 255;
+        d[k + 3] = Math.round(a * 255);
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    PUFF = new THREE.CanvasTexture(cv);
+    PUFF.premultiplyAlpha = false;
+    return PUFF;
+  }
+
+  function buildClouds(scene) {
+    var small = global.innerWidth < 760;
+    // Volume comes from many small overlapping puffs. A few large ones just
+    // read as a grey smear however soft the texture is.
+    var MASSES = small ? 9 : 14;
+    var PER = small ? 16 : 26;
+    var COUNT = MASSES * PER;
+
+    var geo = new THREE.PlaneGeometry(1, 1);
+    var mat = new THREE.MeshBasicMaterial({
+      map: puffTexture(),
+      transparent: true,
+      depthWrite: false,
+      opacity: 0,
+      toneMapped: false
+    });
+
+    var mesh = new THREE.InstancedMesh(geo, mat, COUNT);
+    mesh.frustumCulled = false;
+    mesh.renderOrder = -1;                 // always behind the beans
+    mesh.visible = false;
+
+    var puffs = [];
+    var i, m;
+    for (m = 0; m < MASSES; m++) {
+      var mx = (m / MASSES - 0.5) * 88 + (hash3(m, 5, 1) - 0.5) * 12;
+      var my = -5.0 + hash3(m, 9, 2) * 11;
+      var mz = -4 - hash3(m, 13, 3) * 44;
+      var rx = 4.5 + hash3(m, 17, 4) * 4.5;
+      var ry = 1.3 + hash3(m, 21, 5) * 1.3;
+
+      for (i = 0; i < PER; i++) {
+        var id = m * PER + i;
+        var t = i / PER;
+        puffs.push({
+          mass: m,
+          x: mx + (hash3(id, 31, 6) - 0.5) * rx * 2,
+          y: my + (hash3(id, 37, 7) - 0.5) * ry * 2,
+          z: mz + (hash3(id, 41, 8) - 0.5) * 4,
+          // a puff's own height inside its mass decides how lit it is
+          lift: (hash3(id, 37, 7) - 0.5),
+          size: 2.6 + hash3(id, 43, 9) * 4.0,
+          spin: (hash3(id, 47, 10) - 0.5) * 0.05,
+          rot: hash3(id, 53, 11) * 6.28,
+          baseX: 0
+        });
+        puffs[puffs.length - 1].baseX = puffs[puffs.length - 1].x;
+      }
+    }
+
+    // Back to front, once. Instanced transparency has no per-instance sort,
+    // and the puffs only ever move sideways, so this ordering holds.
+    puffs.sort(function (a, b) { return a.z - b.z; });
+
+    var dummy = new THREE.Object3D();
+    var col = new THREE.Color();
+    // Sunlit tops, cool undersides — the contrast between the two is what
+    // makes a billboard read as a cloud rather than as a smudge.
+    var SUN = new THREE.Color(0xffffff);
+    var SHADE = new THREE.Color(0x6d8095);
+
+    for (i = 0; i < COUNT; i++) {
+      var p = puffs[i];
+      // distance pales them out — ordinary atmospheric perspective
+      var far = clamp((-p.z - 6) / 40, 0, 1);
+      col.copy(SHADE).lerp(SUN, clamp(0.52 + p.lift * 2.2, 0, 1));
+      col.lerp(new THREE.Color(0xc4d0d9), far * 0.5);
+      mesh.setColorAt(i, col);
+    }
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+
+    scene.add(mesh);
+
+    return {
+      mesh: mesh,
+      material: mat,
+      update: function (t, opacity, rise) {
+        mat.opacity = opacity;
+        mesh.visible = opacity > 0.004;
+        if (!mesh.visible) return;
+
+        for (var i = 0; i < COUNT; i++) {
+          var p = puffs[i];
+          // nearer clouds run faster; that difference is the parallax
+          var speed = 0.10 + (1 - clamp((-p.z - 6) / 40, 0, 1)) * 0.42;
+          var x = p.baseX + (reduced ? 0 : t * speed);
+          var span = 96;
+          x = ((x + span * 0.5) % span + span) % span - span * 0.5;
+
+          dummy.position.set(x, p.y + rise, p.z);
+          dummy.rotation.set(0, 0, p.rot + (reduced ? 0 : t * p.spin));
+          dummy.scale.setScalar(p.size);
+          dummy.updateMatrix();
+          mesh.setMatrixAt(i, dummy.matrix);
+        }
+        mesh.instanceMatrix.needsUpdate = true;
+      }
+    };
+  }
+
+  /* ------------------------------------------------------------------ */
   /* A small studio, painted on a canvas and convolved into an env map.  */
   /* This is what gives the beans believable specular roll-off.          */
   /* ------------------------------------------------------------------ */
@@ -477,6 +622,8 @@
     cherry.position.set(5, -2, 4);
     scene.add(cherry);
 
+    var clouds = buildClouds(scene);
+
     /* --- the pool --------------------------------------------------- */
     var small = global.innerWidth < 760;
     var COUNT = small ? 20 : 34;
@@ -544,6 +691,7 @@
       heroDolly: 0,        // hero-only camera push
       pointer: { x: 0, y: 0 }, smooth: { x: 0, y: 0 },
       camZ: 12,
+      cloudCur: 0,
       light: 0,            // 0 = dark section, 1 = light section
       lightCur: 0,
       roast: { target: new THREE.Color(0x6b3d20), cur: new THREE.Color(0x6b3d20),
@@ -614,6 +762,18 @@
       state.camZ = lerp(state.camZ, camTarget, damp(0.07, dt));
       camera.position.z = state.camZ;
       camera.lookAt(state.smooth.x * 0.35, state.smooth.y * -0.25, camera.position.z - 9);
+
+      /* The bank belongs to the harvest section alone. The canvas is fixed and
+         full-viewport, so without fading at both ends the clouds spill over
+         whichever section is arriving next. */
+      var wantCloud = 0;
+      if (state.formation === 'fall') {
+        var lp = state.local;
+        wantCloud = smooth(clamp(lp / 0.12, 0, 1)) *
+                    smooth(clamp((0.88 - lp) / 0.12, 0, 1));
+      }
+      state.cloudCur = lerp(state.cloudCur, wantCloud, damp(0.05, dt));
+      clouds.update(t, state.cloudCur * 0.92, (state.local - 0.5) * -3.2);
 
       /* daylight on the cream sections, roastery gloom on the dark ones */
       state.lightCur = lerp(state.lightCur, state.light, damp(0.06, dt));

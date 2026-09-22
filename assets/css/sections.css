@@ -183,6 +183,22 @@ section{ position:relative; }
   max-width:38ch;
 }
 
+/* Distant ridges sit behind the WebGL cloud bank; the near ridge and the
+   terraces are lifted in front of it. That order — peaks, cloud, ground —
+   is what makes the section read as altitude rather than as flat waves. */
+.foreground{
+  position:absolute;
+  left:0; right:0; bottom:0;
+  height:52svh;
+  z-index:3;
+  pointer-events:none;
+  overflow:hidden;
+}
+.foreground .hl{
+  position:absolute; left:-14%; right:-14%; bottom:0;
+  transform-origin:50% 100%;
+}
+
 /* layered highlands — real z-depth via translate3d parallax --------- */
 .highlands{
   position:absolute;
@@ -202,23 +218,28 @@ section{ position:relative; }
    and collapses to the containing block, exposing its edge mid-viewport */
 svg.hl{ width:128%; max-width:none; right:auto; height:auto; }
 
+/* An actual aerial gradient. White cloud cannot read against a cream page,
+   so the middle distance gets the sky it would really have at 2,150 m —
+   warm at the horizon, cool and deep where the bank sits. */
 .hl--sky{
   top:0; bottom:0;
   background:linear-gradient(to bottom,
-    rgba(251,245,236,0) 0%,
-    rgba(238,228,211,.45) 46%,
-    rgba(222,206,181,.8) 100%);
+    rgba(251,245,236,0)   0%,
+    rgba(190,206,220,.62) 26%,
+    rgba(142,169,192,.90) 52%,
+    rgba(206,209,201,.70) 74%,
+    rgba(222,206,181,.85) 100%);
 }
 .hl--haze{
-  bottom:22%; height:42%;
-  background:linear-gradient(to bottom, rgba(251,245,236,0), rgba(251,245,236,.85));
+  bottom:22%; height:34%;
+  background:linear-gradient(to bottom, rgba(214,219,214,0), rgba(232,228,214,.9));
   filter:blur(18px);
 }
-.hl--r4{ bottom:16%; opacity:.30; }
-.hl--r4 path{ fill:#8D9E87; }
-.hl--r3{ bottom:9%;  opacity:.50; }
+.hl--r4{ bottom:34%; opacity:.26; }
+.hl--r4 path{ fill:#7E93A4; }
+.hl--r3{ bottom:24%; opacity:.30; }
 .hl--r3 path{ fill:#6E8168; }
-.hl--r2{ bottom:3%;  opacity:.75; }
+.hl--r2{ bottom:18%; opacity:.42; }
 .hl--r2 path{ fill:#4E6149; }
 .hl--r1{ bottom:0; }
 .hl--r1 path{ fill:#2E3C2B; }
