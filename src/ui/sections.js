@@ -209,6 +209,31 @@ export function initDivisions({ reducedMotion }) {
 }
 
 /* ------------------------------------------------------------------ *
+ * staged chapters — dissolve on release
+ *
+ * A sticky stage unpins when its chapter's bottom reaches the viewport
+ * bottom, then rides up while the next chapter slides in. Fading it across
+ * that overlap turns the hand-off into a cross-dissolve instead of leaving
+ * half a chapter parked under the nav.
+ * ------------------------------------------------------------------ */
+export function initStageHandoff({ reducedMotion }) {
+  if (reducedMotion) return;
+
+  document.querySelectorAll('.chapter > .stage').forEach((stage) => {
+    gsap.to(stage, {
+      opacity: 0,
+      ease: 'none',
+      scrollTrigger: {
+        trigger: stage.parentElement,
+        start: 'bottom bottom',
+        end: 'bottom 30%',
+        scrub: 0.4,
+      },
+    });
+  });
+}
+
+/* ------------------------------------------------------------------ *
  * chrome — nav state, rails, altitude
  * ------------------------------------------------------------------ */
 export function initChrome({ world }) {

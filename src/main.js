@@ -13,6 +13,7 @@ import {
   initReveals,
   initAssay,
   initDivisions,
+  initStageHandoff,
   initChrome,
   playHero,
   bindWorldToScroll,
@@ -65,6 +66,7 @@ initHeadlines({ reducedMotion });
 initReveals({ reducedMotion });
 initAssay({ reducedMotion });
 initDivisions({ reducedMotion });
+initStageHandoff({ reducedMotion });
 initChrome({ world });
 bindWorldToScroll({ world });
 
