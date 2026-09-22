@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { createTerrain } from './terrain.js';
+import { createRidgeline, MAIN_LAYERS, DAWN_LAYERS } from './ridgeline.js';
+import ridgelineUrl from '../assets/ridgeline.webp';
 import { createClouds } from './clouds.js';
 import { createOcean } from './ocean.js';
 import { createPostFX } from './postfx.js';
@@ -177,44 +178,23 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
   camera.position.set(...FLIGHT[0].pos);
 
   /* ---- content ---- */
-  const terrain = createTerrain({
-    segments: perfTier < 0.8 ? 220 : 360,
-    deckY: DECK_Y,
-  });
-  scene.add(terrain.mesh);
+  const texture = new THREE.TextureLoader().load(ridgelineUrl);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = perfTier < 0.8 ? 2 : 8;
+  texture.generateMipmaps = true;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
 
-  // a second, further massif adds the layered silhouettes of the reference
-  const ridge = createTerrain({
-    size: 17000,
-    segments: perfTier < 0.8 ? 140 : 210,
-    amplitude: 360,
-    frequency: 0.00038,
-    seed: 41.3,
-    deckY: DECK_Y,
-    peaks: [[-3800, -7200], [2900, -8100], [-600, -9000]],
-  });
-  ridge.mesh.position.set(0, -110, -2600);
-  ridge.uniforms.uFogDensity.value = 0.00017;
-  ridge.uniforms.uExposure.value = 0.80;
-  ridge.mesh.renderOrder = 0;
-  scene.add(ridge.mesh);
+  // the range the descent travels through
+  const range = createRidgeline(texture, { layers: MAIN_LAYERS, deckY: DECK_Y });
+  scene.add(range.group);
 
-  // the range that greets the camera when it climbs back into dawn light
-  const dawnRidge = createTerrain({
-    size: 15000,
-    segments: perfTier < 0.8 ? 140 : 220,
-    amplitude: 400,
-    frequency: 0.00044,
-    seed: 77.9,
-    deckY: -60,
-    peaks: [[900, -6400], [-2600, -7400], [3400, -8300]],
-  });
-  dawnRidge.mesh.position.set(0, -260, -5200);
-  dawnRidge.uniforms.uFogDensity.value = 0.00015;
-  dawnRidge.uniforms.uOpacity.value = 0;
-  dawnRidge.mesh.renderOrder = 0;
-  dawnRidge.mesh.visible = false;
-  scene.add(dawnRidge.mesh);
+  // and the one that greets the camera when it climbs back into dawn light
+  const dawnRange = createRidgeline(texture, { layers: DAWN_LAYERS, deckY: -640 });
+  dawnRange.setOpacity(0);
+  scene.add(dawnRange.group);
 
   const clouds = createClouds({
     // Overlapping transparent quads are pure fill rate, so the deck runs to a
@@ -273,12 +253,8 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
 
     scene.background.copy(g.bg);
 
-    terrain.uniforms.uFog.value.copy(g.fog);
-    terrain.uniforms.uExposure.value = g.exposure;
-    ridge.uniforms.uFog.value.copy(g.fog);
-    ridge.uniforms.uExposure.value = g.exposure * 0.92;
-    dawnRidge.uniforms.uFog.value.copy(g.fog);
-    dawnRidge.uniforms.uExposure.value = g.exposure;
+    range.setGrade(g.fog, g.cLight, g.exposure);
+    dawnRange.setGrade(g.fog, g.cLight, g.exposure * 1.04);
 
     clouds.uniforms.uLight.value.copy(g.cLight);
     clouds.uniforms.uDark.value.copy(g.cDark);
@@ -302,11 +278,8 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     fx.bloom.strength = g.bloom;
 
     // the summits dissolve into the deck as the camera sinks through it
-    const massifOut = 1 - THREE.MathUtils.smoothstep(t, 0.40, 0.56);
-    terrain.uniforms.uOpacity.value = massifOut;
-    ridge.uniforms.uOpacity.value = massifOut;
-    terrain.mesh.visible = massifOut > 0.01;
-    ridge.mesh.visible = massifOut > 0.01;
+    range.setOpacity(1 - THREE.MathUtils.smoothstep(t, 0.40, 0.56));
+    range.setDrift(THREE.MathUtils.smoothstep(t, 0.0, 0.52));
 
     // the sea only exists under the weather
     const seaIn = THREE.MathUtils.smoothstep(t, 0.50, 0.66);
@@ -315,9 +288,8 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     ocean.mesh.visible = ocean.uniforms.uOpacity.value > 0.01;
 
     // and a new range rises for the last chapter
-    const dawnIn = THREE.MathUtils.smoothstep(t, 0.82, 0.94);
-    dawnRidge.uniforms.uOpacity.value = dawnIn;
-    dawnRidge.mesh.visible = dawnIn > 0.01;
+    dawnRange.setOpacity(THREE.MathUtils.smoothstep(t, 0.82, 0.94));
+    dawnRange.setDrift(THREE.MathUtils.smoothstep(t, 0.84, 1.0) * 0.6);
 
     // UI colour — resample only when the journey has moved a meaningful step,
     // and only touch the DOM when the result actually differs
