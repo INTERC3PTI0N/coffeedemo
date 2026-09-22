@@ -6,7 +6,7 @@
 
      drum  — a roasting drum: beans tumble against the rotating wall and
              darken from green through first crack to the chosen roast
-     card  — a product card takes over the screen, through a field of
+     card  — a product's cup takes over the screen, through a field of
              blanks tumbling past the camera
 
    Also renders the still "bean bed" images used as section art, so the
@@ -433,18 +433,19 @@
     var cardBuilt = {};              // product name → built card
 
     function seedBlanks() {
-      if (blanks.length || !global.LattecanoCards ||
-          !global.LattecanoCards.supported) return;
+      if (blanks.length || !global.LattecanoShelf ||
+          !global.LattecanoShelf.supported) return;
 
-      var geo = global.LattecanoCards.slabGeometry();
-      var n = global.innerWidth < 760 ? 12 : 22;
+      var geo = global.LattecanoShelf.blankGeometry();
+      var n = global.innerWidth < 760 ? 10 : 16;
       for (var i = 0; i < n; i++) {
-        var m = global.LattecanoCards.blankMaterial();
+        var m = global.LattecanoShelf.blankMaterial();
         m.color.setHex(0x0d0a07);
         m.envMapIntensity = 1.1;
         m.transparent = true;
         var mesh = new THREE.Mesh(geo, m);
-        mesh.scale.setScalar(2.2 + Math.random() * 1.8);
+        var M = global.LattecanoShelf.metrics;
+        mesh.scale.setScalar((2.2 + Math.random() * 1.8) * M.scale);
         deck.add(mesh);
         blanks.push({
           mesh: mesh, mat: m,
@@ -461,24 +462,22 @@
       }
     }
 
-    function prepareCard(product, bedURL) {
-      if (!global.LattecanoCards || !global.LattecanoCards.supported) return false;
+    function prepareCard(product) {
+      if (!global.LattecanoShelf || !global.LattecanoShelf.supported) return false;
       seedBlanks();
 
       if (hero) hero.group.visible = false;
 
       var built = cardBuilt[product.name];
       if (!built) {
-        built = global.LattecanoCards.build(product, bedURL);
-        /* The cards carry their own environment — one bright band, which
-           is what rakes a hard highlight across a face as it turns. The
-           chamber's own env map is a sky, and gives them nothing. */
+        built = global.LattecanoShelf.build(product);
+        /* The cups carry their own environment — one bright band, which
+           is what rakes a hard highlight across the board and the crema
+           as the cup turns. The chamber's own env map is a sky, and gives
+           them nothing. */
         built.setEnv(cardEnv());
-        built.group.scale.setScalar(4.6);
         deck.add(built.group);
         cardBuilt[product.name] = built;
-      } else if (bedURL) {
-        built.setBed(bedURL);
       }
 
       hero = built;
@@ -490,7 +489,7 @@
 
     var CARD_ENV = null;
     function cardEnv() {
-      if (!CARD_ENV) CARD_ENV = global.LattecanoCards.studio(renderer);
+      if (!CARD_ENV) CARD_ENV = global.LattecanoShelf.studio(renderer);
       return CARD_ENV;
     }
 
@@ -504,8 +503,8 @@
          so the card is smaller and sits in the band left under it. Both
          at full size is not a layout a phone has room for. */
       var narrow = camera.aspect < 1.15;
-      var fit = narrow ? 2.0 : 4.6;
-      var lift = narrow ? -3.5 : 0;
+      var fit = narrow ? 2.5 : 5.4;
+      var lift = narrow ? -3.2 : 0;
 
       if (hero) {
         var g = hero.group;
@@ -515,16 +514,26 @@
            back and its tasting notes pass the camera on the way in. */
         var ease = 1 - Math.pow(1 - p, 3);
         g.position.z = lerp(-26, 0, ease);
-        g.position.y = lerp(lift - 1.6, lift, ease) +
+        /* It settles below the eye line. The camera cannot rise — the
+           whole screen mapping hangs off it sitting at zero — so the cup
+           drops instead, which is what puts the reader over the rim. */
+        g.position.y = lerp(lift - 2.6, lift - (narrow ? 0.2 : 1.5), ease) +
                        (reduced ? 0 : Math.sin(t * 0.55) * 0.16 * p);
         g.scale.setScalar(fit * (0.34 + 0.66 * ease));
 
         cardDrag += (cardDragTarget - cardDrag) * (1 - Math.pow(0.86, dt * 60));
 
-        g.rotation.y = (1 - ease) * Math.PI * 5 + cardDrag +
-                       (reduced ? 0 : Math.sin(t * 0.34) * 0.20 * p);
-        g.rotation.x = (1 - ease) * 0.55 +
-                       (reduced ? 0 : Math.sin(t * 0.27) * 0.07 * p);
+        /* The camera is offset to keep the docket's third of the window
+           clear, so the cup sits well off the view axis. Yawing it back
+           by that offset is what keeps its print square to the reader
+           instead of wrapping away round the side. */
+        var aimBack = narrow ? 0 : 0.22;
+        g.rotation.y = (1 - ease) * Math.PI * 5 + cardDrag + ease * aimBack +
+                       (reduced ? 0 : Math.sin(t * 0.34) * 0.13 * p);
+        /* It settles tipped toward you, which is the only angle from
+           which the coffee in it is visible at all. */
+        g.rotation.x = (1 - ease) * 0.55 + ease * 0.46 +
+                       (reduced ? 0 : Math.sin(t * 0.27) * 0.05 * p);
         g.rotation.z = (1 - ease) * -0.4 + (1 - p) * 0.1;
       }
 
@@ -555,7 +564,7 @@
         // fade in out of the dark, and back out before they reach the lens
         b.mat.opacity = clamp((b.z + 40) / 12, 0, 1) *
                         clamp((13 - b.z) / 8, 0, 1) *
-                        (0.18 + p * 0.72);
+                        (0.10 + p * 0.42);
         b.mesh.visible = b.mat.opacity > 0.02;
       }
     }
@@ -871,9 +880,6 @@
       nudgeSpecimen: function (dx) { specDragTarget += dx; },
 
       prepareCard: prepareCard,
-      setCardBed: function (name, url) {
-        if (cardBuilt[name] && url) cardBuilt[name].setBed(url);
-      },
       setCardPhase: function (v) { st.cardIn = clamp(v, 0, 1); },
       nudgeCard: function (dx) { cardDragTarget += dx; },
       drum: drum

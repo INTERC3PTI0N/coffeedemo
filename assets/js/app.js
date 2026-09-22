@@ -656,13 +656,8 @@
   ];
 
   var chamber = null;
-  var cardLayer = null;
+  var shelf = null;
 
-  /* The bean beds are rendered off the critical path and land a beat after
-     the page does. Both the shelf and the takeover draw from them, so they
-     are kept here and pushed to whoever is already holding a stale copy. */
-  var BEDS = [];
-  var onBed = null;
 
   function initChamber() {
     var root = $('#chamber');
@@ -701,7 +696,7 @@
       document.body.classList.remove('no-scroll');
       if (lenis) lenis.start();
       if (stage) stage.setOpen(false);
-      if (cardLayer) cardLayer.unmuteAll();
+      if (shelf) shelf.unmuteAll();
       if (lastFocus && lastFocus.focus) lastFocus.focus();
 
       var hidden = false;
@@ -953,12 +948,12 @@
       var prod = PRODUCTS[index] || PRODUCTS[0];
 
       // the shelf's copy steps aside; the chamber has its own
-      if (cardLayer) cardLayer.mute(index, true);
+      if (shelf) shelf.mute(index, true);
 
       var staged = false;
       if (hasStage) {
         stage = window.LattecanoChamber.getStage(canvas);
-        staged = stage.prepareCard(prod, BEDS[index] || '');
+        staged = stage.prepareCard(prod);
       }
 
       open('card');
@@ -1142,14 +1137,6 @@
       });
     }
 
-    /* A card opened before its bed had finished rendering was built without
-       one. When the render lands, repaint that card's face rather than
-       leaving it flat until the next time it is opened. */
-    onBed = function (i, url) {
-      var prod = PRODUCTS[i];
-      if (stage && prod && stage.setCardBed) stage.setCardBed(prod.name, url);
-    };
-
     window.__openSpecimen = openSpecimen;
 
     /* ---------------- wiring --------------------------------------- */
@@ -1202,15 +1189,13 @@
         art.classList.add('is-bed');
       });
     });
-    /* The cards want the same bean bed the CSS bag uses, so it is rendered
-       once here and handed to the 3D layer rather than drawn twice. */
+    /* The bean bed is what the CSS bag falls back to when there is no
+       WebGL. With the cup layer up the bag is not drawn at all, so this
+       is only ever seen on the fallback path. */
     $$('.card__bed').forEach(function (bed, i) {
       jobs.push(function () {
         var url = render(PRODUCTS[i] ? PRODUCTS[i].hex : 0x6e3e1d, 420, 520, i + 9);
-        BEDS[i] = url;
         bed.style.backgroundImage = 'url(' + url + ')';
-        if (cardLayer) cardLayer.setBed(i, url);
-        if (onBed) onBed(i, url);
       });
     });
 
@@ -1223,24 +1208,24 @@
   }
 
   /* ================================================================= */
-  /* 8d · The collection's cards, drawn in 3D                          */
+  /* 8d · The collection's cups, drawn in 3D                           */
   /* ================================================================= */
-  function initCards() {
-    if (cardLayer) return;
-    if (!window.LattecanoCards || !window.LattecanoCards.supported) return;
+  function initShelf() {
+    if (shelf) return;
+    if (!window.LattecanoShelf || !window.LattecanoShelf.supported) return;
 
     var sec = $('.collection');
     var canvas = $('#cardCanvas');
     if (!sec || !canvas) return;
 
     try {
-      cardLayer = window.LattecanoCards.create(canvas, PRODUCTS, []);
+      shelf = window.LattecanoShelf.create(canvas, PRODUCTS);
     } catch (e) {
-      cardLayer = null;
+      shelf = null;
     }
-    if (!cardLayer) return;
+    if (!shelf) return;
 
-    /* Each 3D card rides on the box the CSS bag still occupies. The DOM
+    /* Each cup rides on the box the CSS bag still occupies. The DOM
        keeps the layout and the hit target; the layer only draws. */
     var hosts = [];
     $$('[data-pour]').forEach(function (card) {
@@ -1248,12 +1233,12 @@
       var bag = $('.card__bag', card);
       if (!bag) return;
       hosts[i] = bag;
-      cardLayer.bind(i, bag);
+      shelf.bind(i, bag);
 
-      card.addEventListener('pointerenter', function () { cardLayer.setHover(i, true); });
-      card.addEventListener('pointerleave', function () { cardLayer.setHover(i, false); });
-      card.addEventListener('focus', function () { cardLayer.setHover(i, true); });
-      card.addEventListener('blur', function () { cardLayer.setHover(i, false); });
+      card.addEventListener('pointerenter', function () { shelf.setHover(i, true); });
+      card.addEventListener('pointerleave', function () { shelf.setHover(i, false); });
+      card.addEventListener('focus', function () { shelf.setHover(i, true); });
+      card.addEventListener('blur', function () { shelf.setHover(i, false); });
     });
     if (!hosts.length) return;
 
@@ -1261,7 +1246,7 @@
 
     sec.addEventListener('pointermove', function (e) {
       var r = sec.getBoundingClientRect();
-      cardLayer.setPointer(
+      shelf.setPointer(
         (e.clientX - r.left) / r.width * 2 - 1,
         (e.clientY - r.top) / r.height * 2 - 1
       );
@@ -1271,20 +1256,20 @@
        full-bleed and the page has a second one running all the time. */
     function watch() {
       var r = sec.getBoundingClientRect();
-      cardLayer.setVisible(r.bottom > -200 && r.top < window.innerHeight + 200);
+      shelf.setVisible(r.bottom > -200 && r.top < window.innerHeight + 200);
     }
     watch();
     if (hasGSAP && ST) {
       ST.create({
         trigger: sec, start: 'top bottom', end: 'bottom top',
-        onToggle: function (self) { cardLayer.setVisible(self.isActive); }
+        onToggle: function (self) { shelf.setVisible(self.isActive); }
       });
     } else {
       window.addEventListener('scroll', watch, { passive: true });
     }
 
-    window.addEventListener('resize', function () { cardLayer.resize(); });
-    if (hasGSAP && ST) ST.addEventListener('refresh', function () { cardLayer.resize(); });
+    window.addEventListener('resize', function () { shelf.resize(); });
+    if (hasGSAP && ST) ST.addEventListener('refresh', function () { shelf.resize(); });
   }
 
   /* ================================================================= */
@@ -1459,7 +1444,7 @@
          layer comes up later than this wiring, so the check is made on
          the event, not on the binding. */
       var owned = function () {
-        return !!cardLayer && card.hasAttribute('data-pour');
+        return !!shelf && card.hasAttribute('data-pour');
       };
 
       card.addEventListener('pointermove', function (e) {
@@ -1758,7 +1743,7 @@
 
     initLoader(function () {
       if (window.__heroIntro) window.__heroIntro.play();
-      initCards();
+      initShelf();
       // still renders are decoration; let the page settle first
       setTimeout(initBeanArt, 400);
     });

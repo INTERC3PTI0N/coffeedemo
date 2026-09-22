@@ -22,7 +22,7 @@ Ten sections, each with its own motion idea rather than one effect repeated:
 | 04 | Our Roasts | Five panels that expand on hover/focus over beds of real beans; clicking the open one opens that bean as a specimen, "Roast this lot" opens the drum |
 | 05 | Founder quote | Line-by-line mask reveal and a signature that draws itself |
 | 06 | Roast Lab | The field forms a ring around one large bean you can drag; the slider re-roasts every bean on the page |
-| 07 | The Collection | Pinned horizontal scroll; the cards are real 3D objects, and clicking one sends it into a deck of cards while a paper docket falls in with the notes |
+| 07 | The Collection | Pinned horizontal scroll; the shelf holds real 3D cups, and clicking one sends it into a deck of cups while a paper docket falls in with the notes |
 | 08 | Bean to Cup | Parallax airport-code slab, a CSS globe that turns with scroll, and beans travelling the shipping arc |
 | 09 | Brew Guide | Working calculator — method × servings → dose, water, ratio, grind, temp, time and steps |
 | 10 | Subscribe | Parallax field, validated form, footer |
@@ -51,12 +51,12 @@ Four, all real rather than decorative:
   loss, the five roast phases and a curve that draws itself. Each lot has its
   own drop temperature and time.
 
-- **The Deck** (`#collection` → click a card) — the card you clicked is the
+- **The Deck** (`#collection` → click a cup) — the cup you clicked is the
   thing that animates, and it stays the same object throughout: no still, no
   clone, no handoff. It comes out of the depth already spinning, unwinds
-  through two and a half turns so its back and its tasting notes pass the
-  camera, and settles face-on while a field of blank cards keeps tumbling past
-  the lens. Drag anywhere on the stage to turn it.
+  through two and a half turns, and settles tipped toward you — the one angle
+  from which the coffee in it is visible at all — while a field of blanks
+  keeps tumbling past the lens. Drag anywhere on the stage to turn it.
 
   The copy arrives as **a batch docket**: a piece of stock that falls in from
   the top of the window, swings once on its tape and hangs there. Click
@@ -198,8 +198,8 @@ force-based: gravity, wall constraints and the drum's tangential drag, plus an
 O(n²) separation pass, which is what stops the charge reading as one brown
 mass — at 150 beans it costs nothing. The specimen gets its own highest-detail
 geometry and material, because it is the only view where the surface is the
-whole point. The deck builds its card through the collection's own module, in
-the chamber's renderer, because a texture cannot cross WebGL contexts.
+whole point. The deck builds its cup through the collection's own module, in the chamber's
+renderer, because a texture cannot cross WebGL contexts.
 
 **The docket is stock, not a panel.** The paper is rendered once on canvas —
 laid lines, fibres both ways, three tea rings that have soaked in, the foxing
@@ -215,25 +215,38 @@ doing both reads as a bounce, and paper does not bounce. The tape grows by
 width rather than `scaleX`, because it carries a CSS rotation that a transform
 tween would write over.
 
-The deck's blanks sit on a ring, and the ring splays as they come forward.
+The deck's blanks are cup-shaped and nothing else — outside wall only, no roll,
+no interior, a fraction of the segments. Sixteen copies of the real cup is a
+lot of triangles to spend on blur. They sit on a ring, and the ring splays as
+they come forward.
 Behind the card the radius holds, so the depth stays populated; from just
 behind it forward they fan out and leave the frame at its edges. On a fixed
 radius they would sweep straight across the middle, and the one thing that
 view cannot afford is something crossing in front of the card you asked to see.
 
-**The collection's cards are real objects.** Each one is a bevelled slab with
-rounded corners and printed faces, lit by an environment map built around a
-single bright band — which is what puts a hard specular edge across a card as
-it turns. The pinned horizontal scroll, the layout and the hit targets all stay
-in the DOM; every frame the layer reads where a card's box has landed and puts
-its 3D card there, so nothing about the scroll has to know WebGL exists.
+**The collection's cups are real objects.** Each one is a single-wall paper
+cup, turned on a lathe the way a real one is drawn: one continuous path that
+climbs the outside, curls over the rolled rim and comes back down the inside to
+the base. That is what gives the wall thickness and an interior you can see
+into, rather than a cone you look straight through. The map splits along the
+same profile — the printed outside below the seam, the shaded interior above it
+— because nothing in this scene casts an occlusion and the inside has to go
+dark toward the base on its own.
 
-The turning is asymmetric on purpose. A card still to come is swung right
-round, so what you meet first is its back and its tasting notes; it turns over
-as it reaches the middle of the screen, then leans away rather than closing up
-again on the far side. Both halves are zero at dead centre, so nothing jumps as
-a card crosses it. Hovering straightens a card early; under
-`prefers-reduced-motion` they simply face front.
+The sleeve's flutes are geometry, not a bump map. A bump would fake them from
+straight on and lose them exactly where they matter, on the silhouette, so the
+radius itself is modulated: forty-eight flutes at six samples each, below which
+the corrugation aliases into a moiré. The print — brand, coffee, roast, lot —
+is wrapped twice, so however far a cup is turned a whole panel faces out.
+
+The coffee is lathed too, which puts its map in (angle, radius) space: crema is
+a band along one edge of the canvas and near-black along the other, so it
+collects at the wall the way it does in a cup rather than washing over the
+whole surface. Tipping the rim toward the reader is the only way any of it is
+visible — the camera sits at the cup's mid-height and cannot rise, because the
+whole screen mapping hangs off it being at zero — so a cup tips as it reaches
+the middle of the screen and stands straight again as it leaves. Hovering tips
+it further; under `prefers-reduced-motion` the row simply stands still.
 
 All easing is frame-rate independent — a per-frame "move 5% of the way" rate is
 converted for the frame actually drawn, so transitions take the same wall-clock
@@ -249,7 +262,7 @@ assets/
   css/chamber.css     the takeover, plus the two product sections
   js/scene.js         three.js — bean geometry, textures, the page-wide field
   js/chamber.js       the drum / deck stage, and the still bean-bed renders
-  js/cards.js         the cards themselves — geometry, artwork and the shelf
+  js/shelf.js         the cup — profile, sleeve, crema — and the shelf
   js/app.js           Lenis + GSAP/ScrollTrigger, Roast Lab, Brew Guide
   img/favicon.svg
   vendor/             GSAP 3.12.5 + ScrollTrigger, Lenis 1.1.13, three.js r160
