@@ -241,7 +241,7 @@ export function initChrome({ world }) {
   const navLinks = [...document.querySelectorAll('.nav__link')];
   const ticks = [...document.querySelectorAll('#rail-ticks li')];
   const progressBar = document.getElementById('rail-progress');
-  const altitudeEl = document.getElementById('altitude');
+  const freqEl = document.getElementById('frequency');
 
   function setActive(n) {
     navLinks.forEach((l) => l.classList.toggle('is-active', Number(l.dataset.chapter) === n));
@@ -270,13 +270,13 @@ export function initChrome({ world }) {
     },
   });
 
-  // altitude readout, sampled rather than written every frame
+  // driving-frequency readout, sampled rather than written every frame
   let last = -1;
   gsap.ticker.add(() => {
-    const a = world.getAltitude();
-    if (a === last) return;
-    last = a;
-    altitudeEl.textContent = String(a).padStart(4, '0');
+    const f = world.getFrequency();
+    if (f === last) return;
+    last = f;
+    freqEl.textContent = String(f).padStart(4, '0');
   });
 }
 

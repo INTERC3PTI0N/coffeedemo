@@ -45,7 +45,8 @@ const scrollTo = (target) => lenis.scrollTo(target, { offset: 0, duration: 1.6 }
  * ------------------------------------------------------------------ */
 const world = createWorld(document.getElementById('gl'), { reducedMotion });
 
-// pointer parallax, normalised to [-1, 1]
+// Pointer does double duty: it parallaxes the camera and drags a furrow
+// through the dust where it meets the plate.
 if (!reducedMotion) {
   window.addEventListener('pointermove', (e) => {
     world.setPointer(
@@ -53,6 +54,7 @@ if (!reducedMotion) {
       -((e.clientY / window.innerHeight) * 2 - 1),
     );
   }, { passive: true });
+  window.addEventListener('pointerleave', () => world.clearPointer());
 }
 
 createVault(document.getElementById('vault-stage'), { reducedMotion });

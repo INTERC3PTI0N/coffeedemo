@@ -23,13 +23,15 @@
   --gold-lt:  #E7CE92;
   --gold-dp:  #8A6C28;
 
-  /* semantic — retuned per chapter by JS */
-  --fg:        var(--slate-900);
-  --fg-soft:   var(--slate-500);
-  --fg-faint:  var(--slate-300);
-  --rule:      rgba(27, 36, 48, .18);
-  --accent:    var(--gold);
-  --scrim-rgb: 226, 232, 236;
+  /* semantic — retuned per chapter by JS.
+     The plate is lit from nowhere: the page is dark end to end, so these start
+     light-on-dark and stay there. */
+  --fg:        #DFE7EE;
+  --fg-soft:   #8BA0B4;
+  --fg-faint:  #5C6F82;
+  --rule:      rgba(223, 231, 238, .14);
+  --accent:    #B9873C;
+  --scrim-rgb: 5, 7, 10;
 
   /* type */
   --font: "Jost", "Futura", "Avenir Next", system-ui, sans-serif;
@@ -53,7 +55,7 @@ body {
   font-family: var(--font);
   font-weight: 300;
   color: var(--fg);
-  background: var(--ink);
+  background: #05070A;
   line-height: 1.5;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -85,7 +87,7 @@ img, svg, canvas { display: block; max-width: 100%; }
 .grain {
   position: fixed; inset: -120%;
   z-index: 3; pointer-events: none;
-  opacity: .32; mix-blend-mode: overlay;
+  opacity: .22; mix-blend-mode: soft-light;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
   animation: grain 6s steps(6) infinite;
 }
@@ -99,7 +101,7 @@ img, svg, canvas { display: block; max-width: 100%; }
 
 .vignette {
   position: fixed; inset: 0; z-index: 2; pointer-events: none;
-  background: radial-gradient(130% 95% at 50% 45%, transparent 38%, rgba(5,7,10,.38) 100%);
+  background: radial-gradient(125% 90% at 50% 48%, transparent 30%, rgba(3,4,7,.72) 100%);
   opacity: var(--vig, .55);
   transition: opacity 1s var(--ease);
 }
@@ -118,7 +120,7 @@ main#scroll { position: relative; z-index: 4; }
   text-wrap: balance;
 }
 .display--md { font-size: clamp(1.9rem, 4.2vw, 4rem); max-width: 19ch; }
-.display--light { color: var(--snow); }
+.display--light { color: var(--fg); }
 
 .eyebrow {
   display: block;
@@ -130,7 +132,7 @@ main#scroll { position: relative; z-index: 4; }
   color: var(--fg-faint);
   margin-bottom: clamp(1.2rem, 2.4vw, 2.2rem);
 }
-.eyebrow--light { color: rgba(226, 232, 236, .5); }
+.eyebrow--light { color: var(--fg-faint); }
 
 .wrap {
   width: 100%;
@@ -518,12 +520,12 @@ main#scroll { position: relative; z-index: 4; }
   display: grid; place-items: center;
   width: 2.6rem; height: 2.6rem;
   transform: rotate(45deg);
-  border: 1px solid rgba(226, 232, 236, .2);
+  border: 1px solid var(--rule);
   transition: border-color .5s var(--ease), background .5s var(--ease);
 }
 .division__idx i {
   font-family: var(--mono); font-style: normal; font-size: .625rem;
-  transform: rotate(-45deg); color: rgba(226, 232, 236, .7);
+  transform: rotate(-45deg); color: var(--fg-soft);
   transition: color .5s var(--ease);
 }
 .division:hover .division__idx { border-color: var(--gold); background: rgba(200, 162, 76, .1); }
@@ -532,12 +534,12 @@ main#scroll { position: relative; z-index: 4; }
   grid-column: 2; grid-row: 1;
   font-family: var(--mono); font-size: .5625rem;
   letter-spacing: .26em; text-transform: uppercase;
-  color: rgba(226, 232, 236, .45);
+  color: var(--fg-faint);
 }
 .division__title {
   grid-column: 2; grid-row: 2;
   font-size: clamp(1.15rem, 2.2vw, 1.95rem); font-weight: 200;
-  line-height: 1.22; letter-spacing: -.015em; color: var(--snow);
+  line-height: 1.22; letter-spacing: -.015em; color: var(--fg);
   transition: transform .7s var(--ease);
 }
 .division:hover .division__title { transform: translateX(.6rem); }
@@ -545,19 +547,19 @@ main#scroll { position: relative; z-index: 4; }
   grid-column: 3; grid-row: 1 / span 2; justify-self: end;
   display: flex; align-items: center; gap: .85rem;
   font-family: var(--mono); font-size: .5625rem;
-  letter-spacing: .26em; text-transform: uppercase; color: rgba(226, 232, 236, .8);
+  letter-spacing: .26em; text-transform: uppercase; color: var(--fg-soft);
   white-space: nowrap;
 }
 .division__cta i {
   display: grid; place-items: center;
   width: 1.9rem; height: 1.9rem; border-radius: 50%;
-  border: 1px solid rgba(226, 232, 236, .25); font-style: normal; font-size: .7rem;
+  border: 1px solid var(--rule); font-style: normal; font-size: .7rem;
   transition: background .45s var(--ease), color .45s var(--ease), border-color .45s var(--ease), transform .55s var(--ease);
 }
 .division:hover .division__cta i { background: var(--gold); border-color: var(--gold); color: var(--ink); transform: translateX(.25rem); }
 .division__rule {
   position: absolute; left: 0; bottom: 0; width: 100%; height: 1px;
-  background: rgba(226, 232, 236, .16);
+  background: var(--rule);
 }
 .division__rule::after {
   content: ""; position: absolute; inset: 0;
@@ -576,28 +578,28 @@ main#scroll { position: relative; z-index: 4; }
 .vault__text {
   margin-top: clamp(1.4rem, 3vw, 2.4rem);
   max-width: 44ch; font-size: clamp(.8125rem, 1.15vw, .9375rem);
-  line-height: 1.85; color: rgba(199, 208, 216, .72);
+  line-height: 1.85; color: var(--fg-soft);
 }
 .specs {
   display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1px; margin-top: clamp(2rem, 4vw, 3.4rem);
-  background: rgba(226, 232, 236, .12);
-  border: 1px solid rgba(226, 232, 236, .12);
+  background: var(--rule);
+  border: 1px solid var(--rule);
   max-width: 30rem;
 }
-.specs > div { background: rgba(11, 14, 17, .55); padding: clamp(.9rem, 1.8vw, 1.3rem); }
+.specs > div { background: rgba(8, 11, 16, .6); padding: clamp(.9rem, 1.8vw, 1.3rem); }
 .specs dt {
   font-family: var(--mono); font-size: .5rem; letter-spacing: .26em;
-  text-transform: uppercase; color: rgba(226, 232, 236, .38);
+  text-transform: uppercase; color: var(--fg-faint);
 }
-.specs dd { margin-top: .5rem; font-size: clamp(.95rem, 1.6vw, 1.25rem); font-weight: 300; color: var(--snow); }
+.specs dd { margin-top: .5rem; font-size: clamp(.95rem, 1.6vw, 1.25rem); font-weight: 300; color: var(--fg); }
 .vault__stage { position: relative; aspect-ratio: 1 / 1; min-height: 320px; cursor: grab; }
 .vault__stage:active { cursor: grabbing; }
 .vault__stage canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
 .vault__hint {
   position: absolute; left: 50%; bottom: 4%; transform: translateX(-50%);
   font-family: var(--mono); font-size: .5rem; letter-spacing: .28em;
-  text-transform: uppercase; color: rgba(226, 232, 236, .34);
+  text-transform: uppercase; color: var(--fg-faint);
   pointer-events: none;
 }
 @media (max-width: 860px) {

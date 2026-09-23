@@ -1,65 +1,81 @@
 import * as THREE from 'three';
-import { createRidgeline, MAIN_LAYERS, DAWN_LAYERS } from './ridgeline.js';
-import ridgelineUrl from '../assets/ridgeline.webp';
-import { createClouds } from './clouds.js';
-import { createOcean } from './ocean.js';
+import { createResonance } from './resonance.js';
 import { createPostFX } from './postfx.js';
 
 /* ------------------------------------------------------------------ *
- * The flight path.
+ * The flight.
  *
- * Seven beats carrying the camera from above the cloud deck, down through
- * it, under the weather into the storm sea, into the vault chamber, and
- * finally back up into dawn light. `t` is global scroll progress.
+ * Seven beats carrying the camera from far above a dark plate, down onto
+ * the figure, inside the volume once the field lifts, and back out to
+ * read the struck mark.
  * ------------------------------------------------------------------ */
-/* The altitude of the cloud deck. Terrain haze, the cloud slab and the camera
-   flight are all keyed to it, so moving the weather moves everything together. */
-const DECK_Y = 300;
-
 const FLIGHT = [
-  { t: 0.00, pos: [ 320,  880,  1180 ], look: [   10,  700, -1900 ], fov: 44 },
-  { t: 0.17, pos: [ 356,  726,   520 ], look: [   70,  596, -2200 ], fov: 43 },
-  { t: 0.35, pos: [ 400,  438,  -260 ], look: [  240,  366, -2600 ], fov: 42 },
-  { t: 0.53, pos: [ 360,  -40,  -980 ], look: [  420,   10, -3100 ], fov: 42 },
-  { t: 0.71, pos: [ 180, -430, -1720 ], look: [   60, -400, -3700 ], fov: 41 },
-  { t: 0.87, pos: [ -90, -352, -2460 ], look: [  -40, -300, -4400 ], fov: 43 },
-  { t: 1.00, pos: [ -40,  330, -3180 ], look: [  180,  470, -5300 ], fov: 46 },
+  // A Chladni figure only reads whole. For the plate chapters the camera sits
+  // back and square-on; it only leaves that vantage to dive into the volume.
+  { t: 0.00, pos: [   0,    0, 3050 ], look: [   0,    0,    0 ], fov: 40 },
+  { t: 0.18, pos: [-150,  100, 2340 ], look: [   0,    0,    0 ], fov: 38 },
+  { t: 0.36, pos: [ 230, -130, 2120 ], look: [   0,    0,    0 ], fov: 38 },
+  { t: 0.52, pos: [-270,  170, 1940 ], look: [   0,    0,    0 ], fov: 38 },
+  { t: 0.70, pos: [  70,   50,  430 ], look: [ -40,   10, -280 ], fov: 68 },
+  { t: 0.87, pos: [ -70,   50, 1520 ], look: [   0,    0,    0 ], fov: 42 },
+  { t: 1.00, pos: [   0,    0, 2650 ], look: [   0,    0,    0 ], fov: 40 },
 ];
 
 /* ------------------------------------------------------------------ *
- * The colour journey — ice → slate → storm → vault gold → dawn.
+ * The score.
+ *
+ * Each beat is a driving condition for the plate. `mode` are the Chladni
+ * numbers, `lock` is how near a node a grain must sit to read as settled,
+ * `dim` lifts the field off the plate into the gyroid volume.
+ * ------------------------------------------------------------------ */
+const SCORE = [
+  // `off` slides the plate clear of the column of type, the way a subject is
+  // placed off-centre; the volume dive and the struck mark recentre it.
+  // 01 — silence: no mode, wide lock, the dust is formless
+  { t: 0.00, mode: [0.4, 0.7], gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.30, jitter: 0.200, lock: 0.95, glyph: 0, scatter: 0, off: 120 },
+  // 02 — the first note: a simple, unmistakable figure
+  { t: 0.18, mode: [2, 3],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.20, jitter: 0.030, lock: 0.34, glyph: 0, scatter: 0, off: 380 },
+  // 03 — the sweep: the mode climbs, the figure complicates
+  { t: 0.36, mode: [5, 4],     gyro: [3.6, 3.6, 3.6], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.30, glyph: 0, scatter: 0, off: 360 },
+  { t: 0.52, mode: [8, 5],     gyro: [4.0, 4.0, 4.0], dim: 0, tight: 2.60, jitter: 0.024, lock: 0.27, glyph: 0, scatter: 0, off: 330 },
+  // 04 — the field lifts: nodal lines become a surface
+  { t: 0.70, mode: [9, 6],     gyro: [5.0, 5.0, 5.0], dim: 1, tight: 2.10, jitter: 0.040, lock: 0.36, glyph: 0, scatter: 0, off: 0 },
+  // 05 — the mark: everything converges on the hallmark
+  { t: 0.88, mode: [9, 9],     gyro: [5.4, 5.4, 5.4], dim: 0, tight: 0.85, jitter: 0.022, lock: 0.40, glyph: 1, scatter: 0, off: 0 },
+  // 06 — release
+  { t: 1.00, mode: [3, 2],     gyro: [3.4, 3.4, 3.4], dim: 0, tight: 0.55, jitter: 0.090, lock: 0.55, glyph: 0, scatter: 0.10, off: 100 },
+];
+
+/* ------------------------------------------------------------------ *
+ * The look.
  * ------------------------------------------------------------------ */
 const GRADE = [
-  { t: 0.00, bg: '#e1e8ed', fog: '#dfe6eb', cLight: '#ffffff', cDark: '#9cadbc', tint: '#ffffff', tintAmt: 0.00,
-    density: 0.88, cast: '#ffffff', castAmt: 0.00, lift: 0.006, sat: 0.97, vig: 0.30, bloom: 0.13, exposure: 1.00 },
-  { t: 0.20, bg: '#d6dfe6', fog: '#d4dde4', cLight: '#fbfdfe', cDark: '#8d9fb0', tint: '#eef4f8', tintAmt: 0.10,
-    density: 1.00, cast: '#f4f8fb', castAmt: 0.10, lift: 0.008, sat: 0.95, vig: 0.34, bloom: 0.15, exposure: 1.00 },
-  { t: 0.38, bg: '#a9b8c5', fog: '#a6b5c2', cLight: '#e8eff4', cDark: '#67798a', tint: '#cdd9e3', tintAmt: 0.14,
-    density: 1.24, cast: '#dde6ee', castAmt: 0.18, lift: 0.010, sat: 0.88, vig: 0.44, bloom: 0.18, exposure: 0.94 },
-  { t: 0.56, bg: '#36434f', fog: '#333f4a', cLight: '#8d9daa', cDark: '#39454f', tint: '#7e8f9d', tintAmt: 0.16,
-    density: 1.05, cast: '#b9c8d4', castAmt: 0.24, lift: 0.010, sat: 0.80, vig: 0.54, bloom: 0.36, exposure: 0.92 },
-  { t: 0.72, bg: '#141c24', fog: '#131b23', cLight: '#62727f', cDark: '#1a232c', tint: '#5c6c7a', tintAmt: 0.18,
-    density: 0.86, cast: '#9fb0be', castAmt: 0.28, lift: 0.006, sat: 0.78, vig: 0.62, bloom: 0.42, exposure: 0.90 },
-  { t: 0.83, bg: '#100f0d', fog: '#14120e', cLight: '#6b5c3c', cDark: '#191713', tint: '#c8a24c', tintAmt: 0.34,
-    density: 0.72, cast: '#e6c88e', castAmt: 0.30, lift: 0.008, sat: 0.86, vig: 0.60, bloom: 0.52, exposure: 0.94 },
-  { t: 0.93, bg: '#6e6152', fog: '#75685a', cLight: '#e8cda0', cDark: '#5d5244', tint: '#e0bd7c', tintAmt: 0.40,
-    density: 0.86, cast: '#f6ddb0', castAmt: 0.32, lift: 0.014, sat: 0.92, vig: 0.48, bloom: 0.52, exposure: 1.00 },
-  { t: 1.00, bg: '#d9d2c4', fog: '#dcd4c5', cLight: '#fff4de', cDark: '#b6a68c', tint: '#e7ce92', tintAmt: 0.38,
-    density: 0.92, cast: '#fff1d8', castAmt: 0.26, lift: 0.026, sat: 0.94, vig: 0.34, bloom: 0.40, exposure: 1.04 },
+  { t: 0.00, bg: '#05070a', cold: '#566d82', hot: '#8ea7bd', size: 3.1, glow: 0.7, opacity: 0.55,
+    bloom: 0.55, vig: 0.72, sat: 0.80, lift: 0.004, cast: '#b9cbdb', castAmt: 0.10, exposure: 1.0 },
+  { t: 0.18, bg: '#060a0f', cold: '#627e9a', hot: '#cfa95f', size: 3.2, glow: 1.1, opacity: 0.85,
+    bloom: 0.70, vig: 0.66, sat: 0.88, lift: 0.005, cast: '#cddced', castAmt: 0.12, exposure: 1.0 },
+  { t: 0.36, bg: '#070b12', cold: '#6886a6', hot: '#e3bd6c', size: 3.3, glow: 1.4, opacity: 0.95,
+    bloom: 0.80, vig: 0.62, sat: 0.94, lift: 0.006, cast: '#d8e3f0', castAmt: 0.12, exposure: 1.0 },
+  { t: 0.52, bg: '#080c14', cold: '#7191b2', hot: '#f0c873', size: 2.5, glow: 1.7, opacity: 1.00,
+    bloom: 0.92, vig: 0.58, sat: 1.00, lift: 0.007, cast: '#e2ecf6', castAmt: 0.10, exposure: 1.02 },
+  { t: 0.70, bg: '#0a0d16', cold: '#7c9dbf', hot: '#ffd98a', size: 2.6, glow: 2.0, opacity: 1.00,
+    bloom: 1.05, vig: 0.50, sat: 1.04, lift: 0.010, cast: '#eef4fb', castAmt: 0.08, exposure: 1.04 },
+  { t: 0.88, bg: '#07090e', cold: '#6c8399', hot: '#ffe2a2', size: 2.9, glow: 2.2, opacity: 1.00,
+    bloom: 1.10, vig: 0.60, sat: 1.00, lift: 0.006, cast: '#ffeecb', castAmt: 0.16, exposure: 1.02 },
+  { t: 1.00, bg: '#05070a', cold: '#5a7084', hot: '#c9a24f', size: 2.7, glow: 1.0, opacity: 0.72,
+    bloom: 0.62, vig: 0.70, sat: 0.86, lift: 0.004, cast: '#cfdbe8', castAmt: 0.10, exposure: 1.0 },
 ];
 
-/* text colour per chapter, pushed into CSS custom properties */
+/* text colour per chapter — the page is dark throughout, so this barely moves */
 const UI_THEME = [
-  { t: 0.00, fg: '#1b2430', soft: '#4b5e71', faint: '#93a3b2', rule: 'rgba(27,36,48,.18)',    accent: '#a8842f', scrim: '#e1e8ed' },
-  { t: 0.30, fg: '#16202b', soft: '#3c4f62', faint: '#7f91a2', rule: 'rgba(22,32,43,.20)',    accent: '#9d7a2a', scrim: '#c4d0da' },
-  { t: 0.50, fg: '#f2f6f8', soft: '#b3c1cd', faint: '#7f8e9c', rule: 'rgba(242,246,248,.18)', accent: '#c8a24c', scrim: '#28333d' },
-  { t: 0.86, fg: '#f6f2e8', soft: '#bdb39d', faint: '#8a806c', rule: 'rgba(246,242,232,.16)', accent: '#e7ce92', scrim: '#100f0d' },
-  { t: 0.95, fg: '#f8f3e6', soft: '#d6cbb2', faint: '#a79c84', rule: 'rgba(248,243,230,.20)', accent: '#f0d9a2', scrim: '#6e6152' },
-  { t: 1.00, fg: '#26211a', soft: '#5b5445', faint: '#8d8676', rule: 'rgba(38,33,26,.22)',    accent: '#8a6c28', scrim: '#d9d2c4' },
+  { t: 0.00, fg: '#dfe7ee', soft: '#8ba0b4', faint: '#5c6f82', rule: 'rgba(223,231,238,.14)', accent: '#b9873c', scrim: '#05070a' },
+  { t: 0.45, fg: '#f0f5f9', soft: '#a3b7c9', faint: '#6d8196', rule: 'rgba(240,245,249,.16)', accent: '#e3bd6c', scrim: '#070b12' },
+  { t: 0.88, fg: '#fbf3e2', soft: '#c3b294', faint: '#8a7c64', rule: 'rgba(251,243,226,.18)', accent: '#ffe2a2', scrim: '#07090e' },
+  { t: 1.00, fg: '#dfe7ee', soft: '#8ba0b4', faint: '#5c6f82', rule: 'rgba(223,231,238,.14)', accent: '#b9873c', scrim: '#05070a' },
 ];
 
 /* ------------------------------------------------------------------ *
- * interpolation helpers
+ * interpolation
  * ------------------------------------------------------------------ */
 function segment(keys, t) {
   let i = 0;
@@ -86,7 +102,6 @@ function sampleFlight(t, outPos, outLook) {
   const { i, s } = segment(FLIGHT, t);
   const k = (n) => FLIGHT[THREE.MathUtils.clamp(n, 0, FLIGHT.length - 1)];
   const p0 = k(i - 1), p1 = k(i), p2 = k(i + 1), p3 = k(i + 2);
-
   for (let c = 0; c < 3; c++) {
     outPos.setComponent(c, cr(p0.pos[c], p1.pos[c], p2.pos[c], p3.pos[c], s));
     outLook.setComponent(c, cr(p0.look[c], p1.look[c], p2.look[c], p3.look[c], s));
@@ -98,36 +113,50 @@ const _cA = new THREE.Color();
 const _cB = new THREE.Color();
 const _cC = new THREE.Color();
 
-/* Reusable result objects — sampleGrade/sampleUI run every frame, so nothing
-   in here allocates. */
+const _score = { mode: new THREE.Vector2(), gyro: new THREE.Vector3() };
+
+function sampleScore(t) {
+  const { a, b, s } = segment(SCORE, t);
+  const e = s * s * (3 - 2 * s);
+  const l = (ka, kb) => ka + (kb - ka) * e;
+
+  _score.mode.set(l(a.mode[0], b.mode[0]), l(a.mode[1], b.mode[1]));
+  _score.gyro.set(l(a.gyro[0], b.gyro[0]), l(a.gyro[1], b.gyro[1]), l(a.gyro[2], b.gyro[2]));
+  _score.dim     = l(a.dim, b.dim);
+  _score.tight   = l(a.tight, b.tight);
+  _score.jitter  = l(a.jitter, b.jitter);
+  _score.lock    = l(a.lock, b.lock);
+  _score.glyph   = l(a.glyph, b.glyph);
+  _score.scatter = l(a.scatter, b.scatter);
+  _score.off     = l(a.off, b.off);
+  return _score;
+}
+
 const _grade = {
-  bg: new THREE.Color(), fog: new THREE.Color(), cLight: new THREE.Color(),
-  cDark: new THREE.Color(), tint: new THREE.Color(), cast: new THREE.Color(),
-  tintAmt: 0, density: 0, castAmt: 0, lift: 0, sat: 0, vig: 0, bloom: 0, exposure: 1,
+  bg: new THREE.Color(), cold: new THREE.Color(), hot: new THREE.Color(), cast: new THREE.Color(),
+  size: 2, glow: 1, opacity: 1, bloom: 1, vig: 0.6, sat: 1, lift: 0, castAmt: 0, exposure: 1,
 };
 
 function sampleGrade(t) {
   const { a, b, s } = segment(GRADE, t);
   const e = s * s * (3 - 2 * s);
   const into = (out, ka, kb) => out.set(ka).lerp(_cB.set(kb), e);
-  const lerp = (ka, kb) => ka + (kb - ka) * e;
+  const l = (ka, kb) => ka + (kb - ka) * e;
 
   into(_grade.bg, a.bg, b.bg);
-  into(_grade.fog, a.fog, b.fog);
-  into(_grade.cLight, a.cLight, b.cLight);
-  into(_grade.cDark, a.cDark, b.cDark);
-  into(_grade.tint, a.tint, b.tint);
+  into(_grade.cold, a.cold, b.cold);
+  into(_grade.hot, a.hot, b.hot);
   into(_grade.cast, a.cast, b.cast);
 
-  _grade.tintAmt  = lerp(a.tintAmt, b.tintAmt);
-  _grade.density  = lerp(a.density, b.density);
-  _grade.castAmt  = lerp(a.castAmt, b.castAmt);
-  _grade.lift     = lerp(a.lift, b.lift);
-  _grade.sat      = lerp(a.sat, b.sat);
-  _grade.vig      = lerp(a.vig, b.vig);
-  _grade.bloom    = lerp(a.bloom, b.bloom);
-  _grade.exposure = lerp(a.exposure, b.exposure);
-
+  _grade.size     = l(a.size, b.size);
+  _grade.glow     = l(a.glow, b.glow);
+  _grade.opacity  = l(a.opacity, b.opacity);
+  _grade.bloom    = l(a.bloom, b.bloom);
+  _grade.vig      = l(a.vig, b.vig);
+  _grade.sat      = l(a.sat, b.sat);
+  _grade.lift     = l(a.lift, b.lift);
+  _grade.castAmt  = l(a.castAmt, b.castAmt);
+  _grade.exposure = l(a.exposure, b.exposure);
   return _grade;
 }
 
@@ -136,21 +165,18 @@ function sampleUI(t) {
   const e = s * s * (3 - 2 * s);
   const mixHex = (ka, kb) => '#' + _cA.set(ka).lerp(_cB.set(kb), e).getHexString();
 
-  // _cC, not _cA: mixHex below reuses _cA, so sharing it here would hand the
-  // scrim whichever colour was mixed last.
-  const scrimCol = _cC.set(a.scrim).lerp(_cB.set(b.scrim), e);
-  const scrim = `${Math.round(scrimCol.r * 255)}, `
-              + `${Math.round(scrimCol.g * 255)}, `
-              + `${Math.round(scrimCol.b * 255)}`;
+  // _cC, not _cA: mixHex below reuses _cA, so sharing it would hand the scrim
+  // whichever colour was mixed last.
+  const sc = _cC.set(a.scrim).lerp(_cB.set(b.scrim), e);
+  const scrim = `${Math.round(sc.r * 255)}, ${Math.round(sc.g * 255)}, ${Math.round(sc.b * 255)}`;
 
-  // rule colours are rgba strings — swap at the midpoint rather than parse them
   return {
-    fg:     mixHex(a.fg, b.fg),
-    soft:   mixHex(a.soft, b.soft),
-    faint:  mixHex(a.faint, b.faint),
+    fg: mixHex(a.fg, b.fg),
+    soft: mixHex(a.soft, b.soft),
+    faint: mixHex(a.faint, b.faint),
     accent: mixHex(a.accent, b.accent),
     scrim,
-    rule:   e < 0.5 ? a.rule : b.rule,
+    rule: e < 0.5 ? a.rule : b.rule,
   };
 }
 
@@ -159,7 +185,8 @@ function sampleUI(t) {
  * ------------------------------------------------------------------ */
 export function createWorld(canvas, { reducedMotion = false } = {}) {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const perfTier = window.innerWidth < 760 ? 0.72 : dpr > 1.5 ? 0.9 : 1;
+  const small = window.innerWidth < 760;
+  const perfTier = small ? 0.72 : dpr > 1.5 ? 0.9 : 1;
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
@@ -172,103 +199,72 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color('#e1e8ed');
+  scene.background = new THREE.Color('#05070a');
 
-  const camera = new THREE.PerspectiveCamera(46, window.innerWidth / window.innerHeight, 1, 14000);
+  const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 1, 9000);
   camera.position.set(...FLIGHT[0].pos);
 
-  /* ---- content ---- */
-  const texture = new THREE.TextureLoader().load(ridgelineUrl);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = perfTier < 0.8 ? 2 : 8;
-  texture.generateMipmaps = true;
-  texture.minFilter = THREE.LinearMipmapLinearFilter;
-  texture.magFilter = THREE.LinearFilter;
-  texture.wrapS = THREE.ClampToEdgeWrapping;
-  texture.wrapT = THREE.ClampToEdgeWrapping;
-
-  // the range the descent travels through
-  const range = createRidgeline(texture, { layers: MAIN_LAYERS, deckY: DECK_Y });
-  scene.add(range.group);
-
-  // and the one that greets the camera when it climbs back into dawn light
-  const dawnRange = createRidgeline(texture, { layers: DAWN_LAYERS, deckY: -640 });
-  dawnRange.setOpacity(0);
-  scene.add(dawnRange.group);
-
-  const clouds = createClouds({
-    // Overlapping transparent quads are pure fill rate, so the deck runs to a
-    // budget: enough puffs to read as volume, few enough to hold frame rate.
-    count: perfTier < 0.8 ? 190 : 420,
-    spread: 7600,
-    deckY: DECK_Y,
-    thickness: 430,
-    minScale: 320,
-    maxScale: 1180,
+  const field = createResonance(renderer, {
+    size: small ? 192 : perfTier < 0.95 ? 288 : 384,
+    scale: 620,
   });
-  scene.add(clouds.mesh);
-
-  // a thin upper veil so there is weather above the camera too
-  const veil = createClouds({
-    count: perfTier < 0.8 ? 50 : 110,
-    spread: 8400,
-    deckY: 1250,
-    thickness: 340,
-    minScale: 900,
-    maxScale: 2400,
-  });
-  veil.uniforms.uDensity.value = 0.34;
-  veil.uniforms.uSoft.value = 0.42;
-  veil.mesh.renderOrder = 6;
-  scene.add(veil.mesh);
-
-  const ocean = createOcean({ size: 14000, y: -860 });
-  scene.add(ocean.mesh);
+  scene.add(field.points);
 
   const fx = createPostFX(renderer, scene, camera, { quality: perfTier });
 
-  /* ---- state ---- */
   const state = {
     progress: 0,
     target: 0,
     pointer: new THREE.Vector2(),
     pointerDamped: new THREE.Vector2(),
+    pointerActive: false,
     time: 0,
-    altitude: 0,
+    frequency: 0,
   };
 
   const pos = new THREE.Vector3();
   const look = new THREE.Vector3();
-  const lookDamped = new THREE.Vector3(...FLIGHT[0].look);
   const posDamped = new THREE.Vector3(...FLIGHT[0].pos);
+  const lookDamped = new THREE.Vector3(...FLIGHT[0].look);
   const right = new THREE.Vector3();
   const up = new THREE.Vector3();
+
+  // pointer → a point on the plate, for the finger-through-dust disturbance
+  const raycaster = new THREE.Raycaster();
+  const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
+  const hit = new THREE.Vector3();
+  const ndc = new THREE.Vector2();
 
   const root = document.documentElement;
   let lastUI = null;
   let lastUIStep = -1;
+
+  function applyScore(t) {
+    const s = sampleScore(t);
+    field.sim.uMode.value.copy(s.mode);
+    field.sim.uGyroid.value.copy(s.gyro);
+    field.sim.uDimension.value = s.dim;
+    field.sim.uTightness.value = s.tight;
+    field.sim.uJitter.value = s.jitter;
+    field.sim.uLockWidth.value = s.lock;
+    field.sim.uGlyph.value = s.glyph;
+    field.sim.uScatter.value = s.scatter;
+    field.points.position.x = s.off;
+
+    // a readable "driving frequency" for the UI: mode order, scaled
+    state.frequency = Math.round((s.mode.x * s.mode.x + s.mode.y * s.mode.y) * 11.1);
+  }
 
   function applyGrade(t) {
     const g = sampleGrade(t);
 
     scene.background.copy(g.bg);
 
-    range.setGrade(g.fog, g.cLight, g.exposure);
-    dawnRange.setGrade(g.fog, g.cLight, g.exposure * 1.04);
-
-    clouds.uniforms.uLight.value.copy(g.cLight);
-    clouds.uniforms.uDark.value.copy(g.cDark);
-    clouds.uniforms.uTint.value.copy(g.tint);
-    clouds.uniforms.uTintAmount.value = g.tintAmt;
-    clouds.uniforms.uDensity.value = g.density;
-
-    veil.uniforms.uLight.value.copy(g.cLight);
-    veil.uniforms.uDark.value.copy(g.cDark);
-    veil.uniforms.uTint.value.copy(g.tint);
-    veil.uniforms.uTintAmount.value = g.tintAmt;
-    veil.uniforms.uDensity.value = g.density * 0.34;
-
-    ocean.uniforms.uFog.value.copy(g.fog);
+    field.uniforms.uCold.value.copy(g.cold);
+    field.uniforms.uHot.value.copy(g.hot);
+    field.uniforms.uSize.value = g.size;
+    field.uniforms.uGlow.value = g.glow;
+    field.uniforms.uOpacity.value = g.opacity;
 
     fx.uniforms.uCast.value.copy(g.cast);
     fx.uniforms.uCastAmount.value = g.castAmt;
@@ -277,22 +273,6 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     fx.uniforms.uVignette.value = g.vig;
     fx.bloom.strength = g.bloom;
 
-    // the summits dissolve into the deck as the camera sinks through it
-    range.setOpacity(1 - THREE.MathUtils.smoothstep(t, 0.40, 0.56));
-    range.setDrift(THREE.MathUtils.smoothstep(t, 0.0, 0.52));
-
-    // the sea only exists under the weather
-    const seaIn = THREE.MathUtils.smoothstep(t, 0.50, 0.66);
-    const seaOut = 1 - THREE.MathUtils.smoothstep(t, 0.80, 0.90);
-    ocean.uniforms.uOpacity.value = seaIn * seaOut;
-    ocean.mesh.visible = ocean.uniforms.uOpacity.value > 0.01;
-
-    // and a new range rises for the last chapter
-    dawnRange.setOpacity(THREE.MathUtils.smoothstep(t, 0.82, 0.94));
-    dawnRange.setDrift(THREE.MathUtils.smoothstep(t, 0.84, 1.0) * 0.6);
-
-    // UI colour — resample only when the journey has moved a meaningful step,
-    // and only touch the DOM when the result actually differs
     const step = Math.round(t * 240);
     if (step === lastUIStep) return;
     lastUIStep = step;
@@ -317,6 +297,7 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     renderer.setSize(w, h, false);
     fx.composer.setSize(w, h);
     fx.bloom.setSize(w, h);
+    field.resize();
   }
   window.addEventListener('resize', resize, { passive: true });
 
@@ -326,14 +307,12 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     const dt = Math.min(clock.getDelta(), 0.05);
     state.time += dt;
 
-    // damped scroll — this is what makes the flight feel weighted
     const ease = reducedMotion ? 1 : 1 - Math.pow(0.0016, dt);
     state.progress += (state.target - state.progress) * ease;
-
     const t = state.progress;
+
     const fov = sampleFlight(t, pos, look);
 
-    // pointer parallax in camera space
     state.pointerDamped.lerp(state.pointer, reducedMotion ? 1 : 1 - Math.pow(0.004, dt));
 
     posDamped.copy(pos);
@@ -344,15 +323,14 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     up.crossVectors(right, fwd).normalize();
 
     const par = reducedMotion ? 0 : 1;
-    posDamped.addScaledVector(right, state.pointerDamped.x * 42 * par);
-    posDamped.addScaledVector(up, state.pointerDamped.y * 26 * par);
-    lookDamped.addScaledVector(right, state.pointerDamped.x * -16 * par);
-    lookDamped.addScaledVector(up, state.pointerDamped.y * -10 * par);
+    posDamped.addScaledVector(right, state.pointerDamped.x * 58 * par);
+    posDamped.addScaledVector(up, state.pointerDamped.y * 34 * par);
+    lookDamped.addScaledVector(right, state.pointerDamped.x * -20 * par);
+    lookDamped.addScaledVector(up, state.pointerDamped.y * -12 * par);
 
-    // a breath of handheld drift so nothing feels locked to a rail
     if (!reducedMotion) {
-      posDamped.y += Math.sin(state.time * 0.31) * 3.2;
-      posDamped.x += Math.cos(state.time * 0.24) * 2.6;
+      posDamped.y += Math.sin(state.time * 0.29) * 3.4;
+      posDamped.x += Math.cos(state.time * 0.23) * 2.8;
     }
 
     camera.position.copy(posDamped);
@@ -362,26 +340,35 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
       camera.updateProjectionMatrix();
     }
 
-    clouds.uniforms.uTime.value = state.time;
-    veil.uniforms.uTime.value = state.time;
-    ocean.uniforms.uTime.value = state.time;
+    // drag the pointer through the dust
+    if (state.pointerActive && !reducedMotion) {
+      ndc.set(state.pointerDamped.x, state.pointerDamped.y);
+      raycaster.setFromCamera(ndc, camera);
+      if (raycaster.ray.intersectPlane(plane, hit)) {
+        field.setPointer(hit, 0.85);
+      } else {
+        field.setPointer(null, 0);
+      }
+    } else {
+      field.setPointer(null, 0);
+    }
+
+    applyScore(t);
+    applyGrade(t);
     fx.uniforms.uTime.value = state.time;
 
-    applyGrade(t);
-
-    // 4 478 m at the summit, falling to sea level under the weather
-    state.altitude = Math.max(0, Math.round((camera.position.y + 620) * 5.4));
-
+    field.update(dt);
     fx.composer.render();
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
 
   return {
-    renderer, scene, camera, state,
+    renderer, scene, camera, state, field,
     setProgress: (v) => { state.target = THREE.MathUtils.clamp(v, 0, 1); },
-    setPointer: (x, y) => { state.pointer.set(x, y); },
-    getAltitude: () => state.altitude,
+    setPointer: (x, y) => { state.pointer.set(x, y); state.pointerActive = true; },
+    clearPointer: () => { state.pointerActive = false; },
+    getFrequency: () => state.frequency,
     resize,
   };
 }
