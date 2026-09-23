@@ -343,10 +343,18 @@
     scene.add(cup);
 
     var drag = 0, spin = 0, lean = 0, leanTo = 0;
+    var build = 1;                     // 0 = still arriving, 1 = settled
 
     return {
       group: cup,
       setVisible: function (v) { cup.visible = v; },
+
+      /* The preloader's cup IS this cup. Rather than build a second one
+         behind a curtain and swap it for this at the end — which is a
+         match nobody ever quite makes — the loader drives this one from
+         far away and spinning to its resting pose, and then lifts the
+         curtain off what is already there. */
+      setBuild: function (p) { build = clamp(p, 0, 1); },
 
       /* Flick it and it keeps going. A drag that only moves the cup while
          the pointer is down feels like a slider; carrying the velocity and
@@ -380,6 +388,23 @@
         cup.rotation.z = -0.13 + Math.sin(t * 0.4) * 0.025 - dolly * 0.16;
         cup.position.y = Math.sin(t * 0.55) * 0.09 - dolly * 0.5;
         cup.scale.setScalar(reveal);
+
+        /* The arrival, laid over the resting pose rather than replacing
+           it, so there is no moment where one hands over to the other:
+           at build = 1 every one of these terms is zero. */
+        if (build < 1) {
+          var a = 1 - build;
+          var e = 1 - a * a * a;                   // expo-ish out
+          var k = 1 - e;
+          cup.rotation.y += k * Math.PI * 7;
+          cup.rotation.x += k * 0.80;
+          cup.rotation.z += k * -0.55;
+          cup.position.z = k * -13;
+          cup.position.y -= k * 0.55;
+          cup.scale.setScalar(reveal * (0.20 + 0.80 * e));
+        } else if (cup.position.z !== 0) {
+          cup.position.z = 0;
+        }
 
         steamMat.opacity = reveal * 0.26;
         for (var i = 0; i < puffs.length; i++) {
@@ -936,6 +961,7 @@
       camZ: 12,
       cloudCur: 0,
       heroCur: 0,
+      building: false,
       light: 0,            // 0 = dark section, 1 = light section
       lightCur: 0,
       roast: { target: new THREE.Color(0x6b3d20), cur: new THREE.Color(0x6b3d20),
@@ -1009,8 +1035,11 @@
       camera.lookAt(state.smooth.x * 0.35, state.smooth.y * -0.25, camera.position.z - 9);
 
       /* the cup and its sun belong to the hero */
-      var wantHero = state.formation === 'swarm' ? 1 : 0;
-      state.heroCur = lerp(state.heroCur, wantHero, damp(0.06, dt));
+      /* The loader runs before any scroll has happened, so the cup has to
+         be on stage whether or not the hero's zone has been resolved. */
+      var wantHero = (state.formation === 'swarm' || state.building) ? 1 : 0;
+      state.heroCur = state.building ? 1
+                                     : lerp(state.heroCur, wantHero, damp(0.06, dt));
       var heroOn = state.heroCur > 0.01;
       cup.setVisible(heroOn);
       sky.setVisible(heroOn);
@@ -1131,6 +1160,10 @@
 
       nudgeCup: function (dx) { cup.nudge(dx); },
       lookCup: function (x) { cup.look(x); },
+      setCupBuild: function (p) {
+        state.building = p < 0.999;
+        cup.setBuild(p);
+      },
 
       /* for diagnostics: what the field currently thinks it is doing */
       debug: function () {

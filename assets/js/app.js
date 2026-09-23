@@ -115,47 +115,129 @@
   /* ================================================================= */
   /* 2 · Preloader                                                     */
   /* ================================================================= */
+  /* The loader is a hole cut in the ink, with the hero's own cup live
+     behind it from the first frame. Nothing is built here and nothing is
+     handed over: the timeline drives that cup in from far away, and when
+     it has arrived the ink opens out around it. */
   function initLoader(done) {
     var loader = $('#loader');
-    var bar = $('#loaderBar');
+    var iris = $('#loaderIris');
+    var ring = $('#loaderRing');
+    var arc = $('#loaderArc');
+    var ticks = $('#loaderTicks');
     var pct = $('#loaderPct');
+    var stageEl = $('#loaderStage');
+    var hint = $('#loaderHint');
     var letters = $$('.loader__word b');
 
-    // Nobody who asked for less motion wants to sit through a loader.
-    if (!hasGSAP || !loader || reduced) {
+    function finish() {
       document.body.classList.remove('is-loading');
+      if (beans && beans.setCupBuild) beans.setCupBuild(1);
       if (loader) loader.remove();
       if (hasGSAP) ST.refresh();
       done();
-      return;
+    }
+
+    // Nobody who asked for less motion wants to sit through a loader.
+    if (!hasGSAP || !loader || reduced) { finish(); return; }
+
+    /* A dial rather than a bar. The ticks are the roast stops the site is
+       built around, so the thing you watch while it loads is already a
+       piece of the site rather than a generic progress widget. */
+    var TICKS = 40;
+    if (ticks) {
+      var svgNS = 'http://www.w3.org/2000/svg';
+      for (var k = 0; k < TICKS; k++) {
+        var a = (k / TICKS) * Math.PI * 2 - Math.PI / 2;
+        var long = k % 5 === 0;
+        var r1 = long ? 78 : 82, r2 = 86;
+        var ln = document.createElementNS(svgNS, 'line');
+        ln.setAttribute('x1', (100 + Math.cos(a) * r1).toFixed(2));
+        ln.setAttribute('y1', (100 + Math.sin(a) * r1).toFixed(2));
+        ln.setAttribute('x2', (100 + Math.cos(a) * r2).toFixed(2));
+        ln.setAttribute('y2', (100 + Math.sin(a) * r2).toFixed(2));
+        ticks.appendChild(ln);
+      }
+    }
+    var tickEls = ticks ? ticks.childNodes : [];
+
+    var LEN = 2 * Math.PI * 92;
+    GS.set(arc, { strokeDasharray: LEN, strokeDashoffset: LEN });
+    GS.set(ring, { scale: 0.86, opacity: 0 });
+    GS.set(hint, { opacity: 0 });
+
+    var STAGES = [
+      [0, 'GRINDING'], [26, 'DOSING'], [48, 'BLOOMING'],
+      [70, 'BREWING'], [88, 'POURING'], [98, 'SERVED']
+    ];
+
+    /* Spin it while you wait. The loader takes the pointer itself, since
+       the hero's own grab area is under all this ink. */
+    if (beans && beans.nudgeCup) {
+      var dragging = false, lastX = 0;
+      loader.addEventListener('pointerdown', function (e) {
+        dragging = true; lastX = e.clientX;
+        try { loader.setPointerCapture(e.pointerId); } catch (err) { /* no capture */ }
+      });
+      loader.addEventListener('pointermove', function (e) {
+        var r = loader.getBoundingClientRect();
+        if (beans.lookCup) {
+          beans.lookCup((e.clientX - r.left) / Math.max(1, r.width) * 2 - 1);
+        }
+        if (!dragging) return;
+        beans.nudgeCup((e.clientX - lastX) * 0.012);
+        lastX = e.clientX;
+      });
+      ['pointerup', 'pointercancel', 'pointerleave'].forEach(function (ev) {
+        loader.addEventListener(ev, function () { dragging = false; });
+      });
     }
 
     var counter = { v: 0 };
-    var tl = GS.timeline({
-      onComplete: function () {
-        document.body.classList.remove('is-loading');
-        loader.remove();
-        ST.refresh();
-        done();
-      }
-    });
+    var tl = GS.timeline({ onComplete: finish });
 
-    tl.to(letters, {
-      y: '0%', opacity: 1, duration: 0.85,
-      stagger: 0.045, ease: 'power3.out'
-    })
-      .to(bar, { scaleX: 1, duration: 1.25, ease: 'power2.inOut' }, 0.15)
-      .to(counter, {
-        v: 100, duration: 1.25, ease: 'power2.inOut',
-        onUpdate: function () {
-          pct.textContent = String(Math.round(counter.v)).padStart(2, '0');
-        }
-      }, 0.15)
+    tl.to(ring, { scale: 1, opacity: 1, duration: 1.0, ease: 'expo.out' }, 0)
       .to(letters, {
-        y: '-115%', opacity: 0, duration: 0.6,
-        stagger: 0.028, ease: 'power3.in'
-      }, '+=0.15')
-      .to(loader, { yPercent: -100, duration: 1, ease: 'expo.inOut' }, '-=0.25');
+        y: '0%', opacity: 1, duration: 0.8,
+        stagger: 0.04, ease: 'power3.out'
+      }, 0.1)
+      .to(hint, { opacity: 1, duration: 0.7 }, 0.9)
+      .to(counter, {
+        v: 100, duration: 2.5, ease: 'power2.inOut',
+        onUpdate: function () {
+          var v = counter.v;
+          pct.textContent = String(Math.round(v)).padStart(2, '0');
+          arc.style.strokeDashoffset = LEN * (1 - v / 100);
+
+          // the cup flies in on the same number the dial is reading
+          if (beans && beans.setCupBuild) beans.setCupBuild(v / 100);
+
+          var lit = Math.round(v / 100 * TICKS);
+          for (var i = 0; i < tickEls.length; i++) {
+            var on = i < lit;
+            if ((tickEls[i].getAttribute('class') === 'on') !== on) {
+              tickEls[i].setAttribute('class', on ? 'on' : '');
+            }
+          }
+
+          var label = STAGES[0][1];
+          for (var j = 0; j < STAGES.length; j++) {
+            if (v >= STAGES[j][0]) label = STAGES[j][1];
+          }
+          if (stageEl.textContent !== label) stageEl.textContent = label;
+        }
+      }, 0.25)
+
+      /* And then the ink opens out around a cup that is already standing
+         where the hero wants it. */
+      .to([hint, '.loader__meta'], { opacity: 0, duration: 0.4, ease: 'power2.in' }, '+=0.15')
+      .to(letters, {
+        y: '-115%', opacity: 0, duration: 0.55,
+        stagger: 0.025, ease: 'power3.in'
+      }, '<')
+      .to(ring, { scale: 1.45, opacity: 0, duration: 0.9, ease: 'expo.in' }, '<')
+      .to(iris, { scale: 17, duration: 1.25, ease: 'expo.inOut' }, '<+=0.12')
+      .to(loader, { opacity: 0, duration: 0.45, ease: 'power2.in' }, '-=0.42');
   }
 
   /* ================================================================= */

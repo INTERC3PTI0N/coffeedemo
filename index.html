@@ -19,6 +19,17 @@
 
 <!-- ============ PRELOADER ============ -->
 <div class="loader" id="loader" aria-hidden="true">
+  <!-- The ink, with a hole in it. The cup you can see through the hole is
+       the hero's own cup, already on stage; at the end this opens out and
+       there is nothing to hand over. -->
+  <div class="loader__iris" id="loaderIris"></div>
+
+  <svg class="loader__ring" id="loaderRing" viewBox="0 0 200 200" aria-hidden="true">
+    <circle class="loader__track" cx="100" cy="100" r="92" />
+    <circle class="loader__arc" id="loaderArc" cx="100" cy="100" r="92" />
+    <g class="loader__ticks" id="loaderTicks"></g>
+  </svg>
+
   <div class="loader__inner">
     <div class="loader__mark">
       <span class="loader__word">
@@ -27,9 +38,10 @@
     </div>
     <div class="loader__meta">
       <span class="mono" id="loaderPct">00</span>
-      <span class="loader__bar"><i id="loaderBar"></i></span>
-      <span class="mono">GRINDING</span>
+      <i class="loader__dot" aria-hidden="true"></i>
+      <span class="mono" id="loaderStage">GRINDING</span>
     </div>
+    <span class="loader__hint mono" id="loaderHint">DRAG THE CUP</span>
   </div>
 </div>
 

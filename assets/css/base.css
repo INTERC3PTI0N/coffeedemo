@@ -175,42 +175,112 @@ h1,h2,h3,h4,p,figure,blockquote{ margin:0; }
 
 /* =================================================================== */
 /* LOADER                                                              */
+/*                                                                     */
+/* Not a curtain in front of the site but a hole cut in one. The cup    */
+/* behind it is the hero's, live, from the first frame — so the end of  */
+/* the loader is the ink opening out, not a swap.                       */
 /* =================================================================== */
 .loader{
+  --ring:clamp(280px,54vmin,460px);
+  --hole:calc(var(--ring) * 0.40);
   position:fixed; inset:0; z-index:9000;
-  background:var(--ink);
-  display:grid; place-items:center;
   overflow:hidden;
+  pointer-events:auto;
+  cursor:grab;
 }
-.loader::after{
+.loader:active{ cursor:grabbing; }
+
+.loader__iris{
+  position:absolute; inset:0;
+  transform-origin:50% 46%;
+  will-change:transform;
+  background:
+    radial-gradient(circle at 50% 46%,
+      rgba(18,11,7,0) 0,
+      rgba(18,11,7,0) var(--hole),
+      rgba(18,11,7,.55) calc(var(--hole) + 36px),
+      rgba(18,11,7,.95) calc(var(--hole) + 100px),
+      /* full ink well inside the corners: at a wider falloff the nav was
+         still faintly readable through the top of the vignette */
+      #120B07 calc(var(--hole) + 170px));
+}
+/* the warm cast the cup is sitting in */
+.loader__iris::after{
   content:"";
-  position:absolute; inset:-30%;
-  background:radial-gradient(45% 40% at 50% 60%, rgba(217,169,108,.18), transparent 70%);
+  position:absolute; inset:0;
+  background:radial-gradient(circle at 50% 46%,
+    rgba(217,169,108,.16) 0, rgba(195,60,43,.07) 38%, transparent 62%);
 }
-.loader__inner{ position:relative; z-index:1; text-align:center; width:min(520px,80vw); }
+
+.loader__ring{
+  position:absolute; top:46%; left:50%;
+  width:var(--ring); height:var(--ring);
+  transform:translate(-50%,-50%);
+  overflow:visible;
+  will-change:transform,opacity;
+}
+.loader__track{
+  fill:none; stroke:rgba(242,231,214,.12); stroke-width:1;
+}
+.loader__arc{
+  fill:none; stroke:var(--crema); stroke-width:1.6;
+  stroke-linecap:round;
+  transform:rotate(-90deg);
+  transform-origin:100px 100px;
+  filter:drop-shadow(0 0 6px rgba(217,169,108,.55));
+}
+.loader__ticks line{ stroke:rgba(242,231,214,.22); stroke-width:1; }
+.loader__ticks line.on{ stroke:var(--crema); }
+
+.loader__inner{
+  position:absolute; left:0; right:0;
+  bottom:clamp(54px,11vh,120px);
+  text-align:center;
+  padding:0 var(--gut);
+}
 .loader__word{
   display:flex; justify-content:center; gap:.02em;
   font-family:var(--sans);
   font-weight:800;
-  font-size:clamp(28px,6vw,64px);
-  letter-spacing:.06em;
+  font-size:clamp(24px,4.6vw,48px);
+  letter-spacing:.14em;
   color:var(--oat);
+  overflow:hidden;
 }
 .loader__word b{ display:block; transform:translateY(110%); opacity:0; }
 .loader__meta{
-  margin-top:26px;
-  display:flex; align-items:center; gap:16px; justify-content:center;
+  margin-top:18px;
+  display:flex; align-items:center; gap:14px; justify-content:center;
   color:rgba(242,231,214,.5);
 }
-.loader__bar{
-  width:min(260px,40vw); height:1px;
-  background:rgba(242,231,214,.2);
-  display:block; position:relative; overflow:hidden;
+.loader__dot{
+  width:4px; height:4px; border-radius:50%;
+  background:var(--cherry);
+  animation:loaderPulse 1.4s ease-in-out infinite;
 }
-.loader__bar i{
-  position:absolute; inset:0;
-  background:var(--crema);
-  transform:scaleX(0); transform-origin:left;
+@keyframes loaderPulse{
+  0%,100%{ opacity:.25; transform:scale(.7); }
+  50%    { opacity:1;   transform:scale(1.15); }
+}
+.loader__hint{
+  display:block; margin-top:26px;
+  font-size:8.5px; letter-spacing:.3em;
+  color:rgba(242,231,214,.24);
+}
+
+/* the hero's own copy waits its turn behind the ink */
+body.is-loading .hero__ui,
+body.is-loading .hero__cue{ opacity:0; }
+
+/* A phone's hero cup is nearly as tall as the window, so the dial opens
+   out to frame its width and lets the rest of it stand through. */
+@media (max-width:760px){
+  .loader{ --ring:min(86vw,360px); --hole:calc(var(--ring) * 0.44); }
+  .loader__word{ font-size:clamp(22px,7vw,34px); letter-spacing:.12em; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .loader__dot{ animation:none; opacity:.7; }
 }
 
 /* =================================================================== */

@@ -275,6 +275,19 @@ All easing is frame-rate independent — a per-frame "move 5% of the way" rate i
 converted for the frame actually drawn, so transitions take the same wall-clock
 time at 30fps as at 144.
 
+**The page starts in the cup too.** The preloader is not a curtain in front
+of the site but a hole cut in one: the cup you watch through it is the hero's
+own, live in the hero's own scene from the first frame, and the loader simply
+drives it in from far away and spinning to the pose it holds for the rest of
+the visit. There is no second cup built behind a screen and swapped in at the
+end — that is a match nobody ever quite makes — so the end of the loader is the
+ink opening out around something that is already standing where it belongs.
+
+The dial around it is the progress: a crema arc over forty ticks, counting
+through grinding, dosing, blooming, brewing, pouring. And you can drag the cup
+while you wait, because the loader takes the pointer itself — the hero's own
+grab area is under all that ink.
+
 **The page ends in the cup.** The footer is a surface of coffee stretching
 away into the dark: real geometry rippling under one low warm light, with the
 crema turning on it, beans riding the swell and steam off the near edge. Touch
