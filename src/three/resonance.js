@@ -100,7 +100,7 @@ const SIM = /* glsl */ `
 
     /* --- the struck mark --- */
     vec3 target = texture2D(uTargets, uv).xyz;
-    pos = mix(pos, target, uGlyph * 0.10);
+    pos = mix(pos, target, uGlyph * 0.18);
 
     /* --- pointer disturbance: a finger dragged through the dust --- */
     vec3 d = pos - uPointer;
@@ -144,7 +144,11 @@ const RENDER_VERT = /* glsl */ `
 
     // settled grains read slightly larger, so the figure gains weight as it locks
     float size = uSize * (0.65 + vLock * 0.8) * (0.7 + aSeed * 0.6);
-    gl_PointSize = size * uPixelRatio * (260.0 / max(-mv.z, 1.0));
+
+    // Inside the volume a grain can pass within a few units of the lens, and
+    // 1/z would hand it a sprite hundreds of pixels wide — ruinous for fill
+    // rate and it reads as a blob rather than dust. Cap it.
+    gl_PointSize = clamp(size * uPixelRatio * (260.0 / max(-mv.z, 1.0)), 1.0, 34.0);
 
     gl_Position = projectionMatrix * mv;
   }
@@ -284,7 +288,7 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
 
   const uniforms = {
     uPosition:   { value: null },
-    uSize:       { value: 2.1 },
+    uSize:       { value: 2.6 },
     uPixelRatio: { value: renderer.getPixelRatio() },
     uCold:       { value: new THREE.Color('#5d7286') },
     uHot:        { value: new THREE.Color('#e7c274') },

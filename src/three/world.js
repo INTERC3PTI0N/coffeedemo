@@ -36,14 +36,16 @@ const SCORE = [
   // 02 — the first note: a simple, unmistakable figure
   { t: 0.18, mode: [2, 3],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.20, jitter: 0.030, lock: 0.34, glyph: 0, scatter: 0, off: 380 },
   // 03 — the sweep: the mode climbs, the figure complicates
-  { t: 0.36, mode: [5, 4],     gyro: [3.6, 3.6, 3.6], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.30, glyph: 0, scatter: 0, off: 360 },
-  { t: 0.52, mode: [8, 5],     gyro: [4.0, 4.0, 4.0], dim: 0, tight: 2.60, jitter: 0.024, lock: 0.27, glyph: 0, scatter: 0, off: 330 },
-  // 04 — the field lifts: nodal lines become a surface
-  { t: 0.70, mode: [9, 6],     gyro: [5.0, 5.0, 5.0], dim: 1, tight: 2.10, jitter: 0.040, lock: 0.36, glyph: 0, scatter: 0, off: 0 },
-  // 05 — the mark: everything converges on the hallmark
-  { t: 0.88, mode: [9, 9],     gyro: [5.4, 5.4, 5.4], dim: 0, tight: 0.85, jitter: 0.022, lock: 0.40, glyph: 1, scatter: 0, off: 0 },
-  // 06 — release
-  { t: 1.00, mode: [3, 2],     gyro: [3.4, 3.4, 3.4], dim: 0, tight: 0.55, jitter: 0.090, lock: 0.55, glyph: 0, scatter: 0.10, off: 100 },
+  { t: 0.36, mode: [5, 4],     gyro: [3.4, 3.4, 3.4], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.30, glyph: 0, scatter: 0, off: 360 },
+  { t: 0.52, mode: [8, 5],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.60, jitter: 0.024, lock: 0.27, glyph: 0, scatter: 0, off: 330 },
+  // 04 — the field lifts. Grains spread over a surface read far thinner than
+  // grains crowded onto lines, so the volume needs fewer, larger cells and a
+  // harder pull to hold together.
+  { t: 0.70, mode: [9, 6],     gyro: [2.6, 2.6, 2.6], dim: 1, tight: 3.20, jitter: 0.016, lock: 0.30, glyph: 0, scatter: 0, off: 0 },
+  // 05 — the mark: the field falls quiet so the struck object owns the frame
+  { t: 0.88, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.26, glyph: 0, scatter: 0, off: -300 },
+  // 06 — the dust resolves into the hallmark, and holds
+  { t: 1.00, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 1.10, jitter: 0.012, lock: 0.55, glyph: 1, scatter: 0, off: 0 },
 ];
 
 /* ------------------------------------------------------------------ *
