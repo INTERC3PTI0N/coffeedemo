@@ -18,7 +18,7 @@ const FLIGHT = [
   { t: 0.52, pos: [-270,  170, 1940 ], look: [   0,    0,    0 ], fov: 38 },
   { t: 0.70, pos: [  70,   50,  430 ], look: [ -40,   10, -280 ], fov: 68 },
   { t: 0.87, pos: [ -70,   50, 1520 ], look: [   0,    0,    0 ], fov: 42 },
-  { t: 1.00, pos: [   0,    0, 2650 ], look: [   0,    0,    0 ], fov: 40 },
+  { t: 1.00, pos: [ 430,  -40, 3050 ], look: [ 430,  -40,    0 ], fov: 40 },
 ];
 
 /* ------------------------------------------------------------------ *
@@ -45,7 +45,7 @@ const SCORE = [
   // 05 — the mark: the field falls quiet so the struck object owns the frame
   { t: 0.88, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.26, glyph: 0, scatter: 0, off: -300 },
   // 06 — the dust resolves into the hallmark, and holds
-  { t: 1.00, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 1.10, jitter: 0.012, lock: 0.55, glyph: 1, scatter: 0, off: 0 },
+  { t: 1.00, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.10, jitter: 0.0025, lock: 0.55, glyph: 1, scatter: 0, off: 430 },
 ];
 
 /* ------------------------------------------------------------------ *

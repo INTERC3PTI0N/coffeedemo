@@ -27,7 +27,8 @@ const SIM = /* glsl */ `
   #define PI 3.141592653589793
 
   uniform float uTime;
-  uniform float uDt;
+  uniform float uDt;       // clamped — the force integration is stiff
+  uniform float uDtReal;   // wall-clock — for unconditionally stable blends
   uniform vec2  uMode;         // Chladni mode numbers (n, m)
   uniform vec3  uGyroid;       // volumetric wavenumbers
   uniform float uDimension;    // 0 = plate, 1 = volume
@@ -86,10 +87,14 @@ const SIM = /* glsl */ `
     float sV = volume(pos, uGyroid);
     vec3  gV = volumeGrad(pos, uGyroid);
 
-    // descend |S|^2 — the grain walks away from the shaking and onto the still
+    // descend |S|^2 — the grain walks away from the shaking and onto the still.
+    // The bow lifts as the mark forms: without this the plate keeps driving
+    // grains onto its nodal lines while the glyph pulls them to the digits,
+    // the two forces fight, and the mark never resolves.
+    float drive = 1.0 - uGlyph;
     vec3 force = vec3(0.0);
-    force.xy += -2.0 * sP * gP * (1.0 - uDimension);
-    force    += -2.0 * sV * gV * uDimension;
+    force.xy += -2.0 * sP * gP * (1.0 - uDimension) * drive;
+    force    += -2.0 * sV * gV * uDimension * drive;
 
     // on the plate the grains are pressed flat; in the volume they are free
     force.z += -pos.z * 6.0 * (1.0 - uDimension);
@@ -98,9 +103,14 @@ const SIM = /* glsl */ `
     vec3 step = force * uTightness * uDt;
     pos += clamp(step, vec3(-0.06), vec3(0.06));
 
-    /* --- the struck mark --- */
+    /* --- the struck mark ---
+       A fixed fraction per frame would make the mark form at whatever rate the
+       device happens to render, which on a slow machine means it never arrives.
+       An exponential on wall-clock time converges in the same span everywhere.
+       Safe to use the unclamped dt here: mix() cannot overshoot. */
     vec3 target = texture2D(uTargets, uv).xyz;
-    pos = mix(pos, target, uGlyph * 0.18);
+    float pull = 1.0 - exp(-uGlyph * 7.0 * uDtReal);
+    pos = mix(pos, target, pull);
 
     /* --- pointer disturbance: a finger dragged through the dust --- */
     vec3 d = pos - uPointer;
@@ -113,11 +123,14 @@ const SIM = /* glsl */ `
 
     /* --- soft containment --- */
     float r = length(pos);
-    if (r > 1.6) pos -= normalize(pos) * (r - 1.6) * 0.6;
+    if (r > 1.9) pos -= normalize(pos) * (r - 1.9) * 0.6;
 
     /* --- how settled is this grain? --- */
     float s = mix(abs(sP), abs(sV), uDimension);
     float lock = 1.0 - smoothstep(0.0, uLockWidth, s);
+    // with the plate silent, |S| at a grain's position is meaningless — the
+    // struck mark is settled by definition, so light all of it
+    lock = mix(lock, 1.0, uGlyph);
     lock *= 1.0 - uScatter;
 
     gl_FragColor = vec4(pos, lock);
@@ -194,7 +207,7 @@ function glyphTargets(count, width = 512, height = 256) {
   g.fillStyle = '#fff';
   g.textAlign = 'center';
   g.textBaseline = 'middle';
-  g.font = '200 200px "Jost", sans-serif';
+  g.font = '400 200px "Jost", sans-serif';
   g.letterSpacing = '10px';
   g.fillText('999', width / 2, height / 2 + 6);
 
@@ -217,9 +230,9 @@ function glyphTargets(count, width = 512, height = 256) {
     const x = ink[k * 2] + Math.random();
     const y = ink[k * 2 + 1] + Math.random();
 
-    out[i * 4 + 0] = (x / width - 0.5) * 2.4;
-    out[i * 4 + 1] = -(y / height - 0.5) * 1.2;
-    out[i * 4 + 2] = (Math.random() - 0.5) * 0.06;
+    out[i * 4 + 0] = (x / width - 0.5) * 4.6;
+    out[i * 4 + 1] = -(y / height - 0.5) * 2.3;
+    out[i * 4 + 2] = (Math.random() - 0.5) * 0.02;
     out[i * 4 + 3] = 1;
   }
   return out;
@@ -256,6 +269,7 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
   Object.assign(sim, {
     uTime:         { value: 0 },
     uDt:           { value: 1 / 60 },
+    uDtReal:       { value: 1 / 60 },
     uMode:         { value: new THREE.Vector2(1, 2) },
     uGyroid:       { value: new THREE.Vector3(4.2, 4.2, 4.2) },
     uDimension:    { value: 0 },
@@ -320,7 +334,10 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
 
     update(dt) {
       sim.uTime.value += dt;
+      // the force integration needs a small step to stay stable; the blends do
+      // not, and starving them of real time is what stalls the mark
       sim.uDt.value = Math.min(dt, 1 / 30);
+      sim.uDtReal.value = Math.min(dt, 0.25);
       gpu.compute();
       uniforms.uPosition.value = gpu.getCurrentRenderTarget(posVar).texture;
     },
