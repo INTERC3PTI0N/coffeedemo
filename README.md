@@ -288,6 +288,29 @@ through grinding, dosing, blooming, brewing, pouring. And you can drag the cup
 while you wait, because the loader takes the pointer itself — the hero's own
 grab area is under all that ink.
 
+**The loader does not end so much as become the hero.** Everything from the
+opening runs on one beat: the hole widens, the dial's ring rides out with it as
+the rim of the aperture, the last of the cup's arrival lands *inside* the
+opening rather than before it, the page starts breathing underneath while the
+ink is still moving — and the wordmark walks down into the hero's own title
+rather than flying off to be replaced by it.
+
+That last one is measured, not eyeballed. Both elements are full-width flex
+containers that centre their letters, so their own rects are the viewport's
+width and say nothing; the letters have to be measured instead. Scale and
+tracking then fight each other, because scaling by the ratio of the two widths
+is wrong once the tracking is on its way to the title's. The word is measured
+at two trackings, `width = A + N·ls` solved for `A` and `N`, and the scale
+falls out of `s·A + N·ls = target`. The scale also happens about the
+container's centre rather than the letters', so the translation solves for
+where the letters land after it. The word arrives within six pixels of the
+title on a 1,382-pixel word, under a cross-fade.
+
+The hole widens; the ink does not move. Scaling the vignette up instead asks
+the compositor to raster a layer seventeen times the viewport, which is enough
+to stall a frame for whole seconds — repainting one screen-sized gradient per
+frame costs nothing by comparison.
+
 **The page ends in the cup.** The footer is a surface of coffee stretching
 away into the dark: real geometry rippling under one low warm light, with the
 crema turning on it, beans riding the swell and steam off the near edge. Touch

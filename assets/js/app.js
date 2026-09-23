@@ -121,7 +121,6 @@
      it has arrived the ink opens out around it. */
   function initLoader(done) {
     var loader = $('#loader');
-    var iris = $('#loaderIris');
     var ring = $('#loaderRing');
     var arc = $('#loaderArc');
     var ticks = $('#loaderTicks');
@@ -161,6 +160,13 @@
     }
     var tickEls = ticks ? ticks.childNodes : [];
 
+    /* The vignette's hole is sized off the dial, since the two are drawn
+       to the same centre. It has to become a plain pixel length before it
+       can be animated — the authored value is a calc() of another custom
+       property, which reads back unresolved. */
+    var hole = { r: (ring ? ring.getBoundingClientRect().width : 320) * 0.40 };
+    loader.style.setProperty('--hole', hole.r + 'px');
+
     var LEN = 2 * Math.PI * 92;
     GS.set(arc, { strokeDasharray: LEN, strokeDashoffset: LEN });
     GS.set(ring, { scale: 0.86, opacity: 0 });
@@ -194,6 +200,30 @@
     }
 
     var counter = { v: 0 };
+
+    function paint() {
+      var v = counter.v;
+      pct.textContent = String(Math.round(v)).padStart(2, '0');
+      arc.style.strokeDashoffset = LEN * (1 - v / 100);
+
+      // the cup flies in on the same number the dial is reading
+      if (beans && beans.setCupBuild) beans.setCupBuild(v / 100);
+
+      var lit = Math.round(v / 100 * TICKS);
+      for (var i = 0; i < tickEls.length; i++) {
+        var on = i < lit;
+        if ((tickEls[i].getAttribute('class') === 'on') !== on) {
+          tickEls[i].setAttribute('class', on ? 'on' : '');
+        }
+      }
+
+      var label = STAGES[0][1];
+      for (var j = 0; j < STAGES.length; j++) {
+        if (v >= STAGES[j][0]) label = STAGES[j][1];
+      }
+      if (stageEl.textContent !== label) stageEl.textContent = label;
+    }
+
     var tl = GS.timeline({ onComplete: finish });
 
     tl.to(ring, { scale: 1, opacity: 1, duration: 1.0, ease: 'expo.out' }, 0)
@@ -202,42 +232,120 @@
         stagger: 0.04, ease: 'power3.out'
       }, 0.1)
       .to(hint, { opacity: 1, duration: 0.7 }, 0.9)
-      .to(counter, {
-        v: 100, duration: 2.5, ease: 'power2.inOut',
-        onUpdate: function () {
-          var v = counter.v;
-          pct.textContent = String(Math.round(v)).padStart(2, '0');
-          arc.style.strokeDashoffset = LEN * (1 - v / 100);
-
-          // the cup flies in on the same number the dial is reading
-          if (beans && beans.setCupBuild) beans.setCupBuild(v / 100);
-
-          var lit = Math.round(v / 100 * TICKS);
-          for (var i = 0; i < tickEls.length; i++) {
-            var on = i < lit;
-            if ((tickEls[i].getAttribute('class') === 'on') !== on) {
-              tickEls[i].setAttribute('class', on ? 'on' : '');
-            }
-          }
-
-          var label = STAGES[0][1];
-          for (var j = 0; j < STAGES.length; j++) {
-            if (v >= STAGES[j][0]) label = STAGES[j][1];
-          }
-          if (stageEl.textContent !== label) stageEl.textContent = label;
-        }
-      }, 0.25)
+      .to(counter, { v: 93, duration: 2.5, ease: 'power2.inOut', onUpdate: paint }, 0.25)
 
       /* And then the ink opens out around a cup that is already standing
-         where the hero wants it. */
-      .to([hint, '.loader__meta'], { opacity: 0, duration: 0.4, ease: 'power2.in' }, '+=0.15')
-      .to(letters, {
-        y: '-115%', opacity: 0, duration: 0.55,
-        stagger: 0.025, ease: 'power3.in'
-      }, '<')
-      .to(ring, { scale: 1.45, opacity: 0, duration: 0.9, ease: 'expo.in' }, '<')
-      .to(iris, { scale: 17, duration: 1.25, ease: 'expo.inOut' }, '<+=0.12')
-      .to(loader, { opacity: 0, duration: 0.45, ease: 'power2.in' }, '-=0.42');
+         where the hero wants it — while the wordmark walks down into the
+         hero's own title and the page starts breathing underneath. All of
+         it on one beat: the loader does not end so much as become the
+         hero. */
+      .addLabel('open', '+=0.18')
+      .to([hint, '.loader__meta'], {
+        opacity: 0, y: -10, duration: 0.45, ease: 'power2.in'
+      }, 'open')
+
+      /* The ring does not leave — it becomes the edge of the aperture, on
+         the same ease and the same clock as the ink it is cut into. */
+      .to(ring, { scale: 4.6, duration: 1.5, ease: 'expo.inOut' }, 'open')
+      .to(ring, { opacity: 0, duration: 0.8, ease: 'power2.in' }, 'open+=0.35')
+
+      /* The hole widens; the ink does not move. Scaling the vignette up
+         instead asks the compositor to raster a layer seventeen times the
+         viewport, which is enough to stall a frame for seconds — repainting
+         one screen-sized gradient per frame costs nothing by comparison. */
+      .to(hole, {
+        r: Math.hypot(window.innerWidth, window.innerHeight) * 1.15,
+        duration: 1.5, ease: 'expo.inOut',
+        onUpdate: function () {
+          loader.style.setProperty('--hole', hole.r + 'px');
+        }
+      }, 'open')
+
+      // the last of the arrival lands inside the opening, not before it
+      .to(counter, { v: 100, duration: 0.7, ease: 'power2.out', onUpdate: paint }, 'open');
+
+    /* The wordmark is the same nine letters the hero sets across the foot
+       of the screen, so it is flown into that box rather than thrown away
+       and replaced. The boxes are measured at this moment because the
+       hero's type is fitted to the viewport at runtime. */
+    var word = $('.loader__word');
+    var heroTitle = $('#heroTitle');
+
+    if (word && heroTitle && $$('.hero__title .clip').length) {
+      /* Both of these are full-width flex containers that centre their
+         letters, so their own rects are the viewport's width and tell you
+         nothing. Measure what is actually drawn. */
+      function lettersRect(els) {
+        var l = Infinity, r = -Infinity, t = Infinity, b = -Infinity;
+        for (var i = 0; i < els.length; i++) {
+          var q = els[i].getBoundingClientRect();
+          if (!q.width) continue;
+          l = Math.min(l, q.left); r = Math.max(r, q.right);
+          t = Math.min(t, q.top); b = Math.max(b, q.bottom);
+        }
+        if (l === Infinity) return null;
+        return { left: l, top: t, width: r - l, height: b - t };
+      }
+
+      tl.call(function () {
+        var target = lettersRect($$('.hero__title .clip'));
+        if (!target || !target.width) return;
+
+        var ls = parseFloat(getComputedStyle(heroTitle).letterSpacing) || 0;
+
+        /* Scale and tracking fight each other: scaling the word up by the
+           ratio of the two widths is wrong once the tracking is on its way
+           to the title's, because that changes the width being scaled. So
+           measure the word at two trackings, solve width = A + N·ls for A
+           and N, and then s·A + N·ls = target gives the scale exactly. */
+        var prev = word.style.letterSpacing;
+        word.style.letterSpacing = '0px';
+        var w0 = lettersRect(word.children);
+        word.style.letterSpacing = '20px';
+        var w20 = lettersRect(word.children);
+        word.style.letterSpacing = prev;
+        if (!w0 || !w20 || !w0.width) return;
+
+        var N = (w20.width - w0.width) / 20;
+        var sc = (target.width - N * ls) / w0.width;
+        if (!(sc > 0.05) || !isFinite(sc)) return;
+
+        /* And the scale happens about the container's centre, not the
+           letters'. Solve for the translation that lands the letters where
+           the title's are once that scaling has been applied. */
+        var box = word.getBoundingClientRect();
+        var here = lettersRect(word.children);
+        var cx = box.left + box.width / 2, cy = box.top + box.height / 2;
+        var lx = here.left + here.width / 2, ly = here.top + here.height / 2;
+        var tx = target.left + target.width / 2;
+        var ty = target.top + target.height / 2;
+
+        GS.to(word, {
+          x: tx - cx - (lx - cx) * sc,
+          y: ty - cy - (ly - cy) * sc,
+          scale: sc,
+          letterSpacing: (ls / sc) + 'px',
+          color: '#F7F2E8',
+          duration: 1.35, ease: 'expo.inOut'
+        });
+
+        // and the hero's letters take over underneath, on the last breath
+        GS.to(word, { opacity: 0, duration: 0.38, ease: 'power2.in', delay: 1.02 });
+        GS.delayedCall(1.06, function () {
+          GS.set($$('.hero__title .ch'), { y: '0%' });
+          window.__heroTitleDone = true;
+        });
+      }, null, 'open');
+    }
+
+    /* The page starts moving while the ink is still opening. Waiting for
+       the loader to finish first is what made the old one read as two
+       animations played back to back. */
+    tl.call(function () {
+      if (window.__heroIntro) window.__heroIntro.play();
+    }, null, 'open+=0.45');
+
+    tl.to(loader, { opacity: 0, duration: 0.5, ease: 'power2.in' }, 'open+=1.15');
   }
 
   /* ================================================================= */
@@ -375,21 +483,26 @@
       return;
     }
 
-    // intro
+    /* The title is its own timeline. The loader hands the wordmark down
+       into this exact box and then reveals these letters underneath it,
+       so when that has happened the title must not also climb in — but
+       the rest of the hero still has to. */
+    var titleIn = GS.timeline({ paused: true });
     var intro = GS.timeline({ paused: true });
+
     if (reduced) {
       GS.set(chars, { y: '0%' });
-      window.__heroIntro = intro;
     } else {
-    intro
-      .to(chars, { y: '0%', duration: 1.15, stagger: 0.055, ease: 'expo.out' })
-      .from('.hero__tag span', { y: 22, opacity: 0, duration: 0.9, stagger: 0.1, ease: 'power3.out' }, 0.35)
-      .from('.filmbtn', { y: 22, opacity: 0, duration: 0.9, ease: 'power3.out' }, 0.45)
-      .from('.hero__cue', { opacity: 0, duration: 0.8, ease: 'power2.out' }, 0.8)
-      .from('.hero__stage', { scale: 1.12, opacity: 0, duration: 1.8, ease: 'expo.out' }, 0);
+      titleIn.to(chars, { y: '0%', duration: 1.15, stagger: 0.055, ease: 'expo.out' });
+      intro
+        .from('.hero__tag span', { y: 22, opacity: 0, duration: 0.9, stagger: 0.1, ease: 'power3.out' }, 0)
+        .from('.filmbtn', { y: 22, opacity: 0, duration: 0.9, ease: 'power3.out' }, 0.1)
+        .from('.hero__cue', { opacity: 0, duration: 0.8, ease: 'power2.out' }, 0.45)
+        .from('.hero__stage', { scale: 1.12, opacity: 0, duration: 1.8, ease: 'expo.out' }, 0);
+    }
 
     window.__heroIntro = intro;
-    }
+    window.__heroTitle = titleIn;
 
     // scroll: the window opens to full bleed, the wordmark scales past you
     GS.timeline({
@@ -1857,6 +1970,7 @@
 
     initLoader(function () {
       if (window.__heroIntro) window.__heroIntro.play();
+      if (window.__heroTitle && !window.__heroTitleDone) window.__heroTitle.play();
       initShelf();
       initFooter();
       // still renders are decoration; let the page settle first

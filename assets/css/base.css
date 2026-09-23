@@ -192,8 +192,6 @@ h1,h2,h3,h4,p,figure,blockquote{ margin:0; }
 
 .loader__iris{
   position:absolute; inset:0;
-  transform-origin:50% 46%;
-  will-change:transform;
   background:
     radial-gradient(circle at 50% 46%,
       rgba(18,11,7,0) 0,
@@ -238,16 +236,26 @@ h1,h2,h3,h4,p,figure,blockquote{ margin:0; }
   text-align:center;
   padding:0 var(--gut);
 }
+/* Structurally identical to .hero__title, because at the end of the
+   loader this word is flown into that box and the two have to line up:
+   same family, same weight, same line box, no gap of its own. Only the
+   size and the tracking differ, and both of those are tweened. */
 .loader__word{
-  display:flex; justify-content:center; gap:.02em;
+  display:flex; justify-content:center;
   font-family:var(--sans);
   font-weight:800;
   font-size:clamp(24px,4.6vw,48px);
+  line-height:.82;
   letter-spacing:.14em;
   color:var(--oat);
   overflow:hidden;
+  will-change:transform;
 }
-.loader__word b{ display:block; transform:translateY(110%); opacity:0; }
+.loader__word b{
+  display:block; flex:0 0 auto;
+  padding-bottom:.02em;
+  transform:translateY(110%); opacity:0;
+}
 .loader__meta{
   margin-top:18px;
   display:flex; align-items:center; gap:14px; justify-content:center;
