@@ -55,6 +55,12 @@ if (!reducedMotion) {
     );
   }, { passive: true });
   window.addEventListener('pointerleave', () => world.clearPointer());
+
+  // Strike the plate: a transient impulse where the pointer meets it.
+  window.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('a, button, [data-assay], [data-division], #vault-stage')) return;
+    world.strike();
+  }, { passive: true });
 }
 
 createVault(document.getElementById('vault-stage'), { reducedMotion });

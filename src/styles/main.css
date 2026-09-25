@@ -351,6 +351,29 @@ main#scroll { position: relative; z-index: 4; }
 }
 @media (max-width: 760px) { .rail--left { display: none; } .rail__ticks { display: none; } }
 
+/* the settle gauge: fills as the field comes to rest */
+.rail__settle {
+  width: 1px; height: 9vh; margin-top: .9rem;
+  background: var(--rule); position: relative; overflow: hidden;
+}
+.rail__settle i {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 100%;
+  transform: scaleY(0); transform-origin: bottom;
+  background: var(--accent);
+  transition: background .6s var(--ease);
+}
+.rail__settle.is-settled i { background: var(--gold-lt); }
+
+/* affordance note — says what the field responds to, where it starts to */
+.affordance {
+  display: flex; flex-direction: column; gap: .35rem;
+  margin: -0.6rem 0 clamp(1.6rem, 3vw, 2.6rem);
+  font-family: var(--mono); font-size: .5625rem;
+  letter-spacing: .2em; text-transform: uppercase;
+  color: var(--fg-faint);
+}
+.affordance span::before { content: "— "; color: var(--accent); }
+
 /* ============================================================
    chapters — shared
    ============================================================ */
@@ -502,7 +525,7 @@ main#scroll { position: relative; z-index: 4; }
 @media (max-width: 860px) { .assay { grid-template-columns: 1fr; } .assay__dial { max-width: 240px; margin-inline: auto; } }
 
 /* 04 ─ divisions */
-.chapter--divisions { min-height: auto; padding-block: clamp(5rem, 12vh, 9rem); }
+.chapter--divisions { min-height: auto; padding-block: clamp(5rem, 12vh, 9rem) clamp(14rem, 42vh, 30rem); }
 .divisions { margin-top: clamp(2.6rem, 6vw, 5rem); }
 .division {
   position: relative;

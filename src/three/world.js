@@ -48,23 +48,29 @@ const SCORE = [
   { t: 1.00, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.10, jitter: 0.0025, lock: 0.55, glyph: 1, scatter: 0, off: 430 },
 ];
 
+/* A grain's radius in world units. Sizes in the grade table below are
+   multipliers on this, not pixel counts: the renderer projects a sphere of
+   this radius properly, so a grain grows as the camera closes on it and the
+   dive gains its sense of scale for free. */
+const GRAIN_RADIUS = 1.55;
+
 /* ------------------------------------------------------------------ *
  * The look.
  * ------------------------------------------------------------------ */
 const GRADE = [
-  { t: 0.00, bg: '#05070a', cold: '#566d82', hot: '#8ea7bd', size: 3.1, glow: 0.7, opacity: 0.55,
+  { t: 0.00, bg: '#05070a', cold: '#566d82', hot: '#8ea7bd', size: 1.05, glow: 0.8, opacity: 0.72,
     bloom: 0.55, vig: 0.72, sat: 0.80, lift: 0.004, cast: '#b9cbdb', castAmt: 0.10, exposure: 1.0 },
-  { t: 0.18, bg: '#060a0f', cold: '#627e9a', hot: '#cfa95f', size: 3.2, glow: 1.1, opacity: 0.85,
+  { t: 0.18, bg: '#060a0f', cold: '#627e9a', hot: '#cfa95f', size: 1.00, glow: 1.3, opacity: 1.00,
     bloom: 0.70, vig: 0.66, sat: 0.88, lift: 0.005, cast: '#cddced', castAmt: 0.12, exposure: 1.0 },
-  { t: 0.36, bg: '#070b12', cold: '#6886a6', hot: '#e3bd6c', size: 3.3, glow: 1.4, opacity: 0.95,
+  { t: 0.36, bg: '#070b12', cold: '#6886a6', hot: '#e3bd6c', size: 0.96, glow: 1.6, opacity: 1.00,
     bloom: 0.80, vig: 0.62, sat: 0.94, lift: 0.006, cast: '#d8e3f0', castAmt: 0.12, exposure: 1.0 },
-  { t: 0.52, bg: '#080c14', cold: '#7191b2', hot: '#f0c873', size: 2.5, glow: 1.7, opacity: 1.00,
+  { t: 0.52, bg: '#080c14', cold: '#7191b2', hot: '#f0c873', size: 0.92, glow: 1.9, opacity: 1.00,
     bloom: 0.92, vig: 0.58, sat: 1.00, lift: 0.007, cast: '#e2ecf6', castAmt: 0.10, exposure: 1.02 },
-  { t: 0.70, bg: '#0a0d16', cold: '#7c9dbf', hot: '#ffd98a', size: 2.6, glow: 2.0, opacity: 1.00,
+  { t: 0.70, bg: '#0a0d16', cold: '#7c9dbf', hot: '#ffd98a', size: 1.18, glow: 2.0, opacity: 1.00,
     bloom: 1.05, vig: 0.50, sat: 1.04, lift: 0.010, cast: '#eef4fb', castAmt: 0.08, exposure: 1.04 },
-  { t: 0.88, bg: '#07090e', cold: '#6c8399', hot: '#ffe2a2', size: 2.9, glow: 2.2, opacity: 1.00,
+  { t: 0.88, bg: '#07090e', cold: '#6c8399', hot: '#ffe2a2', size: 0.95, glow: 2.2, opacity: 1.00,
     bloom: 1.10, vig: 0.60, sat: 1.00, lift: 0.006, cast: '#ffeecb', castAmt: 0.16, exposure: 1.02 },
-  { t: 1.00, bg: '#05070a', cold: '#5a7084', hot: '#c9a24f', size: 2.7, glow: 1.0, opacity: 0.72,
+  { t: 1.00, bg: '#05070a', cold: '#5a7084', hot: '#c9a24f', size: 0.60, glow: 1.0, opacity: 0.72,
     bloom: 0.62, vig: 0.70, sat: 0.86, lift: 0.004, cast: '#cfdbe8', castAmt: 0.10, exposure: 1.0 },
 ];
 
@@ -217,6 +223,9 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
   const state = {
     progress: 0,
     target: 0,
+    lastTarget: 0,
+    agitation: 0,   // how hard the scroll is currently working the plate
+    strike: 0,      // decaying impulse from a click
     pointer: new THREE.Vector2(),
     pointerDamped: new THREE.Vector2(),
     pointerActive: false,
@@ -230,6 +239,9 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
   const lookDamped = new THREE.Vector3(...FLIGHT[0].look);
   const right = new THREE.Vector3();
   const up = new THREE.Vector3();
+  // A fixed basis for the parallax offsets. Reading camera.up here would feed
+  // the roll back into the offsets that produce it.
+  const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
   // pointer → a point on the plate, for the finger-through-dust disturbance
   const raycaster = new THREE.Raycaster();
@@ -246,9 +258,14 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     field.sim.uMode.value.copy(s.mode);
     field.sim.uGyroid.value.copy(s.gyro);
     field.sim.uDimension.value = s.dim;
-    field.sim.uTightness.value = s.tight;
-    field.sim.uJitter.value = s.jitter;
-    field.sim.uLockWidth.value = s.lock;
+    /* Scroll speed is bow pressure. Scrubbing hard shakes the plate: the
+       grains lose their grip, the figure blurs and goes dark. Come to rest and
+       it crystallises and lights up. The reward for stopping is the whole
+       point of the piece, so the interaction is the physics, not a flourish. */
+    const ag = state.agitation;
+    field.sim.uTightness.value = s.tight * (1.0 - ag * 0.55);
+    field.sim.uJitter.value = s.jitter * (1.0 + ag * 7.0);
+    field.sim.uLockWidth.value = s.lock * (1.0 - ag * 0.45);
     field.sim.uGlyph.value = s.glyph;
     field.sim.uScatter.value = s.scatter;
     field.points.position.x = s.off;
@@ -264,7 +281,7 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
 
     field.uniforms.uCold.value.copy(g.cold);
     field.uniforms.uHot.value.copy(g.hot);
-    field.uniforms.uSize.value = g.size;
+    field.uniforms.uGrainRadius.value = GRAIN_RADIUS * g.size;
     field.uniforms.uGlow.value = g.glow;
     field.uniforms.uOpacity.value = g.opacity;
 
@@ -313,6 +330,16 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     state.progress += (state.target - state.progress) * ease;
     const t = state.progress;
 
+    // Bow pressure: fast attack so a flick registers at once, slow release so
+    // the field visibly takes a moment to settle once you stop.
+    const rate = Math.abs(state.target - state.lastTarget) / Math.max(dt, 1e-4);
+    state.lastTarget = state.target;
+    const want = reducedMotion ? 0 : Math.min(rate * 2.4, 1);
+    const grab = want > state.agitation ? 1 - Math.pow(0.002, dt) : 1 - Math.pow(0.28, dt);
+    state.agitation += (want - state.agitation) * grab;
+
+    state.strike *= Math.pow(0.015, dt);
+
     const fov = sampleFlight(t, pos, look);
 
     state.pointerDamped.lerp(state.pointer, reducedMotion ? 1 : 1 - Math.pow(0.004, dt));
@@ -321,10 +348,12 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     lookDamped.copy(look);
 
     const fwd = look.clone().sub(pos).normalize();
-    right.crossVectors(fwd, camera.up).normalize();
+    right.crossVectors(fwd, WORLD_UP).normalize();
     up.crossVectors(right, fwd).normalize();
 
-    const par = reducedMotion ? 0 : 1;
+    // the dive earns a much bigger hand in the camera than the flat chapters
+    const dive = THREE.MathUtils.smoothstep(field.sim.uDimension.value, 0.2, 0.9);
+    const par = reducedMotion ? 0 : 1 + dive * 2.4;
     posDamped.addScaledVector(right, state.pointerDamped.x * 58 * par);
     posDamped.addScaledVector(up, state.pointerDamped.y * 34 * par);
     lookDamped.addScaledVector(right, state.pointerDamped.x * -20 * par);
@@ -336,18 +365,41 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     }
 
     camera.position.copy(posDamped);
+
+    // Banking into the dive. Rolling the up-vector before lookAt is what makes
+    // the volume chapter feel piloted rather than watched.
+    if (!reducedMotion && dive > 0.001) {
+      const roll = (state.pointerDamped.x * 0.16 + state.agitation * 0.10) * dive;
+      camera.up.set(Math.sin(roll), Math.cos(roll), 0);
+    } else if (camera.up.x !== 0) {
+      camera.up.set(0, 1, 0);
+    }
+
     camera.lookAt(lookDamped);
     if (Math.abs(camera.fov - fov) > 0.01) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
     }
 
+    // Grain size is a true projection, so it needs the real buffer and FOV.
+    field.setProjection(
+      THREE.MathUtils.degToRad(camera.fov),
+      renderer.domElement.height,
+    );
+
+    // Focus rides the field's centre; inside the volume the depth of field
+    // closes right down, which is what gives the dive its sense of scale.
+    field.setFocus(
+      camera.position.distanceTo(field.points.position),
+      THREE.MathUtils.lerp(1500, 380, dive),
+    );
+
     // drag the pointer through the dust
     if (state.pointerActive && !reducedMotion) {
       ndc.set(state.pointerDamped.x, state.pointerDamped.y);
       raycaster.setFromCamera(ndc, camera);
       if (raycaster.ray.intersectPlane(plane, hit)) {
-        field.setPointer(hit, 0.85);
+        field.setPointer(hit, 0.85 + state.strike * 7.0);
       } else {
         field.setPointer(null, 0);
       }
@@ -361,15 +413,30 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
 
     field.update(dt);
     fx.composer.render();
-    requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+
+  let loopFailures = 0;
+  function tick() {
+    // The render loop reschedules itself, so anything thrown inside it would
+    // otherwise stop the piece dead and leave a blank page. Keep going, and
+    // say so once rather than on every frame.
+    try {
+      frame();
+    } catch (err) {
+      if (loopFailures++ === 0) console.error('resonance frame failed:', err);
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 
   return {
     renderer, scene, camera, state, field,
     setProgress: (v) => { state.target = THREE.MathUtils.clamp(v, 0, 1); },
     setPointer: (x, y) => { state.pointer.set(x, y); state.pointerActive = true; },
     clearPointer: () => { state.pointerActive = false; },
+    /** A struck plate: a transient impulse under the pointer. */
+    strike: () => { state.strike = 1; },
+    getAgitation: () => state.agitation,
     getFrequency: () => state.frequency,
     resize,
   };

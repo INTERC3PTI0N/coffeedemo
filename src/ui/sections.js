@@ -242,6 +242,8 @@ export function initChrome({ world }) {
   const ticks = [...document.querySelectorAll('#rail-ticks li')];
   const progressBar = document.getElementById('rail-progress');
   const freqEl = document.getElementById('frequency');
+  const settleWrap = document.querySelector('.rail__settle');
+  const settleBar = document.getElementById('settle-bar');
 
   function setActive(n) {
     navLinks.forEach((l) => l.classList.toggle('is-active', Number(l.dataset.chapter) === n));
@@ -272,11 +274,25 @@ export function initChrome({ world }) {
 
   // driving-frequency readout, sampled rather than written every frame
   let last = -1;
+  let lastSettled = null;
+
   gsap.ticker.add(() => {
     const f = world.getFrequency();
-    if (f === last) return;
-    last = f;
-    freqEl.textContent = String(f).padStart(4, '0');
+    if (f !== last) {
+      last = f;
+      freqEl.textContent = String(f).padStart(4, '0');
+    }
+
+    // The settle gauge is the feedback loop for the whole interaction: it
+    // fills as the scroll quietens, which is what teaches people to stop and
+    // watch the figure resolve.
+    const settled = 1 - world.getAgitation();
+    gsap.set(settleBar, { scaleY: settled });
+    const isSettled = settled > 0.93;
+    if (isSettled !== lastSettled) {
+      lastSettled = isSettled;
+      settleWrap.classList.toggle('is-settled', isSettled);
+    }
   });
 }
 

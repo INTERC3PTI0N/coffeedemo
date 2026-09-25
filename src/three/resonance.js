@@ -23,31 +23,8 @@ import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer
  * again, which is the entire narrative of the site in one uniform.
  */
 
-const SIM = /* glsl */ `
+const FIELD = /* glsl */ `
   #define PI 3.141592653589793
-
-  uniform float uTime;
-  uniform float uDt;       // clamped — the force integration is stiff
-  uniform float uDtReal;   // wall-clock — for unconditionally stable blends
-  uniform vec2  uMode;         // Chladni mode numbers (n, m)
-  uniform vec3  uGyroid;       // volumetric wavenumbers
-  uniform float uDimension;    // 0 = plate, 1 = volume
-  uniform float uTightness;    // how hard grains are pulled to the nodes
-  uniform float uJitter;       // thermal agitation — keeps the figure alive
-  uniform float uLockWidth;    // distance from a node that still counts as settled
-  uniform float uGlyph;        // blend toward the struck mark
-  uniform float uScatter;      // blow the field apart
-  uniform vec3  uPointer;      // world-space pointer, for local disturbance
-  uniform float uPointerForce;
-
-  uniform sampler2D uTargets;  // per-grain position inside the glyph
-
-  float hash(vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
-  }
-  vec3 hash3(vec2 p) {
-    return vec3(hash(p), hash(p + 17.3), hash(p + 43.7));
-  }
 
   /* --- plate: S = 0 traces the nodal lines --- */
   float plate(vec2 p, vec2 nm) {
@@ -74,6 +51,34 @@ const SIM = /* glsl */ `
       k.y * cos(k.y * p.y) * cos(k.z * p.z) - k.y * sin(k.x * p.x) * sin(k.y * p.y),
       k.z * cos(k.z * p.z) * cos(k.x * p.x) - k.z * sin(k.y * p.y) * sin(k.z * p.z)
     );
+  }
+
+`;
+
+const SIM = /* glsl */ `
+${FIELD}
+
+  uniform float uTime;
+  uniform float uDt;       // clamped — the force integration is stiff
+  uniform float uDtReal;   // wall-clock — for unconditionally stable blends
+  uniform vec2  uMode;         // Chladni mode numbers (n, m)
+  uniform vec3  uGyroid;       // volumetric wavenumbers
+  uniform float uDimension;    // 0 = plate, 1 = volume
+  uniform float uTightness;    // how hard grains are pulled to the nodes
+  uniform float uJitter;       // thermal agitation — keeps the figure alive
+  uniform float uLockWidth;    // distance from a node that still counts as settled
+  uniform float uGlyph;        // blend toward the struck mark
+  uniform float uScatter;      // blow the field apart
+  uniform vec3  uPointer;      // world-space pointer, for local disturbance
+  uniform float uPointerForce;
+
+  uniform sampler2D uTargets;  // per-grain position inside the glyph
+
+  float hash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+  vec3 hash3(vec2 p) {
+    return vec3(hash(p), hash(p + 17.3), hash(p + 43.7));
   }
 
   void main() {
@@ -138,31 +143,74 @@ const SIM = /* glsl */ `
 `;
 
 const RENDER_VERT = /* glsl */ `
+${FIELD}
+
   uniform sampler2D uPosition;
-  uniform float uSize;
-  uniform float uPixelRatio;
+
+  /* dimensions, in world units — a grain is an actual size, not a magic number */
+  uniform float uGrainRadius;   // radius of a loose grain
+  uniform float uSettledGain;   // settled grains pack tighter and read finer
+  uniform float uProjScale;     // drawingBufferHeight / (2 tan(fovY/2))
+  uniform float uMinPx;
+  uniform float uMaxPx;
+
+  /* focus */
+  uniform float uFocus;         // view distance the lens is focused on
+  uniform float uFocusRange;
+  uniform float uBokeh;         // how far a defocused grain spreads
+
+  /* shading — the nodal set has a normal, so the dust can catch light */
+  uniform vec2  uMode;
+  uniform vec3  uGyroid;
+  uniform float uDimension;
+  uniform vec3  uLightDir;
 
   attribute vec2 aRef;
   attribute float aSeed;
 
   varying float vLock;
   varying float vSeed;
+  varying float vBlur;
+  varying float vShade;
+  varying float vDepth;
 
   void main() {
     vec4 state = texture2D(uPosition, aRef);
+    vec3 pos = state.xyz;
     vLock = state.w;
     vSeed = aSeed;
 
-    vec4 mv = modelViewMatrix * vec4(state.xyz, 1.0);
+    vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+    float depth = max(-mv.z, 0.001);
+    vDepth = depth;
 
-    // settled grains read slightly larger, so the figure gains weight as it locks
-    float size = uSize * (0.65 + vLock * 0.8) * (0.7 + aSeed * 0.6);
+    /* --- the grain's normal is the gradient of the field it is sitting on.
+       On the plate that is the in-plane slope of the ridge it has piled into;
+       in the volume it is the true normal of the gyroid surface. Either way
+       the dust is lit as the form it describes, not as flat specks. --- */
+    vec2 gp = plateGrad(pos.xy, uMode);
+    vec3 gv = volumeGrad(pos, uGyroid);
+    vec3 n = normalize(mix(vec3(gp * 0.35, 1.0), gv, uDimension) + 1e-5);
+    float lambert = dot(n, normalize(uLightDir));
+    vShade = 0.70 + 0.36 * (lambert * 0.5 + 0.5);
 
-    // Inside the volume a grain can pass within a few units of the lens, and
-    // 1/z would hand it a sprite hundreds of pixels wide — ruinous for fill
-    // rate and it reads as a blob rather than dust. Cap it.
-    gl_PointSize = clamp(size * uPixelRatio * (260.0 / max(-mv.z, 1.0)), 1.0, 34.0);
+    /* --- true projected size of a sphere of this radius ---
+       A sphere of radius r at distance d subtends 2r/d radians, which is
+       2 r uProjScale / d pixels. No tuning constant: change the radius and
+       the grain changes by exactly that much. --- */
+    float radius = uGrainRadius
+                 * mix(1.0, uSettledGain, vLock)
+                 * (0.72 + aSeed * 0.56);
 
+    float px = 2.0 * radius * uProjScale / depth;
+
+    /* --- defocus: a grain off the focal plane spreads into a disc --- */
+    float coc = clamp(abs(depth - uFocus) / uFocusRange, 0.0, 1.0);
+    coc *= coc;
+    vBlur = coc;
+    px *= 1.0 + coc * uBokeh;
+
+    gl_PointSize = clamp(px, uMinPx, uMaxPx);
     gl_Position = projectionMatrix * mv;
   }
 `;
@@ -172,25 +220,45 @@ const RENDER_FRAG = /* glsl */ `
 
   uniform vec3  uCold;      // drifting, unresolved
   uniform vec3  uHot;       // settled on a node
+  uniform vec3  uHaze;      // what distance dissolves into
   uniform float uOpacity;
   uniform float uGlow;
+  uniform float uBokeh;
+  uniform float uHazeDensity;
+  uniform float uHazeNear;
 
   varying float vLock;
   varying float vSeed;
+  varying float vBlur;
+  varying float vShade;
+  varying float vDepth;
 
   void main() {
-    // soft round grain
     vec2 d = gl_PointCoord - 0.5;
     float r2 = dot(d, d);
     if (r2 > 0.25) discard;
-    float falloff = exp(-r2 * 9.0);
+
+    /* A focused grain is a tight point; a defocused one is a soft disc with a
+       faintly brighter rim, which is what a real out-of-focus highlight does. */
+    float tight = exp(-r2 * 22.0);
+    float disc  = smoothstep(0.25, 0.10, r2) * (0.78 + 0.5 * smoothstep(0.06, 0.2, r2));
+    float falloff = mix(tight, disc, vBlur);
 
     vec3 col = mix(uCold, uHot, smoothstep(0.15, 0.95, vLock));
+    col *= vShade;
     col *= 0.72 + vLock * uGlow;
 
     float a = falloff * uOpacity * (0.34 + vLock * 0.92) * (0.62 + vSeed * 0.46);
-    if (a < 0.002) discard;
 
+    /* spreading a grain over a wider disc must not brighten it */
+    a /= 1.0 + vBlur * uBokeh * 0.85;
+
+    /* atmosphere: distance drains the dust toward the dark it hangs in */
+    float haze = 1.0 - exp(-max(vDepth - uHazeNear, 0.0) * uHazeDensity);
+    col = mix(col, uHaze, haze * 0.62);
+    a *= 1.0 - haze * 0.42;
+
+    if (a < 0.002) discard;
     gl_FragColor = vec4(col, a);
   }
 `;
@@ -301,13 +369,34 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
   geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 3);
 
   const uniforms = {
-    uPosition:   { value: null },
-    uSize:       { value: 2.6 },
-    uPixelRatio: { value: renderer.getPixelRatio() },
-    uCold:       { value: new THREE.Color('#5d7286') },
-    uHot:        { value: new THREE.Color('#e7c274') },
-    uOpacity:    { value: 1 },
-    uGlow:       { value: 1.3 },
+    uPosition:    { value: null },
+
+    // Dimensions are world-unit radii. The field is scaled by `scale`, so a
+    // grain of 1.5 here is 1.5 world units across the plate's ~2000-unit span
+    // — roughly a grain of silica on a 240mm plate, held to that ratio.
+    uGrainRadius: { value: 1.55 },
+    uSettledGain: { value: 0.78 },
+    uProjScale:   { value: 800 },
+    uMinPx:       { value: 0.9 },
+    uMaxPx:       { value: 44 },
+
+    uFocus:       { value: 1200 },
+    uFocusRange:  { value: 900 },
+    uBokeh:       { value: 3.2 },
+
+    // shared with the simulation so shading always matches the physics
+    uMode:        sim.uMode,
+    uGyroid:      sim.uGyroid,
+    uDimension:   sim.uDimension,
+    uLightDir:    { value: new THREE.Vector3(-0.42, 0.68, 0.6) },
+
+    uCold:        { value: new THREE.Color('#5d7286') },
+    uHot:         { value: new THREE.Color('#e7c274') },
+    uHaze:        { value: new THREE.Color('#070a0f') },
+    uOpacity:     { value: 1 },
+    uGlow:        { value: 1.3 },
+    uHazeDensity: { value: 0.00035 },
+    uHazeNear:    { value: 500 },
   };
 
   const material = new THREE.ShaderMaterial({
@@ -353,9 +442,24 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
       sim.uPointerForce.value = force;
     },
 
-    resize() {
-      uniforms.uPixelRatio.value = renderer.getPixelRatio();
+    /**
+     * The exact pixel scale of the projection: a sphere of radius r at view
+     * distance d covers 2 r uProjScale / d pixels. Feed it the real drawing
+     * buffer height and vertical FOV and grain sizes become a physical
+     * quantity rather than something tuned by eye per viewport.
+     */
+    setProjection(fovYRadians, drawingBufferHeight) {
+      uniforms.uProjScale.value = drawingBufferHeight / (2 * Math.tan(fovYRadians / 2));
     },
+
+    /** Focal distance, in view units, and the depth over which focus falls off. */
+    setFocus(distance, range) {
+      uniforms.uFocus.value = distance;
+      uniforms.uHazeNear.value = distance * 0.7;
+      if (range !== undefined) uniforms.uFocusRange.value = range;
+    },
+
+    resize() {},
 
     dispose() {
       gpu.dispose?.();
