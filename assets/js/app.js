@@ -723,26 +723,54 @@
       scrollTrigger: { trigger: sec, start: 'top bottom', end: 'bottom bottom', scrub: 0.7 }
     });
 
-    /* THE DIVE. One scrubbed value drives the whole thing: how far the bean
-       corridor has travelled and how far the camera has gone in with it.
-       `power2.in` is the point of doing it here rather than off raw scroll
-       progress — the dive starts as a drift and is flat out by the time the
-       roasts arrive underneath, which is what makes it read as a descent
-       rather than as a constant speed. The scrub gives it weight on the way
-       in and on the way back out. */
-    var dive = { v: 0 };
-    GS.to(dive, {
-      v: 1, ease: 'power2.in',
+    /* THE DIVE, and the arrival it hands to.
+
+       One scrubbed timeline owns both, which is the only way the two stay in
+       step: the roasts used to raise their heading and panels off triggers of
+       their own, so how far the dive had got when the panels appeared was
+       whatever the two section heights happened to make it. Here the descent,
+       the landing and the panels coming up are positions on one line.
+
+       `travel` is how far the corridor has run and only ever goes forward —
+       ease it back and the beans fly in reverse. `push` is how far the camera
+       has gone in, and it does come back, so by the time the field swaps
+       formations the camera is already home and there is nothing to snap.
+       `power2.in` on the way down is what makes it a descent rather than a
+       constant speed: it starts as a drift and is flat out when the roasts
+       arrive. */
+    var dive = { travel: 0, push: 0 };
+    var send = function () { if (beans) beans.setDive(dive.travel, dive.push); };
+
+    var arrival = GS.timeline({
+      /* On the timeline, not on the ScrollTrigger. A scrubbed trigger fires
+         its own onUpdate on scroll events; the scrub then goes on easing the
+         timeline after the scrolling stops, and the field would be left
+         holding whatever the last scroll event handed it — the corridor
+         stepping to a halt while everything else glides. */
+      onUpdate: send,
       scrollTrigger: {
-        /* Matched to the zone that actually hands the field its formation —
-           `top center` to `bottom center`. Run over the section's whole pass
-           through the viewport instead and the dive is still only a quarter
-           wound when the roasts take over, which is the one moment it is
-           supposed to be flat out. */
-        trigger: sec, start: 'top 85%', end: 'bottom center', scrub: 0.5,
-        onUpdate: function () { if (beans) beans.setDive(dive.v); }
+        trigger: sec, start: 'top 85%',
+        endTrigger: '.panels', end: 'top 70%',
+        scrub: 0.55
       }
     });
+
+    arrival
+      .to(dive, { travel: 1, push: 1, duration: 0.72, ease: 'power2.in' }, 0)
+      // still travelling, but running out of speed rather than stopping dead
+      .to(dive, { travel: 1.34, duration: 0.28, ease: 'power1.out' }, 0.72)
+      .to(dive, { push: 0.12, duration: 0.28, ease: 'power2.out' }, 0.72)
+      .from('.roasts__head .display', {
+        y: 46, opacity: 0, duration: 0.2, ease: 'power3.out'
+      }, 0.73)
+      .from('.roasts__flourish', {
+        opacity: 0, scaleX: 0.7, duration: 0.16, ease: 'power2.out'
+      }, 0.80)
+      /* Scrubbed, the stagger stops being a delay and becomes distance: the
+         panels come up one after another as you travel the last of the dive. */
+      .from('.panels .panel', {
+        yPercent: 18, opacity: 0, duration: 0.18, stagger: 0.035, ease: 'power3.out'
+      }, 0.78);
 
     GS.fromTo('.hl--haze', { opacity: 0.2 }, {
       opacity: 0.9, ease: 'none',
@@ -808,15 +836,9 @@
       });
     });
 
-    if (!hasGSAP) return;
-    GS.from(panels, {
-      yPercent: 16, opacity: 0, duration: 1, stagger: 0.08, ease: 'power3.out',
-      scrollTrigger: { trigger: '.panels', start: 'top 82%' }
-    });
-    GS.from('.roasts__head .display', {
-      y: 40, opacity: 0, duration: 1, ease: 'power3.out',
-      scrollTrigger: { trigger: '.roasts__head', start: 'top 84%' }
-    });
+    /* The heading and the panels are raised by the harvest section's arrival
+       timeline, not from here — they are the back half of the dive, and two
+       separate triggers cannot hold that relationship. See `initAltitude`. */
   }
 
   /* ================================================================= */

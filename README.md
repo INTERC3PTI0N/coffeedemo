@@ -189,16 +189,35 @@ than a pose. That is what makes it read as travel instead of as a swirl, and it
 is why none of them sits on the axis — a bean dead centre only swells in place,
 which is the one part of a fly-through that reads as a zoom.
 
-GSAP owns the motion. One scrubbed value in `initAltitude` drives both how far
-the corridor has travelled and how far the camera has gone in with it, on a
-`power2.in` ease: the dive starts as a drift and is flat out by the time the
-roasts arrive underneath, which is what makes it a descent rather than a
-constant speed. Its ScrollTrigger is matched to the zone that hands the field
-its formation — `top center` to `bottom center` — because run over the
-section's whole pass through the viewport instead, it is still only a quarter
-wound at the one moment it is supposed to be finished. The camera dolly is not
-decoration: moving the camera is what gives the cloud bank behind the beans
-something to parallax against.
+GSAP owns the motion, and it owns the arrival as well. One scrubbed timeline in
+`initAltitude` runs the descent, the landing, and the roasts raising their
+heading and their panels — because that is the only way the two stay in step.
+They used to animate off triggers of their own, which left how far the dive had
+got when the panels appeared to be whatever the two sections' heights happened
+to make it. As one line it reads: travel accelerates on `power2.in` for the
+first two thirds, so the dive starts as a drift and becomes a rush; the heading
+comes up at the moment the travel peaks; the panels follow, and because the
+stagger is scrubbed it is distance rather than delay, each one rising as you
+cover the last of the ground; and the corridor coasts to a stop as the last
+panel lands.
+
+Two values, not one, because they are different shapes. `travel` only ever goes
+forward — ease it back and the beans fly in reverse. `push`, the camera dolly
+from z 12 in to 9.8, does come back: it unwinds across the landing, so the
+camera is already home before the field swaps formations and there is nothing
+left to snap. The dolly is not decoration either — moving the camera is what
+gives the cloud bank behind the beans something to parallax against.
+
+The field is fed from the timeline's own `onUpdate`, not the ScrollTrigger's. A
+scrubbed trigger fires its callback on scroll events, and the scrub then goes on
+easing the timeline after the scrolling has stopped; the corridor would step to
+a halt on the last scroll event while everything else glided to rest.
+
+Distance is a colour, not only a size. Beans lerp toward the harvest sky with
+depth, so the far end of the corridor sits in the same air as the cloud bank
+behind it — without it, distant beans are small rather than far. It is tied to
+the dive's own blend, so it costs nothing in the sections that have no distance
+to sell.
 
 Three things it needed. The corridor's cross-section is drawn from per-bean
 hashes, not from the index — taking depth, angle and radius all off the index
@@ -212,7 +231,10 @@ through the corridor in plain sight. Both ends of the run fade, and the frame
 loop now teleports any bean whose current and target scale are both
 effectively zero — a bean nobody can see has no visible path, so it can be put
 back wherever the formation likes. That rule fixes the same latent smear in
-every other wrapping formation.
+every other wrapping formation. The fade that gates it runs on a crisper follow
+for driven formations (0.17 against 0.075), because on the slow rate the scale
+reaches zero well after the formation wanted the bean gone, and the teleport it
+is guarding waits with it.
 
 The section itself is 118svh, not the 165 it used to be. Its copy is sticky, so
 every extra viewport of height was another viewport of scrolling past a block

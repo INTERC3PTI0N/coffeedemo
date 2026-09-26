@@ -32,6 +32,8 @@
   var lerp = function (a, b, t) { return a + (b - a) * t; };
   var clamp = function (v, a, b) { return Math.max(a, Math.min(b, v)); };
   var smooth = function (t) { return t * t * (3 - 2 * t); };
+  // the harvest sky the corridor recedes into
+  var HAZE = null;
 
   /* Per-frame easing ("move 5% of the way each frame") runs at whatever speed
      the device happens to render at — snappy at 144fps, sluggish at 30. This
@@ -940,7 +942,7 @@
 
     /* --- the pool --------------------------------------------------- */
     var small = global.innerWidth < 760;
-    var COUNT = small ? 24 : 44;
+    var COUNT = small ? 24 : 60;
 
     var baseColour = new THREE.Color(0x6b3d20);
     var grain = grainTexture();
@@ -1009,6 +1011,7 @@
       camZ: 12,
       cloudCur: 0,
       dive: 0,             // GSAP-scrubbed travel through the harvest
+      divePush: 0,         // ...and how far in the camera has gone with it
       heroCur: 0,
       building: false,
       light: 0,            // 0 = dark section, 1 = light section
@@ -1017,6 +1020,8 @@
                oil: 0.20, oilCur: 0.20, rough: 0.74, roughCur: 0.74 },
       running: false, hidden: false
     };
+
+    if (!HAZE) HAZE = new THREE.Color(0xB6C6D2);
 
     var clock = new THREE.Clock();
     var tmp = new THREE.Vector3();
@@ -1084,7 +1089,7 @@
       view._dive = state.dive;
       var camTarget = 12;
       if (state.formation === 'swarm') camTarget = lerp(12, 7.4, state.heroDolly);
-      else if (state.formation === 'dive') camTarget = lerp(12, 9.8, state.dive);
+      else if (state.formation === 'dive') camTarget = lerp(12, 9.8, state.divePush);
       state.camZ = lerp(state.camZ, camTarget, damp(0.07, dt));
       camera.position.z = state.camZ;
       camera.lookAt(state.smooth.x * 0.35, state.smooth.y * -0.25, camera.position.z - 9);
@@ -1134,7 +1139,17 @@
          toward the middle. Static formations keep the softer rate. */
       var driven = state.formation === 'swarm' || state.formation === 'dive';
       var kMove = damp(driven ? 0.24 : 0.055, dt);
-      var kScale = damp(0.075, dt);
+
+      /* How much of the frame is the dive right now — 1 once it has fully
+         taken over, and easing through the blend at either end, so the haze
+         arrives and leaves with the corridor rather than switching on. */
+      var haze = (state.formation === 'dive' ? smooth(state.blend)
+               : (state.prevFormation === 'dive' ? 1 - smooth(state.blend) : 0));
+      /* A driven formation fades beans out to hide a restart, and the frame
+         loop only teleports one once BOTH its current and its target scale
+         have reached zero. On the slow follow that lands well after the
+         formation wanted it, so the wrap goes through on the crisper rate. */
+      var kScale = damp(driven ? 0.17 : 0.075, dt);
 
       for (var i = 0; i < beans.length; i++) {
         var b = beans[i];
@@ -1168,6 +1183,13 @@
 
         // per-bean roast variation, so the batch never looks uniform
         b.mat.color.copy(R.cur).multiplyScalar(b.tint);
+        /* Aerial perspective. A corridor thirty units deep only reads as deep
+           if its far end sits in the same air as the cloud bank behind it —
+           size alone makes distant beans small, not distant. Tied to the dive
+           so it costs nothing in sections that have no distance to sell. */
+        if (haze > 0.002) {
+          b.mat.color.lerp(HAZE, clamp((-b.cur.z - 4) / 30, 0, 1) * 0.48 * haze);
+        }
         b.mat.clearcoat = R.oilCur;
         b.mat.roughness = R.roughCur;
         b.mat.envMapIntensity = lerp(0.85, 1.35, L);
@@ -1205,7 +1227,15 @@
       },
 
       setLocal: function (p) { state.local = p; },
-      setDive: function (v) { state.dive = clamp(v, 0, 1); },
+      /* Two values, because they are not the same shape. Travel only ever
+         goes forward — wind it back and the corridor runs in reverse — while
+         the push winds up and then eases back out again as the dive lands,
+         so the camera is already home by the time the formation changes and
+         there is nothing left to snap. */
+      setDive: function (travel, push) {
+        state.dive = Math.max(0, travel || 0);
+        state.divePush = clamp(push == null ? travel : push, 0, 1);
+      },
       setHeroDolly: function (p) { state.heroDolly = clamp(p, 0, 1); },
       setLight: function (v) { state.light = clamp(v, 0, 1); },
       setPointer: function (x, y) { state.pointer.x = x; state.pointer.y = y; },
