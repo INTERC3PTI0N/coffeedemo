@@ -771,8 +771,17 @@
        section, so the funnel spins up as you come down the page. */
     fall: function (b, i, n, t, p, view) {
       var wide = view._aspect > 1.15;
-      var CX = wide ? view.halfW(0) * 0.32 : 0;   // clear the copy column
-      var RX = wide ? 3.5 : 2.2;                  // funnel radius
+
+      /* The last stretch of the section is a hand-off, not a hold: the funnel
+         winds up, pulls in off the margin and tightens into a spinning column
+         that feeds the roasts below. All of it is a function of scroll rather
+         than of time — anything that scales `t` by a scroll-dependent factor
+         jumps every bean the moment the factor moves, because `t` by then is
+         a large number. */
+      var drive = smooth(clamp((p - 0.5) / 0.5, 0, 1));
+
+      var CX = (wide ? view.halfW(0) * 0.32 : 0) * (1 - drive * 0.86);
+      var RX = (wide ? 3.5 : 2.2) * (1 - drive * 0.42);   // funnel radius
       /* Depth is what makes this read as a cyclone rather than as confetti,
          but the near swing has to stop short of the lens: a bean that gets
          within a couple of units of the camera fills half the viewport and
@@ -780,11 +789,13 @@
          viewport is a third the width for the same depth, so the same swing
          reads two beans wide there — it gets a shallower funnel and a
          smaller bean. */
-      var RZ = wide ? 4.0 : 2.4;
-      var RY = 5.9;
+      var RZ = (wide ? 4.0 : 2.4) * (1 - drive * 0.40);
+      var RY = 5.9 + drive * 1.5;
 
-      // where this bean is on the circuit: 0 at the top, round and back
-      var w = ((i * PHI) + t * 0.062 + p * 1.3) % 1;
+      // where this bean is on the circuit: 0 at the top, round and back.
+      // Scroll adds turns of its own, and adds them faster once the wind-up
+      // starts, so coming down the page spins the funnel up.
+      var w = ((i * PHI) + t * 0.062 + p * 1.3 + drive * 2.2) % 1;
       if (w < 0) w += 1;
 
       var DOWN = 0.66;        // two thirds of the circuit is the fall
@@ -804,10 +815,10 @@
         // a bulge between, so the seams are invisible
         radius = 0.765 + g * 0.21 + Math.sin(g * Math.PI) * 0.42;
         turn = TAU * 1.55 + g * TAU * 0.45;     // lands back on 0 mod TAU
-        back = Math.sin(g * Math.PI) * 3.6;     // the updraught runs deep
+        back = Math.sin(g * Math.PI) * 3.6 * (1 - drive * 0.55);
       }
 
-      var a = turn + i * GOLD;
+      var a = turn + i * GOLD + drive * TAU * 1.25;
 
       /* Every bean riding the same radius puts them all on one wire, and a
          wire seen side-on piles up at its two turning points — two strands,
@@ -819,7 +830,7 @@
         x: CX + Math.cos(a) * RX * radius + (b.r2 - 0.5) * 1.5,
         y: -0.4 + lift * RY + (b.r1 - 0.5) * 1.6 + Math.sin(t * 0.6 + i) * 0.18,
         z: -0.4 + Math.sin(a) * RZ * radius - back + (b.r3 - 0.5) * 1.5,
-        s: b.size * (wide ? 0.62 : 0.38)
+        s: b.size * (wide ? 0.62 : 0.38) * (1 - drive * 0.22)
       };
     },
 

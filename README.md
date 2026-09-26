@@ -199,7 +199,18 @@ within a couple of units of the lens fills half the viewport and lands on top of
 whichever section is arriving underneath. A portrait viewport is a third the
 width at the same depth, so it gets a shallower funnel and a smaller bean.
 Scroll drives the spin too — the section's progress adds better than a full turn
-across it.
+across it, and the last half of the section is a hand-off rather than a hold:
+the funnel winds up, pulls in off the margin and tightens into a spinning column
+that pours straight down into the roasts below. That wind-up is a function of
+scroll alone. Anything that scales elapsed time by a scroll-dependent factor
+jumps every bean the moment the factor moves, because by then `t` is a large
+number and a small change to its coefficient is a large change to the product.
+
+The section itself is 118svh, not the 165 it used to be. Its copy is sticky, so
+every extra viewport of height was another viewport of scrolling past a block of
+text that was not moving — about 1,200px of it. The zone that drives the
+formation runs `top center` to `bottom center`, which puts the end of the
+wind-up exactly on the switch to the next formation.
 
 **The roaster.** The drum is perforated sheet with scorch marks painted into
 its colour, bump and roughness maps, set inside a housing with legs and a

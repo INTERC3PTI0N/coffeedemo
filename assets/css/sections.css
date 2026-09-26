@@ -175,7 +175,11 @@ section{ position:relative; }
 .altitude{
   background:var(--cream);
   color:var(--ink);
-  min-height:165svh;
+  /* The copy is sticky, so every extra viewport of section height is another
+     viewport of scrolling past a block of text that is not moving. 165svh
+     left roughly 1,200px of that; this is long enough for the cyclone to
+     wind up and hand over, and no longer. */
+  min-height:118svh;
   padding-top:clamp(40px,8vh,90px);
 }
 
@@ -197,7 +201,7 @@ section{ position:relative; }
 .highlands{
   position:absolute;
   left:0; right:0; bottom:0;
-  height:118svh;
+  height:96svh;
   z-index:1;
   pointer-events:none;
   overflow:hidden;      /* clips the layers' overhang, not the sticky copy */
@@ -230,7 +234,7 @@ section{ position:relative; }
 /* =================================================================== */
 /* 04 · ROASTS — expanding panels                                      */
 /* =================================================================== */
-.roasts{ background:var(--paper); color:var(--ink); padding-top:clamp(70px,11vh,130px); }
+.roasts{ background:var(--paper); color:var(--ink); padding-top:clamp(44px,6vh,86px); }
 
 .roasts__head{ text-align:center; padding:0 var(--gut) clamp(26px,4vh,48px); }
 .roasts__head .display{ font-size:clamp(36px,5.6vw,88px); }
