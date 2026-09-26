@@ -87,6 +87,18 @@ ${FIELD}
     vec4 state = texture2D(texturePosition, uv);
     vec3 pos = state.xyz;
 
+    /* A twelfth of the field never joins the figure.
+    
+       The figure is bounded — it has to be, it is a plate — and once the
+       camera is down inside it the edge of that bound is simply black, which
+       is what was leaving half the frame empty on the closer shots. These
+       grains ignore the drive entirely and hang wide as atmosphere, so there
+       is always something between the lens and the dark however the camera is
+       pointed. They never settle, so they stay cold and dim and cannot be
+       mistaken for part of the figure: they read as the air it is suspended
+       in, which is what a plate of dust should have around it anyway. */
+    float amb = step(0.9167, hash(uv * 7.31 + 3.7));
+
     /* --- the two fields, blended --- */
     float sP = plate(pos.xy, uMode);
     vec2  gP = plateGrad(pos.xy, uMode);
@@ -97,7 +109,7 @@ ${FIELD}
     // The bow lifts as the mark forms: without this the plate keeps driving
     // grains onto its nodal lines while the glyph pulls them to the digits,
     // the two forces fight, and the mark never resolves.
-    float drive = 1.0 - uGlyph;
+    float drive = (1.0 - uGlyph) * (1.0 - amb);
     vec3 force = vec3(0.0);
     force.xy += -2.0 * sP * gP * (1.0 - uDimension) * drive;
     force    += -2.0 * sV * gV * uDimension * drive;
@@ -108,9 +120,9 @@ ${FIELD}
        only ever be looked *at*. Giving the figure a thickness costs nothing —
        the nodal pattern lives in x and y — and buys the near-field the dive
        is made of. uThick is the slab's half-depth, in field units. */
-    float slab = uThick;
+    float slab = mix(uThick, 2.6, amb);
     float over = pos.z - clamp(pos.z, -slab, slab);
-    force.z += -over * 14.0 * (1.0 - uDimension);
+    force.z += -over * 14.0 * (1.0 - uDimension) * (1.0 - amb * 0.85);
 
     // clamped step keeps the descent stable when the gradient is steep
     vec3 step = force * uTightness * uDt;
@@ -134,9 +146,14 @@ ${FIELD}
     vec3 noise = hash3(uv + fract(uTime * 0.37)) - 0.5;
     pos += noise * (uJitter + uScatter * 2.4) * uDt;
 
-    /* --- soft containment --- */
+    /* --- soft containment ---
+       The atmosphere is held in a far larger shell than the figure, and drifts
+       inside it rather than being pulled anywhere. */
+    float cage = mix(1.9, 4.4, amb);
     float r = length(pos);
-    if (r > 1.9) pos -= normalize(pos) * (r - 1.9) * 0.6;
+    if (r > cage) pos -= normalize(pos) * (r - cage) * 0.6;
+
+    pos += (hash3(uv * 2.17 + fract(uTime * 0.11)) - 0.5) * amb * 0.035 * uDt;
 
     /* --- how settled is this grain? --- */
     float s = mix(abs(sP), abs(sV), uDimension);
@@ -145,6 +162,8 @@ ${FIELD}
     // struck mark is settled by definition, so light all of it
     lock = mix(lock, 1.0, uGlyph);
     lock *= 1.0 - uScatter;
+    // atmosphere never settles; it is what the figure is suspended in
+    lock *= 1.0 - amb * 0.93;
 
     gl_FragColor = vec4(pos, lock);
   }

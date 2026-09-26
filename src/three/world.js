@@ -10,30 +10,43 @@ import { createPostFX } from './postfx.js';
  * read the struck mark.
  * ------------------------------------------------------------------ */
 const FLIGHT = [
-  /* Every chapter is a dive, not a vantage.
+  /* A camera grammar, not one move repeated.
      
-     Sitting the camera closer was not the same thing as flying it: a near
-     static shot is still a shot. Each beat now has a plunge keyframe between
-     it and the next, so the camera falls through the field and climbs back
-     out twice per chapter, and the grains stream past on the way down. The
-     volume chapter is no longer the only place anything happens — it is the
-     one place the camera stays down instead of climbing out.
+     Every chapter had the same shape before this — fall forward, climb out,
+     fall forward — and a move you have already seen stops reading as motion.
+     Each chapter now gets its own kind of shot, and the cut between them is
+     the chapter boundary:
 
-     The pairs are approach / plunge: the approach frames read the figure, the
-     plunge frames are inside it. Beats land on the approach frames, so the
-     score and the palette still change on the chapter boundaries. */
-  { t: 0.00, pos: [-260,  170, 2200 ], look: [  40,  -25,  -80 ], fov: 46 },
-  { t: 0.09, pos: [-120,   80,  620 ], look: [  90,  -60, -220 ], fov: 62 },
-  { t: 0.18, pos: [-350,  225, 1280 ], look: [  70,  -50, -150 ], fov: 52 },
-  { t: 0.27, pos: [ 180, -120,  520 ], look: [ -80,   50, -240 ], fov: 64 },
-  { t: 0.36, pos: [ 340, -200, 1380 ], look: [ -60,   30,  -90 ], fov: 50 },
-  { t: 0.44, pos: [-260,  150,  560 ], look: [  90,  -60, -250 ], fov: 64 },
-  { t: 0.52, pos: [-470,  270,  950 ], look: [  70,  -45, -170 ], fov: 58 },
-  { t: 0.61, pos: [ 120,   60,  380 ], look: [ -60,   20, -300 ], fov: 70 },
-  { t: 0.70, pos: [  70,   50,  430 ], look: [ -40,   10, -280 ], fov: 68 },
-  { t: 0.79, pos: [-160,  110,  520 ], look: [  40,  -30, -260 ], fov: 64 },
-  { t: 0.87, pos: [-140,  100,  900 ], look: [  35,  -25, -180 ], fov: 54 },
-  { t: 1.00, pos: [ 430,  -40, 3050 ], look: [ 430,  -40,    0 ], fov: 40 },
+       silence     a crane, high and looking down, descending to level
+       first note  a lateral truck, sliding past the figure broadside
+       the sweep   a banked spiral, rolling as it closes
+       modes       an orbit, swinging around a node
+       volume      the rush straight through, kept as it was
+       the mark    a slow arc, rising and pulling away
+       silence     the long pull back, level, for the struck glyph
+
+     `roll` is a dutch angle per keyframe, interpolated like everything else.
+     It is what makes the spiral read as a spiral rather than as a diagonal
+     move, and it returns to zero for the mark, because a hallmark photographed
+     at an angle looks like a mistake. */
+  { t: 0.00, pos: [-180,  920, 1900 ], look: [  40, -120, -260 ], fov: 44, roll: -0.10 },
+  { t: 0.09, pos: [-100,  180,  640 ], look: [  90,  -40, -300 ], fov: 62, roll:  0.16 },
+
+  { t: 0.18, pos: [-900,  150, 1000 ], look: [ 120,  -30, -180 ], fov: 54, roll: -0.14 },
+  { t: 0.27, pos: [ 520,  -80,  560 ], look: [-180,   40, -260 ], fov: 66, roll:  0.22 },
+
+  { t: 0.36, pos: [ 640, -420, 1150 ], look: [ -80,   60, -120 ], fov: 52, roll:  0.30 },
+  { t: 0.44, pos: [-300,  420,  520 ], look: [  90,  -90, -280 ], fov: 66, roll: -0.34 },
+
+  { t: 0.52, pos: [-780,  120,  700 ], look: [  60,  -20, -200 ], fov: 60, roll:  0.12 },
+  { t: 0.61, pos: [ 380,  360,  360 ], look: [ -80,  -60, -320 ], fov: 70, roll: -0.26 },
+
+  { t: 0.70, pos: [  70,   50,  430 ], look: [ -40,   10, -280 ], fov: 68, roll:  0.18 },
+
+  { t: 0.79, pos: [-220,  -60,  560 ], look: [  60,   40, -240 ], fov: 62, roll: -0.20 },
+  { t: 0.87, pos: [-140,  240,  980 ], look: [  35,  -60, -180 ], fov: 52, roll:  0.08 },
+
+  { t: 1.00, pos: [ 430,  -40, 3050 ], look: [ 430,  -40,    0 ], fov: 40, roll:  0.00 },
 ];
 
 /* ------------------------------------------------------------------ *
@@ -47,18 +60,18 @@ const SCORE = [
   // `off` slides the plate clear of the column of type, the way a subject is
   // placed off-centre; the volume dive and the struck mark recentre it.
   // 01 — silence: no mode, wide lock, the dust is formless
-  { t: 0.00, mode: [0.4, 0.7], gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.30, jitter: 0.200, lock: 0.95, glyph: 0, scatter: 0, off: 120, thick: 0.80, dive: 0.55 },
+  { t: 0.00, mode: [0.4, 0.7], gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.30, jitter: 0.200, lock: 0.95, glyph: 0, scatter: 0, off:  60, thick: 0.80, dive: 0.55 },
   // 02 — the first note: a simple, unmistakable figure
-  { t: 0.18, mode: [2, 3],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.20, jitter: 0.030, lock: 0.34, glyph: 0, scatter: 0, off: 240, thick: 0.50, dive: 0.70 },
+  { t: 0.18, mode: [2, 3],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.20, jitter: 0.030, lock: 0.34, glyph: 0, scatter: 0, off: 110, thick: 0.50, dive: 0.70 },
   // 03 — the sweep: the mode climbs, the figure complicates
-  { t: 0.36, mode: [5, 4],     gyro: [3.4, 3.4, 3.4], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.30, glyph: 0, scatter: 0, off: 240, thick: 0.38, dive: 0.58 },
-  { t: 0.52, mode: [8, 5],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.60, jitter: 0.024, lock: 0.27, glyph: 0, scatter: 0, off: 160, thick: 0.46, dive: 0.80 },
+  { t: 0.36, mode: [5, 4],     gyro: [3.4, 3.4, 3.4], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.30, glyph: 0, scatter: 0, off: 110, thick: 0.38, dive: 0.58 },
+  { t: 0.52, mode: [8, 5],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.60, jitter: 0.024, lock: 0.27, glyph: 0, scatter: 0, off:  70, thick: 0.46, dive: 0.80 },
   // 04 — the field lifts. Grains spread over a surface read far thinner than
   // grains crowded onto lines, so the volume needs fewer, larger cells and a
   // harder pull to hold together.
   { t: 0.70, mode: [9, 6],     gyro: [2.6, 2.6, 2.6], dim: 1, tight: 3.20, jitter: 0.016, lock: 0.30, glyph: 0, scatter: 0, off: 0,   thick: 1.00, dive: 1.00 },
   // 05 — the mark: the field falls quiet so the struck object owns the frame
-  { t: 0.88, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.26, glyph: 0, scatter: 0, off: -180, thick: 0.42, dive: 0.72 },
+  { t: 0.88, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.26, glyph: 0, scatter: 0, off: -80, thick: 0.42, dive: 0.72 },
   // 06 — the dust resolves into the hallmark, and holds
   { t: 1.00, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.10, jitter: 0.0025, lock: 0.55, glyph: 1, scatter: 0, off: 430, thick: 0.04, dive: 0.10 },
 ];
@@ -166,6 +179,10 @@ function cr(p0, p1, p2, p3, s) {
   );
 }
 
+/* The keyframed dutch angle, written here and read by the camera. Kept beside
+   the flight rather than passed back, because it belongs to the shot. */
+let flightRoll = 0;
+
 function sampleFlight(t, outPos, outLook) {
   const { i, s } = segment(FLIGHT, t);
   const k = (n) => FLIGHT[THREE.MathUtils.clamp(n, 0, FLIGHT.length - 1)];
@@ -174,6 +191,7 @@ function sampleFlight(t, outPos, outLook) {
     outPos.setComponent(c, cr(p0.pos[c], p1.pos[c], p2.pos[c], p3.pos[c], s));
     outLook.setComponent(c, cr(p0.look[c], p1.look[c], p2.look[c], p3.look[c], s));
   }
+  flightRoll = cr(p0.roll, p1.roll, p2.roll, p3.roll, s);
   return cr(p0.fov, p1.fov, p2.fov, p3.fov, s);
 }
 
@@ -501,10 +519,14 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
 
     camera.position.copy(posDamped);
 
-    // Banking into the dive. Rolling the up-vector before lookAt is what makes
-    // the volume chapter feel piloted rather than watched.
-    if (!reducedMotion && dive > 0.001) {
-      const roll = (state.pointerDamped.x * 0.16 + state.agitation * 0.10) * dive;
+    /* The shot's own dutch angle, plus what the hand and the scrubbing add on
+       top of it. Rolling the up-vector before lookAt is what makes a move read
+       as flown rather than watched, and giving each chapter its own angle is
+       what stops the flight reading as one long move. */
+    const roll = reducedMotion
+      ? 0
+      : flightRoll + (state.pointerDamped.x * 0.16 + state.agitation * 0.10) * dive;
+    if (Math.abs(roll) > 1e-4) {
       camera.up.set(Math.sin(roll), Math.cos(roll), 0);
     } else if (camera.up.x !== 0) {
       camera.up.set(0, 1, 0);
