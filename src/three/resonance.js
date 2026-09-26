@@ -210,6 +210,9 @@ ${FIELD}
   uniform float uDimension;
   uniform vec3  uLightDir;
 
+  uniform vec3  uPointer;   // the hand, in field space
+  uniform float uPointerLit; // 0 when the hand has left the plate
+
   /* the grain's own geometry, morphed by the scroll */
   uniform float uElong;
   uniform float uTumble;
@@ -231,6 +234,7 @@ ${FIELD}
   varying float vPulse;   // how far out on the figure this grain sits
   varying float vPx;      // the sprite's *sharp* size on screen, in pixels
   varying float vAmb;     // 1 if this grain is atmosphere rather than figure
+  varying float vNear;    // 1 under the pointer, falling off with distance
 
   /* a world-space direction, as the unit screen direction it projects to at
      this grain's own depth */
@@ -248,6 +252,11 @@ ${FIELD}
     vLock = state.w;
     vSeed = aSeed;
     vAmb = ambientOf(aRef);
+
+    /* The hand does not only push the dust about — it wakes it. Grains near
+       the pointer take a little more light, which turns a drag through the
+       field from a physics demonstration into something that answers. */
+    vNear = uPointerLit * exp(-dot(pos - uPointer, pos - uPointer) * 5.5);
 
     vec4 mv = modelViewMatrix * vec4(pos, 1.0);
     float depth = max(-mv.z, 0.001);
@@ -325,7 +334,7 @@ ${FIELD}
     float radius = uGrainRadius
                  * mix(1.0, uSettledGain, vLock)
                  * (0.72 + aSeed * 0.56)
-                 * mix(1.0, 2.6 + aSeed * 1.5, vAmb);
+                 * mix(1.0, 2.1 + aSeed * 1.1, vAmb);
 
     float px = 2.0 * radius * uProjScale / depth;
 
@@ -387,6 +396,7 @@ const RENDER_FRAG = /* glsl */ `
   varying float vPulse;
   varying float vPx;
   varying float vAmb;
+  varying float vNear;
 
   /* ------------------------------------------------------------------
      The form library.
@@ -695,11 +705,16 @@ const RENDER_FRAG = /* glsl */ `
        to resolve. Weighted well below a figure grain so that a fifth of the
        field can fill the frame without ever competing with the figure for
        attention: it is what the figure hangs in, not part of it. */
-    shape = mix(shape, exp(-dot(q, q) * 7.0) * 0.15, vAmb);
+    shape = mix(shape, exp(-dot(q, q) * 7.0) * 0.11, vAmb);
 
-    // defocus takes the aperture's shape rather than dissolving to a smudge
+    /* Defocus takes the aperture's shape rather than dissolving to a smudge —
+       and never takes the whole grain. Blending all the way to the soft
+       profile deleted the form outright the moment it left the focal plane,
+       so a contraption the reader had just been shown would vanish into a
+       blob for the rest of the shot. Capped, the shape survives its own
+       defocus. */
     float soft = smoothstep(0.26, -0.18, d) * (0.72 + 0.5 * smoothstep(-0.02, 0.16, d));
-    shape = mix(shape, soft, vBlur);
+    shape = mix(shape, soft, vBlur * 0.55);
 
     vec3 col = mix(uCold, uHot, smoothstep(0.15, 0.95, vLock));
     col *= vShade;
@@ -707,6 +722,10 @@ const RENDER_FRAG = /* glsl */ `
     col += uHot * vGlint * 0.40;
     // the core and the scan line burn hotter than the body they sit in
     col += uHot * (core * 0.30 + scan * 0.40) * innerLod;
+    // the hand's own light, on the body rather than the outline, so it reads
+    // as the dust catching a lamp rather than as a selection halo
+    col += uHot * vNear * 0.55;
+    shape += vNear * fill * 0.30;
 
     float a = shape * uOpacity * (0.19 + vLock * 0.40) * (0.62 + vSeed * 0.46);
 
@@ -843,13 +862,16 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
 
     uFocus:       { value: 1200 },
     uFocusRange:  { value: 900 },
-    uBokeh:       { value: 3.2 },
+    // enough to separate near from far, not enough to erase a silhouette
+    uBokeh:       { value: 1.5 },
 
     // shared with the simulation so shading always matches the physics
     uMode:        sim.uMode,
     uGyroid:      sim.uGyroid,
     uDimension:   sim.uDimension,
     uLightDir:    { value: new THREE.Vector3(-0.42, 0.68, 0.6) },
+    uPointer:     sim.uPointer,
+    uPointerLit:  { value: 0 },
 
     uCold:        { value: new THREE.Color('#5d7286') },
     uHot:         { value: new THREE.Color('#e7c274') },
@@ -913,11 +935,13 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
     setPointer(worldPos, force) {
       if (!worldPos) {
         sim.uPointerForce.value = 0;
+        uniforms.uPointerLit.value = 0;
         return;
       }
       _p.copy(worldPos).divideScalar(scale);
       sim.uPointer.value.copy(_p);
       sim.uPointerForce.value = force;
+      uniforms.uPointerLit.value = 1;
     },
 
     /**

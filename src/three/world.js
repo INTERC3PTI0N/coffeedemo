@@ -140,9 +140,9 @@ const GRADE = [
   { t: 0.52, bg: '#080c14', cold: '#7191b2', hot: '#f0c873', size: 0.92, glow: 0.74, opacity: 1.00,
     bloom: 0.40, vig: 0.58, sat: 1.00, lift: 0.007, cast: '#e2ecf6', castAmt: 0.10, exposure: 1.02 },
   { t: 0.70, bg: '#0a0d16', cold: '#7c9dbf', hot: '#ffd98a', size: 1.18, glow: 1.05, opacity: 1.00,
-    bloom: 0.58, vig: 0.50, sat: 1.04, lift: 0.010, cast: '#eef4fb', castAmt: 0.08, exposure: 1.04 },
+    bloom: 0.44, vig: 0.50, sat: 1.04, lift: 0.010, cast: '#eef4fb', castAmt: 0.08, exposure: 1.04 },
   { t: 0.88, bg: '#07090e', cold: '#6c8399', hot: '#ffe2a2', size: 0.95, glow: 1.10, opacity: 1.00,
-    bloom: 0.60, vig: 0.60, sat: 1.00, lift: 0.006, cast: '#ffeecb', castAmt: 0.16, exposure: 1.02 },
+    bloom: 0.46, vig: 0.60, sat: 1.00, lift: 0.006, cast: '#ffeecb', castAmt: 0.16, exposure: 1.02 },
   { t: 1.00, bg: '#05070a', cold: '#5a7084', hot: '#c9a24f', size: 0.60, glow: 0.70, opacity: 0.72,
     bloom: 0.38, vig: 0.70, sat: 0.86, lift: 0.004, cast: '#cfdbe8', castAmt: 0.10, exposure: 1.0 },
 ];
@@ -544,11 +544,17 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
       renderer.domElement.height,
     );
 
-    // Focus rides the field's centre; inside the volume the depth of field
-    // closes right down, which is what gives the dive its sense of scale.
+    /* Focus rides the field's centre. The depth of field used to close right
+       down inside a dive — 380 units, with the camera sitting in a field
+       eleven hundred across — which threw nearly the whole frame out of
+       focus. That reads as atmosphere in a still and as mush in motion, and
+       it was quietly undoing the contraptions: a form only exists on screen
+       while it is sharp enough to have edges. The range stays wide enough now
+       that the shapes hold through every shot, and the defocus is left to do
+       what it is actually for, which is separating near from far. */
     field.setFocus(
       camera.position.distanceTo(field.points.position),
-      THREE.MathUtils.lerp(1500, 380, dive),
+      THREE.MathUtils.lerp(2000, 1100, dive),
     );
 
     // drag the pointer through the dust
