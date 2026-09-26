@@ -497,9 +497,14 @@ const RENDER_FRAG = /* glsl */ `
        grains are tracing closes into a solid mass — so the interior has to
        wait until the grain is genuinely big enough, and in focus enough, to
        have a visible inside at all. Getting this backwards fills the
-       counters of the closing mark and turns "999" into a smudge. */
-    float formLod  = smoothstep(1.4, 4.0, vPx);
-    float innerLod = smoothstep(3.0, 8.0, vPx) * (1.0 - vBlur);
+       counters of the closing mark and turns "999" into a smudge.
+
+       The silhouette is not free either: a rim is an edge highlight, and on
+       a thin feature at one pixel that highlight is most of the grain, so a
+       shaped speck still emits more than the round one it replaced. Both
+       stages therefore wait for real pixels to work with. */
+    float formLod  = smoothstep(1.6, 5.0, vPx);
+    float innerLod = smoothstep(4.0, 9.5, vPx) * (1.0 - vBlur);
 
     float shell = body * (0.55 + vLock * 0.55) + rim * 0.35 * vLock;
     float shape = shell + (core * 0.70 + scan * 0.45) * innerLod;
@@ -508,7 +513,15 @@ const RENDER_FRAG = /* glsl */ `
     shape += (exp(-abs(p.y) * 52.0) + exp(-abs(p.x) * 52.0))
            * exp(-dot(p, p) * 5.0) * vLock * 0.22;
 
-    shape = mix(exp(-dot(q, q) * 12.0) * 0.62, shape, formLod);
+    /* The low-resolution grain has to stay *compact*, not merely dim. A soft
+       falloff spreads the same light over the whole sprite, and across a
+       dense figure that spread is what closes the counters of the digits —
+       the mark went to a smudge on a profile that was correctly dimmed but
+       twice as wide. So: the form's own silhouette where there is material
+       under the sample, and a small hard disc where there is not, because an
+       iris has nothing at its centre and would otherwise vanish. */
+    float lowRes = max(fill, smoothstep(0.26, 0.10, length(q))) * 0.62;
+    shape = mix(lowRes, shape, formLod);
 
     // defocus takes the aperture's shape rather than dissolving to a smudge
     float soft = smoothstep(0.26, -0.18, d) * (0.72 + 0.5 * smoothstep(-0.02, 0.16, d));
