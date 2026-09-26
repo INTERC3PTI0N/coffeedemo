@@ -387,7 +387,10 @@ const RENDER_FRAG = /* glsl */ `
     float ring = abs(r - 0.235) - 0.058;
     // angular saw, converted to arc length so the teeth keep their width
     float arc = (0.5 - abs(fract(a * 6.0 / TAU) - 0.5)) * (TAU / 6.0) * r;
-    return vec2(max(ring, 0.030 - arc), r - 0.078);
+    // A boss at the centre, so the iris is a lens and not an empty hoop. Every
+    // form in this set carries material at its origin, which is what lets a
+    // distant grain be drawn as its own silhouette instead of vanishing.
+    return vec2(min(max(ring, 0.030 - arc), r - 0.072), r - 0.072);
   }
 
   /* 4 — VANE. Inside the volume the field is a surface, and the grain becomes
@@ -517,10 +520,11 @@ const RENDER_FRAG = /* glsl */ `
        falloff spreads the same light over the whole sprite, and across a
        dense figure that spread is what closes the counters of the digits —
        the mark went to a smudge on a profile that was correctly dimmed but
-       twice as wide. So: the form's own silhouette where there is material
-       under the sample, and a small hard disc where there is not, because an
-       iris has nothing at its centre and would otherwise vanish. */
-    float lowRes = max(fill, smoothstep(0.26, 0.10, length(q))) * 0.62;
+       twice as wide. So a far grain is drawn as its own hard silhouette and
+       nothing else: no rim, no interior, and no fallback disc, which would
+       have ignored the foreshortening every other grain is subject to and
+       quietly handed the distant ones more coverage than they had earned. */
+    float lowRes = fill * 0.62;
     shape = mix(lowRes, shape, formLod);
 
     // defocus takes the aperture's shape rather than dissolving to a smudge
