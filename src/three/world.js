@@ -359,6 +359,8 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     field.uniforms.uScan.value    = sh.scan * (1 - ag2 * 0.70);
     field.uniforms.uAlign.value   = sh.align * (1 - ag2 * 0.85);
     field.uniforms.uShatter.value = ag2 * 0.85;
+    // the mark owns the last frame; the grains give it back (see uFormFade)
+    field.uniforms.uFormFade.value = 1 - field.sim.uGlyph.value;
     field.uniforms.uTumble.value  = ag2 * 0.09;
     field.uniforms.uGlow.value = g.glow;
     field.uniforms.uOpacity.value = g.opacity;

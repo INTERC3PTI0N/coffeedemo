@@ -316,6 +316,7 @@ const RENDER_FRAG = /* glsl */ `
   uniform float uCore;      // how brightly the inner structure burns
   uniform float uScan;      // the sweep of light that says it is running
   uniform float uShatter;   // a shaken plate chips the edges off
+  uniform float uFormFade;  // 1 the grain is an object · 0 it is only a grain
 
   varying float vLock;
   varying float vSeed;
@@ -506,8 +507,14 @@ const RENDER_FRAG = /* glsl */ `
        a thin feature at one pixel that highlight is most of the grain, so a
        shaped speck still emits more than the round one it replaced. Both
        stages therefore wait for real pixels to work with. */
-    float formLod  = smoothstep(1.6, 5.0, vPx);
-    float innerLod = smoothstep(4.0, 9.5, vPx) * (1.0 - vBlur);
+    /* As the struck mark forms, the grain stops being the subject. What the
+       reader has to see at the end is the figure the dust is spelling, and a
+       hundred thousand little machines — however carefully weighted — put
+       more light between the digits than three 9s can survive. So the forms
+       hand the frame back: by the time the mark is fully struck each grain is
+       a plain speck again, which is exactly what the closing shot wants. */
+    float formLod  = smoothstep(1.6, 5.0, vPx) * uFormFade;
+    float innerLod = smoothstep(4.0, 9.5, vPx) * (1.0 - vBlur) * uFormFade;
 
     float shell = body * (0.55 + vLock * 0.55) + rim * 0.35 * vLock;
     float shape = shell + (core * 0.70 + scan * 0.45) * innerLod;
@@ -704,6 +711,7 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
     uCore:        { value: 0.15 },
     uScan:        { value: 0 },
     uShatter:     { value: 0 },
+    uFormFade:    { value: 1 },
     uAlign:       { value: 0 },
     uTumble:      { value: 0 },
     uTime:        sim.uTime,
