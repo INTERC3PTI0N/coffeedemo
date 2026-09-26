@@ -757,80 +757,63 @@
       };
     },
 
-    /* harvest: a cyclone of beans over the highlands.
-       Beans spiral down the near face of a funnel — close enough to the lens
-       that the front of the sweep swells right past it — then ride the
-       updraught back up on the far side, small and hazy. The circuit is
-       closed, which is the whole trick: a column that simply rains has to
-       teleport each bean from the bottom of the frame back to the top, and
-       because the field eases toward its targets rather than snapping, that
-       jump smears a bean up the screen every cycle. Nothing here ever jumps,
-       so the churn can run as fast as it likes.
+    /* harvest: the dive.
 
-       Scroll drives it too — `p` adds better than a full turn across the
-       section, so the funnel spins up as you come down the page. */
-    fall: function (b, i, n, t, p, view) {
+       A corridor of beans running back into the haze, travelling straight at
+       the lens. Nothing orbits: each bean holds one fixed lateral offset for
+       the whole run and simply closes on the camera, so its spread across the
+       frame is honest perspective rather than a pose. That is what makes it
+       read as travel instead of as a swirl — and it is why none of them sits
+       on the axis, because a bean dead centre only swells in place, which is
+       the one part of a fly-through that reads as a zoom.
+
+       GSAP scrubs the travel and the dolly (see `initAltitude`), easing in, so
+       the dive accelerates the further down the section you come and is flat
+       out by the time the roasts arrive.
+
+       The wrap is the thing a corridor has to get right. A bean that reaches
+       the lens has to start again at the far end, and the field eases toward
+       its targets rather than snapping, so that jump would drag it backwards
+       through the whole corridor in plain sight. Both ends of the run fade,
+       and `frame` teleports beans nobody can see. */
+    dive: function (b, i, n, t, p, view) {
       var wide = view._aspect > 1.15;
+      var d = view._dive || 0;
 
-      /* The last stretch of the section is a hand-off, not a hold: the funnel
-         winds up, pulls in off the margin and tightens into a spinning column
-         that feeds the roasts below. All of it is a function of scroll rather
-         than of time — anything that scales `t` by a scroll-dependent factor
-         jumps every bean the moment the factor moves, because `t` by then is
-         a large number. */
-      var drive = smooth(clamp((p - 0.5) / 0.5, 0, 1));
+      /* NEAR has to clear the camera, and the camera is not parked: the dive
+         dollies it from z 12 in to 9.8, so a corridor that ran to 11.4 would
+         end up with its last stretch behind the lens and beans blinking out
+         against the near plane. */
+      var FAR = -30, NEAR = 8.0;
 
-      var CX = (wide ? view.halfW(0) * 0.32 : 0) * (1 - drive * 0.86);
-      var RX = (wide ? 3.5 : 2.2) * (1 - drive * 0.42);   // funnel radius
-      /* Depth is what makes this read as a cyclone rather than as confetti,
-         but the near swing has to stop short of the lens: a bean that gets
-         within a couple of units of the camera fills half the viewport and
-         sits on top of whatever section is arriving underneath. A portrait
-         viewport is a third the width for the same depth, so the same swing
-         reads two beans wide there — it gets a shallower funnel and a
-         smaller bean. */
-      var RZ = (wide ? 4.0 : 2.4) * (1 - drive * 0.40);
-      var RY = 5.9 + drive * 1.5;
+      // 0 at the far plane, 1 at the lens. Scroll does most of the travelling;
+      // the time term is only so the corridor still moves when nobody scrolls.
+      // Depth comes off the index, so the corridor is evenly filled and never
+      // opens a gap you can see down.
+      var u = ((i * PHI) + t * 0.055 + d * 2.4) % 1;
+      if (u < 0) u += 1;
 
-      // where this bean is on the circuit: 0 at the top, round and back.
-      // Scroll adds turns of its own, and adds them faster once the wind-up
-      // starts, so coming down the page spins the funnel up.
-      var w = ((i * PHI) + t * 0.062 + p * 1.3 + drive * 2.2) % 1;
-      if (w < 0) w += 1;
+      /* Where a bean sits in the corridor's cross-section has to be drawn from
+         somewhere unrelated to its depth. Taking all three off the index with
+         golden-ratio steps looks decorrelated and is not: the two rotations
+         beat against each other and forty-four beans line up into a pair of
+         visible spiral arms. These are independent per-bean hashes. sqrt()
+         because a disc's area grows with r², and without it every bean crowds
+         the middle. */
+      var ang = b.r2 * TAU;
+      var rad = (wide ? 1.9 : 1.4) + Math.sqrt(b.r3) * (wide ? 5.6 : 4.0);
 
-      var DOWN = 0.66;        // two thirds of the circuit is the fall
-      var lift, radius, turn, back;
+      // the corridor banks as it runs back, so the travel has a line to it
+      var bank = Math.sin(u * 2.4 + 0.6) * 1.2;
 
-      if (w < DOWN) {
-        var f = w / DOWN;                       // 0 top → 1 bottom
-        lift = 1 - f * 2;
-        // pinched at the throat, flaring above and below it
-        radius = 0.34 + (f - 0.55) * (f - 0.55) * 2.1;
-        turn = f * TAU * 1.55;
-        back = 0;
-      } else {
-        var g = (w - DOWN) / (1 - DOWN);        // 0 bottom → 1 top
-        lift = -1 + g * 2;
-        // matched to the fall's end radius at g=0 and its start at g=1, with
-        // a bulge between, so the seams are invisible
-        radius = 0.765 + g * 0.21 + Math.sin(g * Math.PI) * 0.42;
-        turn = TAU * 1.55 + g * TAU * 0.45;     // lands back on 0 mod TAU
-        back = Math.sin(g * Math.PI) * 3.6 * (1 - drive * 0.55);
-      }
-
-      var a = turn + i * GOLD + drive * TAU * 1.25;
-
-      /* Every bean riding the same radius puts them all on one wire, and a
-         wire seen side-on piles up at its two turning points — two strands,
-         beans intersecting inside each. Give each its own lane across the
-         funnel's cross-section and its own height offset instead. */
-      radius *= 0.62 + b.r1 * 0.62;
+      // nothing pops in at the far end or blows through the lens
+      var fade = smooth(clamp(u / 0.14, 0, 1)) * smooth(clamp((1 - u) / 0.10, 0, 1));
 
       return {
-        x: CX + Math.cos(a) * RX * radius + (b.r2 - 0.5) * 1.5,
-        y: -0.4 + lift * RY + (b.r1 - 0.5) * 1.6 + Math.sin(t * 0.6 + i) * 0.18,
-        z: -0.4 + Math.sin(a) * RZ * radius - back + (b.r3 - 0.5) * 1.5,
-        s: b.size * (wide ? 0.62 : 0.38) * (1 - drive * 0.22)
+        x: (wide ? 1.5 : 0) + Math.cos(ang) * rad + bank,
+        y: Math.sin(ang) * rad * 0.82 + Math.sin(t * 0.5 + i) * 0.12,
+        z: FAR + u * (NEAR - FAR),
+        s: b.size * (wide ? 0.66 : 0.44) * fade
       };
     },
 
@@ -1025,6 +1008,7 @@
       pointer: { x: 0, y: 0 }, smooth: { x: 0, y: 0 },
       camZ: 12,
       cloudCur: 0,
+      dive: 0,             // GSAP-scrubbed travel through the harvest
       heroCur: 0,
       building: false,
       light: 0,            // 0 = dark section, 1 = light section
@@ -1043,7 +1027,8 @@
       halfH: function (z) { return (state.camZ - z) * view._tan; },
       halfW: function (z) { return (state.camZ - z) * view._tan * view._aspect; },
       _tan: Math.tan(40 * Math.PI / 360),
-      _aspect: 1.6
+      _aspect: 1.6,
+      _dive: 0
     };
 
     function resize() {
@@ -1094,7 +1079,12 @@
       // The dolly belongs to the hero alone. Without this the camera stays
       // parked at hero-close range and every later section renders enormous.
       // it closes on the cup rather than passing through it
-      var camTarget = state.formation === 'swarm' ? lerp(12, 7.4, state.heroDolly) : 12;
+      /* The dive is not only the beans moving: the camera goes with them, and
+         that is what gives the cloud bank behind them parallax to move with. */
+      view._dive = state.dive;
+      var camTarget = 12;
+      if (state.formation === 'swarm') camTarget = lerp(12, 7.4, state.heroDolly);
+      else if (state.formation === 'dive') camTarget = lerp(12, 9.8, state.dive);
       state.camZ = lerp(state.camZ, camTarget, damp(0.07, dt));
       camera.position.z = state.camZ;
       camera.lookAt(state.smooth.x * 0.35, state.smooth.y * -0.25, camera.position.z - 9);
@@ -1115,7 +1105,7 @@
          full-viewport, so without fading at both ends the clouds spill over
          whichever section is arriving next. */
       var wantCloud = 0;
-      if (state.formation === 'fall') {
+      if (state.formation === 'dive') {
         var lp = state.local;
         wantCloud = smooth(clamp(lp / 0.12, 0, 1)) *
                     smooth(clamp((0.88 - lp) / 0.12, 0, 1));
@@ -1142,7 +1132,7 @@
       /* The hero ring and the harvest cyclone are driven — their targets orbit
          continuously — so a slow follow lags behind and the ring collapses
          toward the middle. Static formations keep the softer rate. */
-      var driven = state.formation === 'swarm' || state.formation === 'fall';
+      var driven = state.formation === 'swarm' || state.formation === 'dive';
       var kMove = damp(driven ? 0.24 : 0.055, dt);
       var kScale = damp(0.075, dt);
 
@@ -1151,7 +1141,13 @@
 
         var target = place(b, i, t);
         tmp.set(target.x, target.y, target.z);
-        b.cur.lerp(tmp, reduced ? 1 : kMove);
+
+        /* A bean nobody can see has no visible path. Formations that have to
+           restart one — a corridor reaching the lens, a column running off the
+           bottom — fade it out first and can then put it back wherever they
+           like, instead of the follow dragging it across the frame. */
+        var unseen = b.curS <= 0.012 && target.s <= 0.012;
+        b.cur.lerp(tmp, (reduced || unseen) ? 1 : kMove);
         b.curS = lerp(b.curS, Math.max(target.s, 0.0001), kScale);
 
         b.mesh.position.copy(b.cur);
@@ -1209,6 +1205,7 @@
       },
 
       setLocal: function (p) { state.local = p; },
+      setDive: function (v) { state.dive = clamp(v, 0, 1); },
       setHeroDolly: function (p) { state.heroDolly = clamp(p, 0, 1); },
       setLight: function (v) { state.light = clamp(v, 0, 1); },
       setPointer: function (x, y) { state.pointer.x = x; state.pointer.y = y; },
@@ -1243,7 +1240,7 @@
                   Math.max.apply(null, a).toFixed(2)].join(' … ');
         };
         return { formation: state.formation, prev: state.prevFormation,
-                 blend: state.blend, local: state.local, camZ: state.camZ,
+                 blend: state.blend, local: state.local, camZ: state.camZ, dive: state.dive,
                  light: state.lightCur, hero: state.heroCur, count: beans.length,
                  x: rng(xs), y: rng(ys), z: rng(zs), scale: rng(ss) };
       },

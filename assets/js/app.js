@@ -532,7 +532,7 @@
   var FORMATION_BY_SECTION = [
     ['#hero',       'swarm'],
     ['#manifesto',  'margin'],
-    ['#altitude',   'fall'],
+    ['#altitude',   'dive'],
     ['#roasts',     'sparse'],
     ['#quote',      'margin'],
     ['#lab',        'orbit'],
@@ -721,6 +721,27 @@
     GS.fromTo('.hl--sky', { yPercent: 8 }, {
       yPercent: -6, ease: 'none',
       scrollTrigger: { trigger: sec, start: 'top bottom', end: 'bottom bottom', scrub: 0.7 }
+    });
+
+    /* THE DIVE. One scrubbed value drives the whole thing: how far the bean
+       corridor has travelled and how far the camera has gone in with it.
+       `power2.in` is the point of doing it here rather than off raw scroll
+       progress — the dive starts as a drift and is flat out by the time the
+       roasts arrive underneath, which is what makes it read as a descent
+       rather than as a constant speed. The scrub gives it weight on the way
+       in and on the way back out. */
+    var dive = { v: 0 };
+    GS.to(dive, {
+      v: 1, ease: 'power2.in',
+      scrollTrigger: {
+        /* Matched to the zone that actually hands the field its formation —
+           `top center` to `bottom center`. Run over the section's whole pass
+           through the viewport instead and the dive is still only a quarter
+           wound when the roasts take over, which is the one moment it is
+           supposed to be flat out. */
+        trigger: sec, start: 'top 85%', end: 'bottom center', scrub: 0.5,
+        onUpdate: function () { if (beans) beans.setDive(dive.v); }
+      }
     });
 
     GS.fromTo('.hl--haze', { opacity: 0.2 }, {
