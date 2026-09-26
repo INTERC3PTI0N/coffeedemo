@@ -10,44 +10,43 @@ import { createPostFX } from './postfx.js';
  * read the struck mark.
  * ------------------------------------------------------------------ */
 const FLIGHT = [
-  /* One way in.
+  /* A camera grammar, not one move repeated.
+     
+     Every chapter had the same shape before this — fall forward, climb out,
+     fall forward — and a move you have already seen stops reading as motion.
+     Each chapter now gets its own kind of shot, and the cut between them is
+     the chapter boundary:
 
-     This used to plunge and climb out, twice a chapter, and that is the thing
-     that stopped the piece feeling like somewhere you go inside: every climb
-     out spends the depth the plunge just bought, and after two of them the
-     reader knows the field will always hand them back. Arriving somewhere
-     requires never being returned.
+       silence     a crane, high and looking down, descending to level
+       first note  a lateral truck, sliding past the figure broadside
+       the sweep   a banked spiral, rolling as it closes
+       modes       an orbit, swinging around a node
+       volume      the rush straight through, kept as it was
+       the mark    a slow arc, rising and pulling away
+       silence     the long pull back, level, for the struck glyph
 
-     Depth now falls monotonically from the first frame to the last but one —
-     2600 down to 230, no step of it reversed — so every scroll of the wheel
-     is further in than the reader has ever been. The variety that used to
-     come from moving in and out comes from everything else instead: the
-     camera swings wide and back across the axis, rises and drops, rolls, and
-     the field of view opens from 44 to 74 as it goes, which is the lens doing
-     what a lens does when a thing is coming at it.
+     `roll` is a dutch angle per keyframe, interpolated like everything else.
+     It is what makes the spiral read as a spiral rather than as a diagonal
+     move, and it returns to zero for the mark, because a hallmark photographed
+     at an angle looks like a mistake. */
+  { t: 0.00, pos: [-180,  920, 1900 ], look: [  40, -120, -260 ], fov: 44, roll: -0.10 },
+  { t: 0.09, pos: [-100,  180,  640 ], look: [  90,  -40, -300 ], fov: 62, roll:  0.16 },
 
-     The single reversal is the last beat, and it is the point of the piece:
-     after the deepest frame, everything falls away at once and the dust is
-     seen whole, spelling the mark. That reads as an ending because the
-     preceding eleven keyframes never once gave the reader any distance back. */
-  { t: 0.00, pos: [ -180,  760, 2600 ], look: [   40,  -90, -220 ], fov: 44, roll: -0.08 },
-  { t: 0.09, pos: [ -620,  330, 2050 ], look: [  120,  -40, -240 ], fov: 48, roll:  0.10 },
+  { t: 0.18, pos: [-900,  150, 1000 ], look: [ 120,  -30, -180 ], fov: 54, roll: -0.14 },
+  { t: 0.27, pos: [ 520,  -80,  560 ], look: [-180,   40, -260 ], fov: 66, roll:  0.22 },
 
-  { t: 0.18, pos: [ -880,   90, 1650 ], look: [  150,  -20, -200 ], fov: 52, roll: -0.16 },
-  { t: 0.27, pos: [  460, -260, 1320 ], look: [ -160,   70, -260 ], fov: 56, roll:  0.24 },
+  { t: 0.36, pos: [ 640, -420, 1150 ], look: [ -80,   60, -120 ], fov: 52, roll:  0.30 },
+  { t: 0.44, pos: [-300,  420,  520 ], look: [  90,  -90, -280 ], fov: 66, roll: -0.34 },
 
-  { t: 0.36, pos: [  700, -430, 1050 ], look: [  -90,   80, -180 ], fov: 58, roll:  0.31 },
-  { t: 0.44, pos: [ -340,  430,  840 ], look: [  110, -110, -260 ], fov: 62, roll: -0.33 },
+  { t: 0.52, pos: [-780,  120,  700 ], look: [  60,  -20, -200 ], fov: 60, roll:  0.12 },
+  { t: 0.61, pos: [ 380,  360,  360 ], look: [ -80,  -60, -320 ], fov: 70, roll: -0.26 },
 
-  { t: 0.52, pos: [ -700,  140,  660 ], look: [   90,  -30, -220 ], fov: 64, roll:  0.14 },
-  { t: 0.61, pos: [  340,  330,  520 ], look: [  -90,  -70, -300 ], fov: 68, roll: -0.24 },
+  { t: 0.70, pos: [  70,   50,  430 ], look: [ -40,   10, -280 ], fov: 68, roll:  0.18 },
 
-  { t: 0.70, pos: [   70,   50,  400 ], look: [  -40,   10, -300 ], fov: 70, roll:  0.18 },
+  { t: 0.79, pos: [-220,  -60,  560 ], look: [  60,   40, -240 ], fov: 62, roll: -0.20 },
+  { t: 0.87, pos: [-140,  240,  980 ], look: [  35,  -60, -180 ], fov: 52, roll:  0.08 },
 
-  { t: 0.79, pos: [ -210,  -80,  300 ], look: [   60,   50, -280 ], fov: 72, roll: -0.20 },
-  { t: 0.87, pos: [ -120,  170,  230 ], look: [   30,  -50, -300 ], fov: 74, roll:  0.10 },
-
-  { t: 1.00, pos: [  430,  -40, 3050 ], look: [  430,  -40,    0 ], fov: 40, roll:  0.00 },
+  { t: 1.00, pos: [ 430,  -40, 3050 ], look: [ 430,  -40,    0 ], fov: 40, roll:  0.00 },
 ];
 
 /* ------------------------------------------------------------------ *
@@ -465,10 +464,6 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
   }
   window.addEventListener('resize', resize, { passive: true });
 
-  const prevPos = new THREE.Vector3(...FLIGHT[0].pos);
-  const camVel = new THREE.Vector3();
-  let camSpeed = 0;
-
   const clock = new THREE.Clock();
 
   function frame() {
@@ -525,16 +520,6 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
       posDamped.x += Math.cos(state.time * 0.23) * 2.8;
     }
 
-    /* How fast the camera is actually travelling, in world units a second.
-       Smoothed, because the raw difference of a damped position is noisy, and
-       handed to the field so the grains can streak with it. Speed you cannot
-       see on the things going past is not speed. */
-    if (dt > 1e-4) {
-      camVel.subVectors(posDamped, prevPos).divideScalar(dt);
-      camSpeed += (camVel.length() - camSpeed) * (1 - Math.pow(0.02, dt));
-    }
-    prevPos.copy(posDamped);
-
     camera.position.copy(posDamped);
 
     /* The shot's own dutch angle, plus what the hand and the scrubbing add on
@@ -555,11 +540,6 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
       camera.fov = fov;
       camera.updateProjectionMatrix();
     }
-
-    /* Travel, as the field sees it: the direction the camera is going and how
-       hard. 900 units a second is about the fastest a committed scroll drives
-       it, and that is where the streaking is full. */
-    field.setTravel(camVel, THREE.MathUtils.clamp(camSpeed / 900, 0, 1));
 
     // Grain size is a true projection, so it needs the real buffer and FOV.
     field.setProjection(

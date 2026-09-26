@@ -213,9 +213,6 @@ ${FIELD}
   uniform vec3  uPointer;   // the hand, in field space
   uniform float uPointerLit; // 0 when the hand has left the plate
 
-  uniform vec3  uTravel;    // where the camera is going, in world units a second
-  uniform float uWarp;      // 0 stationary · 1 travelling as hard as the scroll drives
-
   /* the grain's own geometry, morphed by the scroll */
   uniform float uElong;
   uniform float uTumble;
@@ -238,7 +235,6 @@ ${FIELD}
   varying float vPx;      // the sprite's *sharp* size on screen, in pixels
   varying float vAmb;     // 1 if this grain is atmosphere rather than figure
   varying float vNear;    // 1 under the pointer, falling off with distance
-  varying float vStretch; // how far this grain is drawn out by the travel
 
   /* a world-space direction, as the unit screen direction it projects to at
      this grain's own depth */
@@ -329,27 +325,6 @@ ${FIELD}
 
     vSquash = clamp(facing, 0.16, 1.0);
 
-    /* --- the travel, on the grains themselves ---
-       A camera can move as fast as it likes and the frame will not feel fast
-       unless the things going past are drawn as going past. Each grain is
-       stretched along the screen direction the camera's motion carries it,
-       and stretched harder the nearer it is, because that is what parallax
-       does: the far field slides, the near field tears past. This is the
-       difference between travelling toward something and being inside
-       something that is rushing by. */
-    float travelLen = length(uTravel);
-    vStretch = 1.0;
-    if (uWarp > 0.001 && travelLen > 1e-3) {
-      vec2 streak = screenDir(uTravel / travelLen, mv);
-      float nearGain = clamp(900.0 / depth, 0.25, 3.2);
-      float amount = uWarp * nearGain;
-      vStretch = 1.0 + amount * 2.3;
-      // the streak wins the grain's orientation in proportion to how hard it
-      // is being drawn out; below that it keeps the angle the field gave it
-      streak *= dot(streak, vAxis) < 0.0 ? -1.0 : 1.0;
-      vAxis = normalize(mix(vAxis, streak, clamp(amount * 0.85, 0.0, 0.92)) + 1e-6);
-    }
-
     /* --- true projected size of a sphere of this radius --- */
     /* Atmosphere is drawn as motes several times the size of a figure grain.
        This is the quality a dive has that a wide shot does not: something
@@ -365,7 +340,6 @@ ${FIELD}
 
     // an elongated grain needs a longer sprite to live in
     px *= mix(1.0, sqrt(max(uElong, 1.0)), 0.6);
-    px *= sqrt(vStretch);
 
     /* The size the grain would be drawn at if it were in focus. Defocus makes
        the sprite larger without making the grain any more resolved, so the
@@ -423,7 +397,6 @@ const RENDER_FRAG = /* glsl */ `
   varying float vPx;
   varying float vAmb;
   varying float vNear;
-  varying float vStretch;
 
   /* ------------------------------------------------------------------
      The form library.
@@ -611,7 +584,7 @@ const RENDER_FRAG = /* glsl */ `
     vec2 p = vec2(q.x * vAxis.x + q.y * vAxis.y,
                  -q.x * vAxis.y + q.y * vAxis.x);
     p.y /= max(vSquash, 0.16);
-    p.x /= max(uElong * vStretch, 0.001);
+    p.x /= max(uElong, 0.001);
 
     // A settled grain breathes. Nothing here is a still image of a machine;
     // it is idling, and the eye reads that difference immediately.
@@ -756,10 +729,6 @@ const RENDER_FRAG = /* glsl */ `
 
     float a = shape * uOpacity * (0.19 + vLock * 0.40) * (0.62 + vSeed * 0.46);
 
-    // a grain smeared over four times the screen it used to cover must not
-    // also deliver four times the light, or hard travel whites the frame out
-    a /= 1.0 + (vStretch - 1.0) * 0.55;
-
     // spreading a grain over a wider disc must not brighten it
     a /= 1.0 + vBlur * uBokeh * 0.85;
 
@@ -903,8 +872,6 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
     uLightDir:    { value: new THREE.Vector3(-0.42, 0.68, 0.6) },
     uPointer:     sim.uPointer,
     uPointerLit:  { value: 0 },
-    uTravel:      { value: new THREE.Vector3() },
-    uWarp:        { value: 0 },
 
     uCold:        { value: new THREE.Color('#5d7286') },
     uHot:         { value: new THREE.Color('#e7c274') },
@@ -962,12 +929,6 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
       sim.uDtReal.value = Math.min(dt, 0.25);
       gpu.compute();
       uniforms.uPosition.value = gpu.getCurrentRenderTarget(posVar).texture;
-    },
-
-    /** Where the camera is going and how hard, so the grains can streak. */
-    setTravel(velocity, warp) {
-      uniforms.uTravel.value.copy(velocity);
-      uniforms.uWarp.value = warp;
     },
 
     /** Pointer in world space, converted into the field's local units. */
