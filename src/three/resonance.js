@@ -169,6 +169,7 @@ ${FIELD}
   uniform float uElong;
   uniform float uTumble;
   uniform float uAlign;   // 0 every grain at its own angle · 1 all on the flow
+  uniform float uSpin;    // idle rotation: the rate this beat's form turns at
   uniform float uTime;
 
   attribute vec2 aRef;
@@ -256,7 +257,11 @@ ${FIELD}
     // No two flakes settle at quite the same angle — except where the field is
     // driving hard enough to line them all up, and a shaken plate sets them
     // tumbling at their own rates again.
+    /* Each beat's form turns at its own rate — a gimbal spins because that is
+       what a gimbal is for, a seal does not because mass sits still. Spread
+       over the seed so the cloud never turns as one body. */
     float wob = (aSeed - 0.5) * 0.7 * (1.0 - uAlign * 0.85)
+              + uSpin * uTime * (0.7 + aSeed * 0.6)
               + uTumble * (aSeed - 0.5) * 9.0
               + uTumble * uTime * (0.6 + aSeed * 1.8);
     float cw = cos(wob), sw = sin(wob);
@@ -332,16 +337,39 @@ const RENDER_FRAG = /* glsl */ `
   /* ------------------------------------------------------------------
      The form library.
 
-     Seven silhouettes, one per beat of the story, each a distinct object
-     rather than one polygon with its corner count turned up. Every form
-     returns two distances: the outline, and the inner structure that lights
-     as the grain locks — a pupil, a hub, a slot. That second channel is what
-     stops these reading as stamped shapes; each one has something going on
-     inside it.
+     Seven silhouettes, but not seven unrelated objects: one thing becoming
+     something, so that the shape alone carries the story even with the words
+     covered up.
 
-     They are written as signed distance fields for one reason: mixing two
-     fields gives a real in-between body, so scrubbing between two beats
-     morphs one machine into the next instead of cross-fading two pictures.
+       0 FILAMENT  an inert thread with a dark node. Nothing has been asked
+                   of it. There is no structure here, only the possibility
+                   of some.
+       1 TRIAD     the thread throws out three struts and holds a hub. The
+                   first note has arrived and the grain has STRUCTURE.
+       2 LANCE     the struts sweep back into barbs and the body draws to a
+                   point. It now has a DIRECTION, which is why the sweep is
+                   where the field starts to fly.
+       3 GIMBAL    the barbs curve round and close into a ring with a bar
+                   across it. It has gained an AXIS: a thing that can be
+                   aimed, and therefore an instrument.
+       4 CAGE      the ring opens into an eight-sided cell braced on an inner
+                   diamond. It has gained VOLUME, which is the beat where the
+                   field itself leaves the plate and closes into a surface.
+       5 SEAL      the cage compacts into a slab with two struck slots. It
+                   has gained MASS — it is metal now, and it has been hit.
+       6 SIGIL     the slab opens into an eight-pointed mark. It has gained
+                   an IDENTITY, and the dust is spelling the house it came
+                   from one grain at a time.
+
+     Every form returns two distances: the outline, and the inner structure
+     that lights as the grain locks. That second channel is what stops these
+     reading as stamped shapes — each one has something going on inside it,
+     and what is going on is the part that carries over to the next beat.
+
+     They are signed distance fields for one reason: mixing two fields gives
+     a real in-between body, so scrubbing between two beats grows one machine
+     into the next instead of cross-fading two pictures. The lineage is what
+     makes that mixing read as a story rather than as a morph.
      ------------------------------------------------------------------ */
 
   float sdBox(vec2 p, vec2 b) {
@@ -356,90 +384,103 @@ const RENDER_FRAG = /* glsl */ `
     return cos(floor(0.5 + a / seg) * seg - a) * length(p) - r;
   }
 
-  /* 0 — MOTE. Dormant. A soft body with the faintest possible centre: dust
-     that has not yet been asked to be anything. */
-  vec2 fMote(vec2 p) {
-    return vec2(length(p) - 0.255, length(p) - 0.075);
+  /* a segment from the origin out along +x, of length l and radius w */
+  float sdBar(vec2 p, float l, float w) {
+    p.x -= clamp(p.x, 0.0, l);
+    return length(p) - w;
   }
 
-  /* 1 — CELL. The first note strikes and the mote takes its first facet: a
-     hexagonal cell with a core coming alight inside it. */
-  vec2 fCell(vec2 p) {
-    return vec2(sdPoly(p, 6.0, 0.245), sdPoly(p, 6.0, 0.090));
+  /* fold the plane into one wedge of an n-fold rotation */
+  vec2 foldN(vec2 p, float n) {
+    float seg = TAU / n;
+    float a = mod(atan(p.y, p.x) + seg * 0.5, seg) - seg * 0.5;
+    return vec2(cos(a), sin(a)) * length(p);
   }
 
-  /* 2 — DELTA. The sweep. A swept blade with a concave trailing edge and a
-     lit bar down its spine — the first form that is unmistakably going
-     somewhere, which is why this is the beat where the field starts to fly. */
-  vec2 fDelta(vec2 p) {
-    // two leading edges, folded about the axis
-    float lead = (p.x - 0.30) * 0.438 + abs(p.y) * 0.899;
-    // the trailing edge cuts back in to a tail point
-    float tail = -((p.x + 0.10) * 0.904 + abs(p.y) * 0.427);
-    float d = max(lead, tail);
-    return vec2(d, sdBox(p - vec2(0.03, 0.0), vec2(0.125, 0.021)));
+  /* 0 — FILAMENT. Inert. A thread with a node in it and nothing else: the
+     grain before anything has been asked of it. */
+  vec2 fFilament(vec2 p) {
+    float thread = sdBox(p, vec2(0.022, 0.250));
+    return vec2(thread, length(p) - 0.052);
   }
 
-  /* 3 — APERTURE. The modes climb and the grain becomes an instrument: a
-     machined iris, its ring cut by six teeth, holding a pupil open. */
-  vec2 fAperture(vec2 p) {
-    float r = length(p);
-    float a = atan(p.y, p.x);
-    float ring = abs(r - 0.235) - 0.058;
-    // angular saw, converted to arc length so the teeth keep their width
-    float arc = (0.5 - abs(fract(a * 6.0 / TAU) - 0.5)) * (TAU / 6.0) * r;
-    // A boss at the centre, so the iris is a lens and not an empty hoop. Every
-    // form in this set carries material at its origin, which is what lets a
-    // distant grain be drawn as its own silhouette instead of vanishing.
-    return vec2(min(max(ring, 0.030 - arc), r - 0.072), r - 0.072);
+  /* 1 — TRIAD. The first note lands and the thread throws out three struts
+     onto a hub. Structure, where a moment ago there was a line. */
+  vec2 fTriad(vec2 p) {
+    vec2 q = foldN(p, 3.0);
+    float strut = sdBar(q, 0.240, 0.025);
+    // the hub is turned to sit between the struts, so the two read as one
+    // assembly rather than as a triangle with spokes stuck through it
+    float hub   = sdPoly(-p, 3.0, 0.062);
+    return vec2(min(strut, hub), sdPoly(-p, 3.0, 0.032));
   }
 
-  /* 4 — VANE. Inside the volume the field is a surface, and the grain becomes
-     the joint that holds it: three swept blades set at a pitch on a hard
-     hexagonal hub — the gyroid's own threefold symmetry, made into a part. */
-  vec2 fVane(vec2 p) {
-    float seg = TAU / 3.0;
-    float a = atan(p.y, p.x);
-    a = mod(a + seg * 0.5, seg) - seg * 0.5;   // fold into one blade's sector
-    vec2 q = vec2(cos(a), sin(a)) * length(p); // q.x now runs out the blade
-    q.y += q.x * 0.22;                         // the blade is set at a pitch
-
-    float blade = sdBox(q - vec2(0.165, 0.0), vec2(0.165, 0.052));
-    blade = max(blade, (q.x - 0.10) * 0.28 + abs(q.y) - 0.072);  // taper to the tip
-
-    float hub = sdPoly(p, 6.0, 0.088);
-    return vec2(min(blade, hub), sdPoly(p, 6.0, 0.046));
+  /* 2 — LANCE. The struts sweep back into barbs and the body draws forward
+     to a point. The first form with a direction, and the beat where the
+     field starts to fly. */
+  vec2 fLance(vec2 p) {
+    // the shaft, running back from the point
+    float shaft = sdBox(p - vec2(0.02, 0.0), vec2(0.190, 0.026));
+    // the head: two leading edges folded about the axis
+    float head  = max((p.x - 0.300) * 0.470 + abs(p.y) * 0.883,
+                      -(p.x - 0.080));
+    // barbs swept back off the shoulders
+    vec2  b = vec2(p.x + 0.055, abs(p.y) - 0.020);
+    float barb = sdBar(vec2(-b.x * 0.82 + b.y * 0.57,
+                             b.x * 0.57 + b.y * 0.82), 0.170, 0.022);
+    return vec2(min(min(shaft, head), barb),
+                sdBox(p - vec2(0.02, 0.0), vec2(0.130, 0.009)));
   }
 
-  /* 5 — SHARD. The mark. A chip of the ingot itself, and it carries the
-     ingot's own section: a trapezoid, wider at the base because that is the
-     shape a thing takes when it is poured and then struck. Stamped with a
-     slot, corners knocked off the struck face. */
-  vec2 fShard(vec2 p) {
-    // draft angle — the sides lean in toward the face that took the die
-    float d = max(abs(p.y) - 0.118, abs(p.x) + (p.y + 0.118) * 0.26 - 0.300);
-    d = max(d, (abs(p.x) + p.y) * 0.7071 - 0.255);   // chamfer the struck corners
-    return vec2(d, sdBox(p - vec2(0.0, 0.012), vec2(0.150, 0.026)));
+  /* 3 — GIMBAL. The barbs curve round and close: a ring with a bar across it
+     and two lugs on the axis. The grain can now be aimed. */
+  vec2 fGimbal(vec2 p) {
+    float ring = abs(length(p) - 0.230) - 0.030;
+    float bar  = sdBox(p, vec2(0.230, 0.024));
+    float lugs = sdBox(vec2(abs(p.x) - 0.230, p.y), vec2(0.040, 0.062));
+    return vec2(min(min(ring, bar), lugs), sdBox(p, vec2(0.058, 0.024)));
   }
 
-  /* 6 — RUNE. Silence returns and every grain holds the house sigil: the same
-     hexagon-within-hexagon struck through by a bar that the mark in the
-     navigation carries. The dust ends up spelling the brand it came from,
-     one grain at a time — the last and smallest complete thing in the piece. */
-  vec2 fRune(vec2 p) {
-    float frame = max(sdPoly(p, 6.0, 0.265), -sdPoly(p, 6.0, 0.192));
-    float bar   = sdBox(p, vec2(0.030, 0.150));
-    return vec2(min(frame, bar), sdBox(p, vec2(0.030, 0.062)));
+  /* 4 — CAGE. The ring opens out into an eight-sided cell braced on an inner
+     diamond — volume, at the beat where the field leaves the plate. */
+  vec2 fCage(vec2 p) {
+    float shell = abs(sdPoly(p, 8.0, 0.250)) - 0.024;
+    float core  = abs(sdPoly(vec2(p.y, p.x), 4.0, 0.105)) - 0.020;
+    vec2  q = foldN(p, 4.0);
+    float brace = sdBar(vec2(q.x - 0.100, q.y), 0.140, 0.017);
+    return vec2(min(min(shell, core), brace), sdPoly(vec2(p.y, p.x), 4.0, 0.058));
+  }
+
+  /* 5 — SEAL. The cage compacts into a slab and takes two struck slots. Mass:
+     it is metal now, and it has been hit. */
+  vec2 fSeal(vec2 p) {
+    float slab = sdBox(p, vec2(0.255, 0.140));
+    // knock the corners off: a struck seal, not a box
+    slab = max(slab, (abs(p.x) + abs(p.y)) * 0.7071 - 0.252);
+    float slots = min(sdBox(p - vec2(0.0,  0.060), vec2(0.145, 0.019)),
+                      sdBox(p - vec2(0.0, -0.060), vec2(0.145, 0.019)));
+    return vec2(slab, slots);
+  }
+
+  /* 6 — SIGIL. The slab opens into an eight-pointed mark on a diamond core.
+     Identity: the last thing the dust becomes before it is only the word. */
+  vec2 fSigil(vec2 p) {
+    vec2  q = foldN(p, 4.0);
+    float ray  = sdBar(q, 0.265, 0.020);
+    vec2  r = foldN(vec2(p.x + p.y, p.y - p.x) * 0.7071, 4.0);
+    float ray2 = sdBar(r, 0.175, 0.014);
+    float core = abs(sdPoly(vec2(p.y, p.x), 4.0, 0.092)) - 0.018;
+    return vec2(min(min(ray, ray2), core), sdPoly(vec2(p.y, p.x), 4.0, 0.048));
   }
 
   vec2 form(float id, vec2 p) {
-    if (id < 0.5) return fMote(p);
-    if (id < 1.5) return fCell(p);
-    if (id < 2.5) return fDelta(p);
-    if (id < 3.5) return fAperture(p);
-    if (id < 4.5) return fVane(p);
-    if (id < 5.5) return fShard(p);
-    return fRune(p);
+    if (id < 0.5) return fFilament(p);
+    if (id < 1.5) return fTriad(p);
+    if (id < 2.5) return fLance(p);
+    if (id < 3.5) return fGimbal(p);
+    if (id < 4.5) return fCage(p);
+    if (id < 5.5) return fSeal(p);
+    return fSigil(p);
   }
 
   void main() {
@@ -712,6 +753,7 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
     uScan:        { value: 0 },
     uShatter:     { value: 0 },
     uFormFade:    { value: 1 },
+    uSpin:        { value: 0 },
     uAlign:       { value: 0 },
     uTumble:      { value: 0 },
     uTime:        sim.uTime,

@@ -51,39 +51,46 @@ const SCORE = [
 /* ------------------------------------------------------------------ *
  * The grain's own geometry, chapter by chapter.
  *
- * Seven forms, one per beat, each a distinct machined object rather than one
- * polygon with its corner count turned up — and each carrying its own inner
- * structure, so there is something going on inside every grain on the plate.
+ * Not seven objects — one thing becoming something, so that the shape alone
+ * carries the story with the words covered up. Each beat is the previous
+ * beat having acquired one more property it did not have before:
  *
- *   0 MOTE      dormant dust, a body with the faintest of centres
- *   1 CELL      the first facet, a hexagonal cell with a core coming alight
- *   2 DELTA     a swept blade, lit down the spine, flying the nodal ridges
- *   3 APERTURE  a machined iris, ring cut by six teeth, holding a pupil open
- *   4 VANE      a three-bladed rotor on a hard hub — the gyroid's own joint
- *   5 SHARD     a chip of the ingot: bevelled plate, chamfered, slotted
- *   6 RUNE      the house sigil: a hexagonal frame struck through by a bar
+ *   0 FILAMENT  an inert thread                     · nothing yet
+ *   1 TRIAD     three struts on a hub               · STRUCTURE
+ *   2 LANCE     the struts sweep back to a point    · DIRECTION
+ *   3 GIMBAL    the barbs close into a ring and bar · AN AXIS
+ *   4 CAGE      the ring opens into a braced cell   · VOLUME
+ *   5 SEAL      the cell compacts and is struck     · MASS
+ *   6 SIGIL     the slab opens into the house mark  · IDENTITY
  *
- * The renderer holds two of them at once and mixes their distance fields, so
- * scrubbing between beats morphs one machine into the next rather than
- * cross-fading two pictures. `align` is the storytelling dial of the set: at
- * 0 every grain sits at its own angle, at 1 they all swing onto the flow of
- * the field and the cloud reads as a shoal with somewhere to be.
+ * That order is the site's own argument in miniature: formless dust is asked
+ * for one property at a time until what is left is a standard. It lands on
+ * the same beats as the camera flight and the score, so the grain acquires
+ * direction exactly as the field starts to fly, and volume exactly as the
+ * field leaves the plate.
+ *
+ * `align` swings the grains onto the flow of the field — at 1 they all ride
+ * the nodal lines and the cloud reads as a shoal. `spin` is each form's own
+ * idle rotation: a gimbal turns because that is what a gimbal is for, and a
+ * seal does not, because mass sits still.
  * ------------------------------------------------------------------ */
 const SHAPE = [
-  // 01 — silence: dormant, drawn as an outline, barely a centre to it
-  { t: 0.00, form: 0, elong: 1.00, hollow: 0.92, facet: 0.50, core: 0.12, scan: 0.00, align: 0.00 },
-  // 02 — the first note: the cell closes and a core lights inside it
-  { t: 0.18, form: 1, elong: 1.00, hollow: 0.55, facet: 0.92, core: 0.55, scan: 0.10, align: 0.30 },
-  // 03 — the sweep: blades, all of them swung onto the ridges they ride
-  { t: 0.36, form: 2, elong: 1.26, hollow: 0.28, facet: 1.05, core: 0.52, scan: 0.28, align: 0.88 },
-  // the modes climb and the grain becomes an instrument
-  { t: 0.52, form: 3, elong: 1.00, hollow: 0.40, facet: 1.15, core: 0.55, scan: 0.40, align: 0.55 },
-  // 04 — the volume: rotors holding the surface together
-  { t: 0.70, form: 4, elong: 1.00, hollow: 0.18, facet: 1.25, core: 0.88, scan: 0.28, align: 0.45 },
-  // 05 — the mark: the ingot, in chips
-  { t: 0.88, form: 5, elong: 1.30, hollow: 0.10, facet: 1.30, core: 0.95, scan: 0.62, align: 0.75 },
-  // 06 — struck: the hallmark, printed in dust and holding
-  { t: 1.00, form: 6, elong: 1.00, hollow: 0.18, facet: 1.45, core: 1.00, scan: 0.18, align: 0.92 },
+  //                                                           hollow  facet  core  scan  align  spin
+  // 01 — silence: a thread with a node in it, and no structure at all
+  { t: 0.00, form: 0, elong: 1.00, hollow: 0.90, facet: 0.50, core: 0.10, scan: 0.00, align: 0.00, spin: 0.00 },
+  // 02 — the first note: struts and a hub. The grain has become an assembly.
+  { t: 0.18, form: 1, elong: 1.00, hollow: 0.52, facet: 0.95, core: 0.50, scan: 0.10, align: 0.25, spin: 0.05 },
+  // 03 — the sweep: it draws to a point and every one of them lines up on
+  // the ridge it is riding. This is the beat where the field starts to fly.
+  { t: 0.36, form: 2, elong: 1.22, hollow: 0.26, facet: 1.05, core: 0.52, scan: 0.30, align: 0.90, spin: 0.00 },
+  // the modes climb: it closes into a ring on an axis, and turns
+  { t: 0.52, form: 3, elong: 1.00, hollow: 0.38, facet: 1.15, core: 0.55, scan: 0.42, align: 0.50, spin: 0.35 },
+  // 04 — the volume: the ring opens into a braced cell as the field lifts
+  { t: 0.70, form: 4, elong: 1.00, hollow: 0.20, facet: 1.25, core: 0.85, scan: 0.30, align: 0.40, spin: 0.12 },
+  // 05 — the mark: compacted, struck, and holding still
+  { t: 0.88, form: 5, elong: 1.25, hollow: 0.10, facet: 1.30, core: 0.92, scan: 0.60, align: 0.72, spin: 0.00 },
+  // 06 — struck: the house mark, one grain at a time
+  { t: 1.00, form: 6, elong: 1.00, hollow: 0.18, facet: 1.45, core: 1.00, scan: 0.20, align: 0.90, spin: 0.06 },
 ];
 
 /* A grain's radius in world units. Sizes in the grade table below are
@@ -197,6 +204,7 @@ function sampleShape(t) {
   _shape.core   = l(a.core, b.core);
   _shape.scan   = l(a.scan, b.scan);
   _shape.align  = l(a.align, b.align);
+  _shape.spin   = l(a.spin, b.spin);
   return _shape;
 }
 
@@ -358,6 +366,7 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     field.uniforms.uCore.value    = sh.core * (1 - ag2 * 0.55);
     field.uniforms.uScan.value    = sh.scan * (1 - ag2 * 0.70);
     field.uniforms.uAlign.value   = sh.align * (1 - ag2 * 0.85);
+    field.uniforms.uSpin.value    = sh.spin;
     field.uniforms.uShatter.value = ag2 * 0.85;
     // the mark owns the last frame; the grains give it back (see uFormFade)
     field.uniforms.uFormFade.value = 1 - field.sim.uGlyph.value;
