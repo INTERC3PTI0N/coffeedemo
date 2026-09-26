@@ -10,23 +10,28 @@ import { createPostFX } from './postfx.js';
  * read the struck mark.
  * ------------------------------------------------------------------ */
 const FLIGHT = [
-  /* The camera is inside the field from the first frame and descends for the
-     whole piece. There is no establishing shot: the opening beats are flown
-     through the formless cloud, tilted, so the piece never once presents the
-     plate as something to be looked at from outside. The volume dive is the
-     deepest point of a descent under way since the hero, not the one moment
-     the piece comes alive.
+  /* Every chapter is a dive, not a vantage.
+     
+     Sitting the camera closer was not the same thing as flying it: a near
+     static shot is still a shot. Each beat now has a plunge keyframe between
+     it and the next, so the camera falls through the field and climbs back
+     out twice per chapter, and the grains stream past on the way down. The
+     volume chapter is no longer the only place anything happens — it is the
+     one place the camera stays down instead of climbing out.
 
-     The cost is deliberate and worth naming: from inside it, a Chladni figure
-     never reads whole. What the early chapters show now is a nodal landscape
-     receding in perspective rather than the flat drawn figure the copy
-     describes. Pull 0.00 and 0.18 back toward z 3000 to have that reading
-     back. */
-  { t: 0.00, pos: [-260,  170, 1520 ], look: [  55,  -35, -120 ], fov: 50 },
-  { t: 0.18, pos: [-350,  225, 1180 ], look: [  70,  -50, -150 ], fov: 55 },
+     The pairs are approach / plunge: the approach frames read the figure, the
+     plunge frames are inside it. Beats land on the approach frames, so the
+     score and the palette still change on the chapter boundaries. */
+  { t: 0.00, pos: [-260,  170, 2200 ], look: [  40,  -25,  -80 ], fov: 46 },
+  { t: 0.09, pos: [-120,   80,  620 ], look: [  90,  -60, -220 ], fov: 62 },
+  { t: 0.18, pos: [-350,  225, 1280 ], look: [  70,  -50, -150 ], fov: 52 },
+  { t: 0.27, pos: [ 180, -120,  520 ], look: [ -80,   50, -240 ], fov: 64 },
   { t: 0.36, pos: [ 340, -200, 1380 ], look: [ -60,   30,  -90 ], fov: 50 },
+  { t: 0.44, pos: [-260,  150,  560 ], look: [  90,  -60, -250 ], fov: 64 },
   { t: 0.52, pos: [-470,  270,  950 ], look: [  70,  -45, -170 ], fov: 58 },
+  { t: 0.61, pos: [ 120,   60,  380 ], look: [ -60,   20, -300 ], fov: 70 },
   { t: 0.70, pos: [  70,   50,  430 ], look: [ -40,   10, -280 ], fov: 68 },
+  { t: 0.79, pos: [-160,  110,  520 ], look: [  40,  -30, -260 ], fov: 64 },
   { t: 0.87, pos: [-140,  100,  900 ], look: [  35,  -25, -180 ], fov: 54 },
   { t: 1.00, pos: [ 430,  -40, 3050 ], look: [ 430,  -40,    0 ], fov: 40 },
 ];
@@ -293,10 +298,14 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
   camera.position.set(...FLIGHT[0].pos);
 
   const field = createResonance(renderer, {
-    // Now that every beat is flown through rather than looked at, the field
-    // has to hold up at close range: a cloud reads as a cloud by how many
-    // things are in it, and the descent puts the camera among them.
-    size: small ? 256 : perfTier < 0.95 ? 384 : 512,
+    /* A cloud reads as a cloud by how many things are in it, and the descent
+       puts the camera among them, so this is the number that matters most now.
+       It used to be gated behind perfTier >= 0.95, which no retina desktop
+       ever cleared — dpr > 1.5 drops the tier to 0.9 — so the large field was
+       effectively unreachable on the machines most able to draw it. A dense
+       display is not a slow GPU; the pixel ratio is already capped separately
+       for that. */
+    size: small ? 320 : 640,
     scale: 620,
   });
   scene.add(field.points);

@@ -407,16 +407,19 @@ const RENDER_FRAG = /* glsl */ `
 
   /* 0 — FILAMENT. Inert. A thread with a node in it and nothing else: the
      grain before anything has been asked of it. */
-  vec2 fFilament(vec2 p) {
+  vec2 fFilament(vec2 p, vec2 an) {
     float thread = sdBox(p, vec2(0.022, 0.250));
-    return vec2(thread, length(p) - 0.052);
+    // the node travels the thread: the one moving part of a dormant object
+    float node = length(p - vec2(0.0, an.x * 0.170)) - 0.052;
+    return vec2(min(thread, node), node);
   }
 
   /* 1 — TRIAD. The first note lands and the thread throws out three struts
      onto a hub. Structure, where a moment ago there was a line. */
-  vec2 fTriad(vec2 p) {
+  vec2 fTriad(vec2 p, vec2 an) {
     vec2 q = foldN(p, 3.0);
-    float strut = sdBar(q, 0.240, 0.025);
+    // the struts reach and draw back, feeling for the note
+    float strut = sdBar(q, 0.215 + an.x * 0.055, 0.025);
     // the hub is turned to sit between the struts, so the two read as one
     // assembly rather than as a triangle with spokes stuck through it
     float hub   = sdPoly(-p, 3.0, 0.062);
@@ -426,32 +429,40 @@ const RENDER_FRAG = /* glsl */ `
   /* 2 — LANCE. The struts sweep back into barbs and the body draws forward
      to a point. The first form with a direction, and the beat where the
      field starts to fly. */
-  vec2 fLance(vec2 p) {
+  vec2 fLance(vec2 p, vec2 an) {
     // the shaft, running back from the point
     float shaft = sdBox(p - vec2(0.02, 0.0), vec2(0.190, 0.026));
     // the head: two leading edges folded about the axis
     float head  = max((p.x - 0.300) * 0.470 + abs(p.y) * 0.883,
                       -(p.x - 0.080));
     // barbs swept back off the shoulders
+    // the barbs sweep as it flies, the way a control surface trims
+    float sw = 0.82 + an.y * 0.10;
+    float sv = 0.57 - an.y * 0.10;
     vec2  b = vec2(p.x + 0.055, abs(p.y) - 0.020);
-    float barb = sdBar(vec2(-b.x * 0.82 + b.y * 0.57,
-                             b.x * 0.57 + b.y * 0.82), 0.170, 0.022);
+    float barb = sdBar(vec2(-b.x * sw + b.y * sv,
+                             b.x * sv + b.y * sw), 0.150 + an.x * 0.040, 0.022);
     return vec2(min(min(shaft, head), barb),
                 sdBox(p - vec2(0.02, 0.0), vec2(0.130, 0.009)));
   }
 
   /* 3 — GIMBAL. The barbs curve round and close: a ring with a bar across it
      and two lugs on the axis. The grain can now be aimed. */
-  vec2 fGimbal(vec2 p) {
+  vec2 fGimbal(vec2 p, vec2 an) {
     float ring = abs(length(p) - 0.230) - 0.030;
-    float bar  = sdBox(p, vec2(0.230, 0.024));
     float lugs = sdBox(vec2(abs(p.x) - 0.230, p.y), vec2(0.040, 0.062));
-    return vec2(min(min(ring, bar), lugs), sdBox(p, vec2(0.058, 0.024)));
+    /* The bar turns inside the ring rather than with it. A gimbal whose
+       every part moves together is a badge; a gimbal with one part running
+       against the rest is a mechanism, and that difference is most of what
+       makes the beat read as an instrument. */
+    vec2 r = vec2(p.x * an.y - p.y * an.x, p.x * an.x + p.y * an.y);
+    float bar = sdBox(r, vec2(0.230, 0.024));
+    return vec2(min(min(ring, bar), lugs), sdBox(r, vec2(0.058, 0.024)));
   }
 
   /* 4 — CAGE. The ring opens out into an eight-sided cell braced on an inner
      diamond — volume, at the beat where the field leaves the plate. */
-  vec2 fCage(vec2 p) {
+  vec2 fCage(vec2 p, vec2 an) {
     /* Drawn with as few separate edges as the shape can carry. Every edge in
        a form is a rim highlight, and this is the beat where the camera is
        inside the field with the grains at their largest — a wireframe here
@@ -459,42 +470,54 @@ const RENDER_FRAG = /* glsl */ `
        the gyroid disappears into its own glow. The brace bars earn their
        edges; the core is solid rather than outlined. */
     float shell = abs(sdPoly(p, 8.0, 0.248)) - 0.030;
-    float core  = sdPoly(vec2(p.y, p.x), 4.0, 0.100);
+    // the core turns inside the shell; the bracing works in and out with it
+    vec2  c = vec2(p.x * an.y - p.y * an.x, p.x * an.x + p.y * an.y);
+    float core  = sdPoly(c, 4.0, 0.100);
     vec2  q = foldN(p, 4.0);
-    float brace = sdBar(vec2(q.x - 0.098, q.y), 0.140, 0.017);
-    return vec2(min(min(shell, core), brace), sdPoly(vec2(p.y, p.x), 4.0, 0.052));
+    float brace = sdBar(vec2(q.x - 0.086 - an.x * 0.022, q.y), 0.140, 0.017);
+    return vec2(min(min(shell, core), brace), sdPoly(c, 4.0, 0.052));
   }
 
   /* 5 — SEAL. The cage compacts into a slab and takes two struck slots. Mass:
      it is metal now, and it has been hit. */
-  vec2 fSeal(vec2 p) {
+  vec2 fSeal(vec2 p, vec2 an) {
     float slab = sdBox(p, vec2(0.255, 0.140));
     // knock the corners off: a struck seal, not a box
     slab = max(slab, (abs(p.x) + abs(p.y)) * 0.7071 - 0.252);
     float slots = min(sdBox(p - vec2(0.0,  0.060), vec2(0.145, 0.019)),
                       sdBox(p - vec2(0.0, -0.060), vec2(0.145, 0.019)));
-    return vec2(slab, slots);
+    // a head tracks across the struck face, reading it
+    float head = sdBox(p - vec2(an.x * 0.145, 0.0), vec2(0.016, 0.105));
+    return vec2(slab, min(slots, head));
   }
 
   /* 6 — SIGIL. The slab opens into an eight-pointed mark on a diamond core.
      Identity: the last thing the dust becomes before it is only the word. */
-  vec2 fSigil(vec2 p) {
+  vec2 fSigil(vec2 p, vec2 an) {
     vec2  q = foldN(p, 4.0);
-    float ray  = sdBar(q, 0.265, 0.020);
+    // the two sets of rays breathe against each other, so the mark is held
+    // open by something rather than merely drawn
+    float ray  = sdBar(q, 0.245 + an.x * 0.035, 0.020);
     vec2  r = foldN(vec2(p.x + p.y, p.y - p.x) * 0.7071, 4.0);
-    float ray2 = sdBar(r, 0.175, 0.014);
+    float ray2 = sdBar(r, 0.185 - an.x * 0.035, 0.014);
     float core = abs(sdPoly(vec2(p.y, p.x), 4.0, 0.092)) - 0.018;
     return vec2(min(min(ray, ray2), core), sdPoly(vec2(p.y, p.x), 4.0, 0.048));
   }
 
-  vec2 form(float id, vec2 p) {
-    if (id < 0.5) return fFilament(p);
-    if (id < 1.5) return fTriad(p);
-    if (id < 2.5) return fLance(p);
-    if (id < 3.5) return fGimbal(p);
-    if (id < 4.5) return fCage(p);
-    if (id < 5.5) return fSeal(p);
-    return fSigil(p);
+  /* The phase argument is this grain's animation clock as a unit vector:
+     an.x reads as a
+     stroke, an.y as the cosine that a rotation needs. Passing it in rather
+     than reading uTime inside each form keeps every moving part of the field
+     on one clock, and lets the whole set be frozen by scaling it to zero —
+     which is what holds the struck mark still at the end. */
+  vec2 form(float id, vec2 p, vec2 an) {
+    if (id < 0.5) return fFilament(p, an);
+    if (id < 1.5) return fTriad(p, an);
+    if (id < 2.5) return fLance(p, an);
+    if (id < 3.5) return fGimbal(p, an);
+    if (id < 4.5) return fCage(p, an);
+    if (id < 5.5) return fSeal(p, an);
+    return fSigil(p, an);
   }
 
   void main() {
@@ -512,7 +535,13 @@ const RENDER_FRAG = /* glsl */ `
     float breath = 1.0 + 0.055 * sin(uTime * 1.7 + vSeed * TAU) * vLock * uCore;
     p /= breath;
 
-    vec2 f = mix(form(uFormA, p), form(uFormB, p), uFormMix);
+    /* Every contraption has moving parts of its own, on a per-grain phase so
+       the field is never a thousand copies of one animation. Scaled by
+       uFormFade, so as the mark is struck the mechanisms come to rest. */
+    float ph = uTime * 1.15 + vSeed * TAU;
+    vec2  an = vec2(sin(ph), cos(ph)) * uFormFade;
+
+    vec2 f = mix(form(uFormA, p, an), form(uFormB, p, an), uFormMix);
     float d = f.x;
     float inner = f.y;
 
