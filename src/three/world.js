@@ -333,7 +333,10 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
      1/n — some of the extra density should be visible as density, or there was
      no point adding it. */
   const DENSITY_REF = 384 * 384;
-  const densityComp = Math.pow(DENSITY_REF / field.count, 0.65);
+  // 0.5 rather than 0.65: sharpening the grains cost the frame some of its
+  // luminance, and under-compensating a little further is the way to give it
+  // back without softening anything.
+  const densityComp = Math.pow(DENSITY_REF / field.count, 0.5);
 
   const fx = createPostFX(renderer, scene, camera, { quality: perfTier });
 
