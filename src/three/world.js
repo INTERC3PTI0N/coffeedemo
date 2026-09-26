@@ -10,15 +10,20 @@ import { createPostFX } from './postfx.js';
  * read the struck mark.
  * ------------------------------------------------------------------ */
 const FLIGHT = [
-  /* The camera descends for the whole piece rather than sitting back and
-     watching until the volume chapter. The opening beats stay far enough out
-     that the Chladni figure reads whole — that is the claim the copy makes,
-     and it has to be visible — and from the sweep onward the camera is down
-     among the grains, tilted, with the figure receding in perspective instead
-     of being presented flat. The volume dive is then the deepest point of a
-     descent already under way, not the one moment the piece comes alive. */
-  { t: 0.00, pos: [   0,    0, 3050 ], look: [   0,    0,    0 ], fov: 40 },
-  { t: 0.18, pos: [-190,  130, 2150 ], look: [   0,    0,    0 ], fov: 40 },
+  /* The camera is inside the field from the first frame and descends for the
+     whole piece. There is no establishing shot: the opening beats are flown
+     through the formless cloud, tilted, so the piece never once presents the
+     plate as something to be looked at from outside. The volume dive is the
+     deepest point of a descent under way since the hero, not the one moment
+     the piece comes alive.
+
+     The cost is deliberate and worth naming: from inside it, a Chladni figure
+     never reads whole. What the early chapters show now is a nodal landscape
+     receding in perspective rather than the flat drawn figure the copy
+     describes. Pull 0.00 and 0.18 back toward z 3000 to have that reading
+     back. */
+  { t: 0.00, pos: [-260,  170, 1520 ], look: [  55,  -35, -120 ], fov: 50 },
+  { t: 0.18, pos: [-350,  225, 1180 ], look: [  70,  -50, -150 ], fov: 55 },
   { t: 0.36, pos: [ 340, -200, 1380 ], look: [ -60,   30,  -90 ], fov: 50 },
   { t: 0.52, pos: [-470,  270,  950 ], look: [  70,  -45, -170 ], fov: 58 },
   { t: 0.70, pos: [  70,   50,  430 ], look: [ -40,   10, -280 ], fov: 68 },
@@ -37,9 +42,9 @@ const SCORE = [
   // `off` slides the plate clear of the column of type, the way a subject is
   // placed off-centre; the volume dive and the struck mark recentre it.
   // 01 — silence: no mode, wide lock, the dust is formless
-  { t: 0.00, mode: [0.4, 0.7], gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.30, jitter: 0.200, lock: 0.95, glyph: 0, scatter: 0, off: 120, thick: 0.55, dive: 0.15 },
+  { t: 0.00, mode: [0.4, 0.7], gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.30, jitter: 0.200, lock: 0.95, glyph: 0, scatter: 0, off: 120, thick: 0.80, dive: 0.55 },
   // 02 — the first note: a simple, unmistakable figure
-  { t: 0.18, mode: [2, 3],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.20, jitter: 0.030, lock: 0.34, glyph: 0, scatter: 0, off: 380, thick: 0.26, dive: 0.30 },
+  { t: 0.18, mode: [2, 3],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.20, jitter: 0.030, lock: 0.34, glyph: 0, scatter: 0, off: 240, thick: 0.50, dive: 0.70 },
   // 03 — the sweep: the mode climbs, the figure complicates
   { t: 0.36, mode: [5, 4],     gyro: [3.4, 3.4, 3.4], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.30, glyph: 0, scatter: 0, off: 240, thick: 0.38, dive: 0.58 },
   { t: 0.52, mode: [8, 5],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.60, jitter: 0.024, lock: 0.27, glyph: 0, scatter: 0, off: 160, thick: 0.46, dive: 0.80 },
@@ -84,18 +89,18 @@ const SHAPE = [
   // 01 — silence: a thread with a node in it, and no structure at all
   { t: 0.00, form: 0, elong: 1.00, hollow: 0.90, facet: 0.50, core: 0.10, scan: 0.00, align: 0.00, spin: 0.00 },
   // 02 — the first note: struts and a hub. The grain has become an assembly.
-  { t: 0.18, form: 1, elong: 1.00, hollow: 0.52, facet: 0.95, core: 0.50, scan: 0.10, align: 0.25, spin: 0.05 },
+  { t: 0.18, form: 1, elong: 1.00, hollow: 0.52, facet: 0.95, core: 0.50, scan: 0.10, align: 0.25, spin: 0.10 },
   // 03 — the sweep: it draws to a point and every one of them lines up on
   // the ridge it is riding. This is the beat where the field starts to fly.
   { t: 0.36, form: 2, elong: 1.22, hollow: 0.26, facet: 1.05, core: 0.52, scan: 0.30, align: 0.90, spin: 0.00 },
   // the modes climb: it closes into a ring on an axis, and turns
-  { t: 0.52, form: 3, elong: 1.00, hollow: 0.38, facet: 1.15, core: 0.55, scan: 0.42, align: 0.50, spin: 0.35 },
+  { t: 0.52, form: 3, elong: 1.00, hollow: 0.38, facet: 1.15, core: 0.55, scan: 0.42, align: 0.50, spin: 0.48 },
   // 04 — the volume: the ring opens into a braced cell as the field lifts
-  { t: 0.70, form: 4, elong: 1.00, hollow: 0.16, facet: 1.55, core: 0.48, scan: 0.18, align: 0.40, spin: 0.12 },
+  { t: 0.70, form: 4, elong: 1.00, hollow: 0.16, facet: 1.55, core: 0.48, scan: 0.18, align: 0.40, spin: 0.20 },
   // 05 — the mark: compacted, struck, and holding still
   { t: 0.88, form: 5, elong: 1.25, hollow: 0.10, facet: 1.30, core: 0.92, scan: 0.60, align: 0.72, spin: 0.00 },
   // 06 — struck: the house mark, one grain at a time
-  { t: 1.00, form: 6, elong: 1.00, hollow: 0.18, facet: 1.45, core: 1.00, scan: 0.20, align: 0.90, spin: 0.06 },
+  { t: 1.00, form: 6, elong: 1.00, hollow: 0.18, facet: 1.45, core: 1.00, scan: 0.20, align: 0.90, spin: 0.10 },
 ];
 
 /* A grain's radius in world units. Sizes in the grade table below are
@@ -288,10 +293,20 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
   camera.position.set(...FLIGHT[0].pos);
 
   const field = createResonance(renderer, {
-    size: small ? 192 : perfTier < 0.95 ? 288 : 384,
+    // Now that every beat is flown through rather than looked at, the field
+    // has to hold up at close range: a cloud reads as a cloud by how many
+    // things are in it, and the descent puts the camera among them.
+    size: small ? 256 : perfTier < 0.95 ? 384 : 512,
     scale: 620,
   });
   scene.add(field.points);
+
+  /* Grains are additively blended, so putting more of them in the same volume
+     brightens it in proportion. The compensation is deliberately weaker than
+     1/n — some of the extra density should be visible as density, or there was
+     no point adding it. */
+  const DENSITY_REF = 384 * 384;
+  const densityComp = Math.pow(DENSITY_REF / field.count, 0.65);
 
   const fx = createPostFX(renderer, scene, camera, { quality: perfTier });
 
@@ -382,7 +397,7 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     field.uniforms.uFormFade.value = 1 - field.sim.uGlyph.value;
     field.uniforms.uTumble.value  = ag2 * 0.09;
     field.uniforms.uGlow.value = g.glow;
-    field.uniforms.uOpacity.value = g.opacity;
+    field.uniforms.uOpacity.value = g.opacity * densityComp;
 
     fx.uniforms.uCast.value.copy(g.cast);
     fx.uniforms.uCastAmount.value = g.castAmt;

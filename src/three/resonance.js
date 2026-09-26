@@ -540,7 +540,12 @@ const RENDER_FRAG = /* glsl */ `
        independent sparks blinking out of step. */
     float phase = fract(uTime * 0.30 - vPulse * 0.55 + vSeed * 0.12);
     float sb = (p.x + 0.36 - phase * 0.72) * 16.0;
-    float scan = exp(-sb * sb) * fill * uScan * vLock;
+    float ring = exp(-sb * sb);
+    float scan = ring * fill * uScan * vLock;
+
+    // the core takes the pulse as it goes past, so the thing is visibly
+    // running on something rather than merely lit
+    core *= 0.74 + 0.52 * ring;
 
     /* Everything here is additively blended, so a term that looks right on one
        grain multiplies where a thousand of them crowd onto a node. The inner
@@ -568,11 +573,25 @@ const RENDER_FRAG = /* glsl */ `
        more light between the digits than three 9s can survive. So the forms
        hand the frame back: by the time the mark is fully struck each grain is
        a plain speck again, which is exactly what the closing shot wants. */
-    float formLod  = smoothstep(1.6, 5.0, vPx) * uFormFade;
-    float innerLod = smoothstep(4.0, 9.5, vPx) * (1.0 - vBlur) * uFormFade;
+    float formLod   = smoothstep(1.6, 5.0, vPx) * uFormFade;
+    float innerLod  = smoothstep(4.0, 9.5, vPx) * (1.0 - vBlur) * uFormFade;
+    // a third tier, for grains close enough that machining would be visible
+    float detailLod = smoothstep(9.0, 20.0, vPx) * (1.0 - vBlur) * uFormFade;
 
     float shell = body * (0.55 + vLock * 0.55) + rim * 0.35 * vLock;
     float shape = shell + (core * 0.70 + scan * 0.45) * innerLod;
+
+    /* Panel lines. Contours of the form's own distance field, scored into the
+       body — so every form is panelled by its own silhouette without a single
+       line being drawn per shape, and the panelling of a lance follows the
+       lance. They subtract rather than add, which is what makes them read as
+       machining cut into a surface instead of wires laid over one, and they
+       cost no light on a figure that is already additively blended. Held back
+       until the grain is close enough that they would be more than noise —
+       which, now the whole piece is flown, is most of it. */
+    float band  = abs(fract(d * 26.0 + 0.5) - 0.5) / 26.0;
+    float panel = 1.0 - smoothstep(0.0, 0.0055, band);
+    shape -= panel * fill * 0.24 * detailLod;
 
     // diffraction spikes off the facets of the ones that have locked hard
     shape += (exp(-abs(p.y) * 52.0) + exp(-abs(p.x) * 52.0))
