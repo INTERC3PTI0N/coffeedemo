@@ -10,14 +10,19 @@ import { createPostFX } from './postfx.js';
  * read the struck mark.
  * ------------------------------------------------------------------ */
 const FLIGHT = [
-  // A Chladni figure only reads whole. For the plate chapters the camera sits
-  // back and square-on; it only leaves that vantage to dive into the volume.
+  /* The camera descends for the whole piece rather than sitting back and
+     watching until the volume chapter. The opening beats stay far enough out
+     that the Chladni figure reads whole — that is the claim the copy makes,
+     and it has to be visible — and from the sweep onward the camera is down
+     among the grains, tilted, with the figure receding in perspective instead
+     of being presented flat. The volume dive is then the deepest point of a
+     descent already under way, not the one moment the piece comes alive. */
   { t: 0.00, pos: [   0,    0, 3050 ], look: [   0,    0,    0 ], fov: 40 },
-  { t: 0.18, pos: [-150,  100, 2340 ], look: [   0,    0,    0 ], fov: 38 },
-  { t: 0.36, pos: [ 230, -130, 2120 ], look: [   0,    0,    0 ], fov: 38 },
-  { t: 0.52, pos: [-270,  170, 1940 ], look: [   0,    0,    0 ], fov: 38 },
+  { t: 0.18, pos: [-190,  130, 2150 ], look: [   0,    0,    0 ], fov: 40 },
+  { t: 0.36, pos: [ 340, -200, 1380 ], look: [ -60,   30,  -90 ], fov: 50 },
+  { t: 0.52, pos: [-470,  270,  950 ], look: [  70,  -45, -170 ], fov: 58 },
   { t: 0.70, pos: [  70,   50,  430 ], look: [ -40,   10, -280 ], fov: 68 },
-  { t: 0.87, pos: [ -70,   50, 1520 ], look: [   0,    0,    0 ], fov: 42 },
+  { t: 0.87, pos: [-140,  100,  900 ], look: [  35,  -25, -180 ], fov: 54 },
   { t: 1.00, pos: [ 430,  -40, 3050 ], look: [ 430,  -40,    0 ], fov: 40 },
 ];
 
@@ -32,20 +37,20 @@ const SCORE = [
   // `off` slides the plate clear of the column of type, the way a subject is
   // placed off-centre; the volume dive and the struck mark recentre it.
   // 01 — silence: no mode, wide lock, the dust is formless
-  { t: 0.00, mode: [0.4, 0.7], gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.30, jitter: 0.200, lock: 0.95, glyph: 0, scatter: 0, off: 120 },
+  { t: 0.00, mode: [0.4, 0.7], gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.30, jitter: 0.200, lock: 0.95, glyph: 0, scatter: 0, off: 120, thick: 0.55, dive: 0.15 },
   // 02 — the first note: a simple, unmistakable figure
-  { t: 0.18, mode: [2, 3],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.20, jitter: 0.030, lock: 0.34, glyph: 0, scatter: 0, off: 380 },
+  { t: 0.18, mode: [2, 3],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.20, jitter: 0.030, lock: 0.34, glyph: 0, scatter: 0, off: 380, thick: 0.26, dive: 0.30 },
   // 03 — the sweep: the mode climbs, the figure complicates
-  { t: 0.36, mode: [5, 4],     gyro: [3.4, 3.4, 3.4], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.30, glyph: 0, scatter: 0, off: 360 },
-  { t: 0.52, mode: [8, 5],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.60, jitter: 0.024, lock: 0.27, glyph: 0, scatter: 0, off: 330 },
+  { t: 0.36, mode: [5, 4],     gyro: [3.4, 3.4, 3.4], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.30, glyph: 0, scatter: 0, off: 240, thick: 0.38, dive: 0.58 },
+  { t: 0.52, mode: [8, 5],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.60, jitter: 0.024, lock: 0.27, glyph: 0, scatter: 0, off: 160, thick: 0.46, dive: 0.80 },
   // 04 — the field lifts. Grains spread over a surface read far thinner than
   // grains crowded onto lines, so the volume needs fewer, larger cells and a
   // harder pull to hold together.
-  { t: 0.70, mode: [9, 6],     gyro: [2.6, 2.6, 2.6], dim: 1, tight: 3.20, jitter: 0.016, lock: 0.30, glyph: 0, scatter: 0, off: 0 },
+  { t: 0.70, mode: [9, 6],     gyro: [2.6, 2.6, 2.6], dim: 1, tight: 3.20, jitter: 0.016, lock: 0.30, glyph: 0, scatter: 0, off: 0,   thick: 1.00, dive: 1.00 },
   // 05 — the mark: the field falls quiet so the struck object owns the frame
-  { t: 0.88, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.26, glyph: 0, scatter: 0, off: -300 },
+  { t: 0.88, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.26, glyph: 0, scatter: 0, off: -180, thick: 0.42, dive: 0.72 },
   // 06 — the dust resolves into the hallmark, and holds
-  { t: 1.00, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.10, jitter: 0.0025, lock: 0.55, glyph: 1, scatter: 0, off: 430 },
+  { t: 1.00, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.10, jitter: 0.0025, lock: 0.55, glyph: 1, scatter: 0, off: 430, thick: 0.04, dive: 0.10 },
 ];
 
 /* ------------------------------------------------------------------ *
@@ -182,6 +187,8 @@ function sampleScore(t) {
   _score.glyph   = l(a.glyph, b.glyph);
   _score.scatter = l(a.scatter, b.scatter);
   _score.off     = l(a.off, b.off);
+  _score.thick   = l(a.thick, b.thick);
+  _score.dive    = l(a.dive, b.dive);
   return _score;
 }
 
@@ -293,6 +300,7 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     target: 0,
     lastTarget: 0,
     agitation: 0,   // how hard the scroll is currently working the plate
+    dive: 0,        // how piloted this beat is: parallax, banking, depth of field
     strike: 0,      // decaying impulse from a click
     pointer: new THREE.Vector2(),
     pointerDamped: new THREE.Vector2(),
@@ -336,7 +344,9 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     field.sim.uLockWidth.value = s.lock * (1.0 - ag * 0.45);
     field.sim.uGlyph.value = s.glyph;
     field.sim.uScatter.value = s.scatter;
+    field.sim.uThick.value = s.thick;
     field.points.position.x = s.off;
+    state.dive = s.dive;
 
     // a readable "driving frequency" for the UI: mode order, scaled
     state.frequency = Math.round((s.mode.x * s.mode.x + s.mode.y * s.mode.y) * 11.1);
@@ -429,6 +439,13 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
 
     state.strike *= Math.pow(0.015, dt);
 
+    /* The score is applied before the camera, not after it: the camera now
+       reads how much of a dive this beat is, and reading it from the previous
+       frame lags the banking and the depth of field a frame behind the flight
+       they belong to. */
+    applyScore(t);
+    applyGrade(t);
+
     const fov = sampleFlight(t, pos, look);
 
     state.pointerDamped.lerp(state.pointer, reducedMotion ? 1 : 1 - Math.pow(0.004, dt));
@@ -440,8 +457,13 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     right.crossVectors(fwd, WORLD_UP).normalize();
     up.crossVectors(right, fwd).normalize();
 
-    // the dive earns a much bigger hand in the camera than the flat chapters
-    const dive = THREE.MathUtils.smoothstep(field.sim.uDimension.value, 0.2, 0.9);
+    /* How much of a dive this beat is. It used to be read off uDimension,
+       which meant every piloted quality — the bigger hand on the camera, the
+       banking, the shallow depth of field — existed only inside the volume
+       and the rest of the piece was watched through glass. It is its own
+       value in the score now, so a chapter can be flown through whether or
+       not the field has left the plate. */
+    const dive = state.dive;
     const par = reducedMotion ? 0 : 1 + dive * 2.4;
     posDamped.addScaledVector(right, state.pointerDamped.x * 58 * par);
     posDamped.addScaledVector(up, state.pointerDamped.y * 34 * par);
@@ -496,8 +518,6 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
       field.setPointer(null, 0);
     }
 
-    applyScore(t);
-    applyGrade(t);
     fx.uniforms.uTime.value = state.time;
 
     field.update(dt);

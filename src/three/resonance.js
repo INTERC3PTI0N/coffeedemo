@@ -67,6 +67,7 @@ ${FIELD}
   uniform float uTightness;    // how hard grains are pulled to the nodes
   uniform float uJitter;       // thermal agitation — keeps the figure alive
   uniform float uLockWidth;    // distance from a node that still counts as settled
+  uniform float uThick;        // half-depth of the plate's slab, in field units
   uniform float uGlyph;        // blend toward the struck mark
   uniform float uScatter;      // blow the field apart
   uniform vec3  uPointer;      // world-space pointer, for local disturbance
@@ -101,8 +102,15 @@ ${FIELD}
     force.xy += -2.0 * sP * gP * (1.0 - uDimension) * drive;
     force    += -2.0 * sV * gV * uDimension * drive;
 
-    // on the plate the grains are pressed flat; in the volume they are free
-    force.z += -pos.z * 6.0 * (1.0 - uDimension);
+    /* On the plate the grains are held in a slab, not pressed onto a pane.
+       A pane has no depth to fly through: every grain sits at the same
+       distance from the lens, nothing passes close to it, and the chapter can
+       only ever be looked *at*. Giving the figure a thickness costs nothing —
+       the nodal pattern lives in x and y — and buys the near-field the dive
+       is made of. uThick is the slab's half-depth, in field units. */
+    float slab = uThick;
+    float over = pos.z - clamp(pos.z, -slab, slab);
+    force.z += -over * 14.0 * (1.0 - uDimension);
 
     // clamped step keeps the descent stable when the gradient is steep
     vec3 step = force * uTightness * uDt;
@@ -695,6 +703,7 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
     uTightness:    { value: 0.9 },
     uJitter:       { value: 0.06 },
     uLockWidth:    { value: 0.35 },
+    uThick:        { value: 0.02 },
     uGlyph:        { value: 0 },
     uScatter:      { value: 0 },
     uPointer:      { value: new THREE.Vector3(9, 9, 9) },
