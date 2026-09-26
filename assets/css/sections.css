@@ -193,22 +193,6 @@ section{ position:relative; }
   max-width:38ch;
 }
 
-/* Distant ridges sit behind the WebGL cloud bank; the near ridge and the
-   terraces are lifted in front of it. That order — peaks, cloud, ground —
-   is what makes the section read as altitude rather than as flat waves. */
-.foreground{
-  position:absolute;
-  left:0; right:0; bottom:0;
-  height:52svh;
-  z-index:3;
-  pointer-events:none;
-  overflow:hidden;
-}
-.foreground .hl{
-  position:absolute; left:-14%; right:-14%; bottom:0;
-  transform-origin:50% 100%;
-}
-
 /* layered highlands — real z-depth via translate3d parallax --------- */
 .highlands{
   position:absolute;
@@ -224,10 +208,6 @@ section{ position:relative; }
   position:absolute; left:-14%; right:-14%; bottom:0;
   transform-origin:50% 100%;
 }
-/* an <svg> is a replaced element: with width:auto it ignores the right inset
-   and collapses to the containing block, exposing its edge mid-viewport */
-svg.hl{ width:128%; max-width:none; right:auto; height:auto; }
-
 /* An actual aerial gradient. White cloud cannot read against a cream page,
    so the middle distance gets the sky it would really have at 2,150 m —
    warm at the horizon, cool and deep where the bank sits. */
@@ -245,25 +225,7 @@ svg.hl{ width:128%; max-width:none; right:auto; height:auto; }
   background:linear-gradient(to bottom, rgba(214,219,214,0), rgba(232,228,214,.9));
   filter:blur(18px);
 }
-.hl--r4{ bottom:34%; opacity:.26; }
-.hl--r4 path{ fill:#7E93A4; }
-.hl--r3{ bottom:24%; opacity:.30; }
-.hl--r3 path{ fill:#6E8168; }
-.hl--r2{ bottom:18%; opacity:.42; }
-.hl--r2 path{ fill:#4E6149; }
-.hl--r1{ bottom:0; }
-.hl--r1 path{ fill:#2E3C2B; }
 
-/* coffee terrace rows on the front ridge */
-.hl--rows{
-  bottom:0; height:13%;
-  background:
-    repeating-linear-gradient(to bottom,
-      rgba(251,245,236,.10) 0 1px, transparent 1px 13px),
-    linear-gradient(to bottom, #2E3C2B, #1B241A);
-  mask-image:linear-gradient(to bottom, transparent, #000 34%);
-  -webkit-mask-image:linear-gradient(to bottom, transparent, #000 34%);
-}
 
 /* =================================================================== */
 /* 04 · ROASTS — expanding panels                                      */

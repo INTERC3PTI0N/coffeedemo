@@ -716,24 +716,11 @@
     var sec = $('#altitude');
     if (!sec) return;
 
-    var layers = [
-      ['.hl--r4', 120, 1.02],
-      ['.hl--r3', 200, 1.05],
-      ['.hl--r2', 300, 1.09],
-      ['.foreground .hl--r1', 420, 1.14],
-      ['.foreground .hl--rows', 470, 1.16]
-    ];
-
-    // each ridge rises at its own rate — that difference is the depth
-    layers.forEach(function (l) {
-      var el = $(l[0]);
-      if (!el) return;
-      GS.fromTo(el,
-        { yPercent: 46, scale: 1 },
-        {
-          yPercent: -l[1] / 22, scale: l[2], ease: 'none',
-          scrollTrigger: { trigger: sec, start: 'top bottom', end: 'bottom bottom', scrub: 0.7 }
-        });
+    // The ridges are gone; the sky itself does the travelling now, so the
+    // horizon still drifts as you descend the section.
+    GS.fromTo('.hl--sky', { yPercent: 8 }, {
+      yPercent: -6, ease: 'none',
+      scrollTrigger: { trigger: sec, start: 'top bottom', end: 'bottom bottom', scrub: 0.7 }
     });
 
     GS.fromTo('.hl--haze', { opacity: 0.2 }, {

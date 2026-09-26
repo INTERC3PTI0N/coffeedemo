@@ -18,7 +18,7 @@ Ten sections, each with its own motion idea rather than one effect repeated:
 |---|---------|--------|
 | 01 | Hero | A takeaway cup turned on a lathe, orbited by beans, lit by a sun flare; the framed window opens to full bleed as the camera closes on it |
 | 02 | Manifesto | Per-word `rotateX` reveal through a clipping mask; beans loiter in the margins |
-| 03 | The Harvest | A WebGL cloud bank you look down onto, with distant peaks behind it and the terraces in front; beans rain through all three |
+| 03 | The Harvest | A WebGL cloud bank you look down onto, with a cyclone of beans turning through it — down the near face, past the lens, back up the far side |
 | 04 | Our Roasts | Five panels that expand on hover/focus over beds of real beans; clicking the open one opens that bean as a specimen, "Roast this lot" opens the drum |
 | 05 | Founder quote | Line-by-line mask reveal and a signature that draws itself |
 | 06 | Roast Lab | The field forms a ring around one large bean you can drag; the slider re-roasts every bean on the page |
@@ -178,8 +178,28 @@ fixed and would otherwise spill into the next one.
 
 The section also has a real aerial gradient now — warm at the horizon, cool and
 deep where the bank sits — because white cloud cannot read against a cream
-page. The one remaining distant ridge is tinted blue for the same reason real
-far mountains are.
+page. There are no cut-out ridges left: every one of them read as a section
+divider, a shape ruled between two parts of a page, rather than as distance.
+
+**The cyclone.** What stands in for them is the bean field itself. Beans spiral
+down the near face of a funnel — close enough that the front of the sweep swells
+right past the lens — then ride the updraught back up on the far side, deep and
+small and hazy. The circuit is closed, and that is the whole trick: a column
+that simply rains has to teleport each bean from the bottom of the frame back to
+the top, and because the field eases toward its targets rather than snapping,
+that jump smears a bean up the screen once a cycle. Nothing here ever jumps, so
+the churn can run as fast as it likes — and like the hero ring it is a driven
+formation, following its targets about four times faster than the static ones.
+
+Two details carry it. Each bean gets its own lane across the funnel's
+cross-section, because beans sharing one radius sit on one wire, and a wire seen
+side-on piles up at its two turning points — two strands, with beans
+intersecting inside each. And the near swing stops short of the camera: a bean
+within a couple of units of the lens fills half the viewport and lands on top of
+whichever section is arriving underneath. A portrait viewport is a third the
+width at the same depth, so it gets a shallower funnel and a smaller bean.
+Scroll drives the spin too — the section's progress adds better than a full turn
+across it.
 
 **The roaster.** The drum is perforated sheet with scorch marks painted into
 its colour, bump and roughness maps, set inside a housing with legs and a

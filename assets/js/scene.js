@@ -757,15 +757,69 @@
       };
     },
 
-    // harvest: cherries coming off the tree, staggered so none collide
+    /* harvest: a cyclone of beans over the highlands.
+       Beans spiral down the near face of a funnel — close enough to the lens
+       that the front of the sweep swells right past it — then ride the
+       updraught back up on the far side, small and hazy. The circuit is
+       closed, which is the whole trick: a column that simply rains has to
+       teleport each bean from the bottom of the frame back to the top, and
+       because the field eases toward its targets rather than snapping, that
+       jump smears a bean up the screen every cycle. Nothing here ever jumps,
+       so the churn can run as fast as it likes.
+
+       Scroll drives it too — `p` adds better than a full turn across the
+       section, so the funnel spins up as you come down the page. */
     fall: function (b, i, n, t, p, view) {
-      var cycle = 17;
-      var z = -2.5 - (i % 5) * 2.1;
+      var wide = view._aspect > 1.15;
+      var CX = wide ? view.halfW(0) * 0.32 : 0;   // clear the copy column
+      var RX = wide ? 3.5 : 2.2;                  // funnel radius
+      /* Depth is what makes this read as a cyclone rather than as confetti,
+         but the near swing has to stop short of the lens: a bean that gets
+         within a couple of units of the camera fills half the viewport and
+         sits on top of whatever section is arriving underneath. A portrait
+         viewport is a third the width for the same depth, so the same swing
+         reads two beans wide there — it gets a shallower funnel and a
+         smaller bean. */
+      var RZ = wide ? 4.0 : 2.4;
+      var RY = 5.9;
+
+      // where this bean is on the circuit: 0 at the top, round and back
+      var w = ((i * PHI) + t * 0.062 + p * 1.3) % 1;
+      if (w < 0) w += 1;
+
+      var DOWN = 0.66;        // two thirds of the circuit is the fall
+      var lift, radius, turn, back;
+
+      if (w < DOWN) {
+        var f = w / DOWN;                       // 0 top → 1 bottom
+        lift = 1 - f * 2;
+        // pinched at the throat, flaring above and below it
+        radius = 0.34 + (f - 0.55) * (f - 0.55) * 2.1;
+        turn = f * TAU * 1.55;
+        back = 0;
+      } else {
+        var g = (w - DOWN) / (1 - DOWN);        // 0 bottom → 1 top
+        lift = -1 + g * 2;
+        // matched to the fall's end radius at g=0 and its start at g=1, with
+        // a bulge between, so the seams are invisible
+        radius = 0.765 + g * 0.21 + Math.sin(g * Math.PI) * 0.42;
+        turn = TAU * 1.55 + g * TAU * 0.45;     // lands back on 0 mod TAU
+        back = Math.sin(g * Math.PI) * 3.6;     // the updraught runs deep
+      }
+
+      var a = turn + i * GOLD;
+
+      /* Every bean riding the same radius puts them all on one wire, and a
+         wire seen side-on piles up at its two turning points — two strands,
+         beans intersecting inside each. Give each its own lane across the
+         funnel's cross-section and its own height offset instead. */
+      radius *= 0.62 + b.r1 * 0.62;
+
       return {
-        x: span(i, -0.94, 0.94) * view.halfW(z),
-        y: 8.5 - ((p * 14 + (i / n) * cycle + t * 0.5) % cycle),
-        z: z,
-        s: b.size * 0.95
+        x: CX + Math.cos(a) * RX * radius + (b.r2 - 0.5) * 1.5,
+        y: -0.4 + lift * RY + (b.r1 - 0.5) * 1.6 + Math.sin(t * 0.6 + i) * 0.18,
+        z: -0.4 + Math.sin(a) * RZ * radius - back + (b.r3 - 0.5) * 1.5,
+        s: b.size * (wide ? 0.62 : 0.38)
       };
     },
 
@@ -1074,10 +1128,11 @@
       R.oilCur = lerp(R.oilCur, R.oil, kRoast);
       R.roughCur = lerp(R.roughCur, R.rough, kRoast);
 
-      /* The hero ring is driven — its targets orbit continuously — so a slow
-         follow lags behind and the ring collapses toward the middle. Static
-         formations keep the softer rate. */
-      var kMove = damp(state.formation === 'swarm' ? 0.20 : 0.055, dt);
+      /* The hero ring and the harvest cyclone are driven — their targets orbit
+         continuously — so a slow follow lags behind and the ring collapses
+         toward the middle. Static formations keep the softer rate. */
+      var driven = state.formation === 'swarm' || state.formation === 'fall';
+      var kMove = damp(driven ? 0.24 : 0.055, dt);
       var kScale = damp(0.075, dt);
 
       for (var i = 0; i < beans.length; i++) {
