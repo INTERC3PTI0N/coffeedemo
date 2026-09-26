@@ -48,6 +48,35 @@ const SCORE = [
   { t: 1.00, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.10, jitter: 0.0025, lock: 0.55, glyph: 1, scatter: 0, off: 430 },
 ];
 
+/* ------------------------------------------------------------------ *
+ * The grain's own geometry, chapter by chapter.
+ *
+ * The shape is described continuously rather than picked from a set, so it
+ * morphs with the scroll the way the palette and the physics already do:
+ * formless dust takes its first facet, is drawn out into needles along the
+ * ridges, splinters as the modes climb, opens into plates inside the volume,
+ * hardens into ingot chips at the mark, and ends as the struck tile.
+ * ------------------------------------------------------------------ */
+const SHAPE = [
+  // Kept deliberately subtle: the grain's shape is the texture of the figure,
+  // not a competitor to it. Overdrawn elongation turned the nodal lines into
+  // a scatter of streaks and the structure stopped reading.
+  // 01 — silence: round, hollow, barely there. Not yet a crystal.
+  { t: 0.00, sides: 14, elong: 1.00, round: 0.82, hollow: 0.88, spike: 0.00, facet: 0.55 },
+  // 02 — the first note: the first facet, a diamond
+  { t: 0.18, sides: 4,  elong: 1.06, round: 0.34, hollow: 0.50, spike: 0.00, facet: 0.85 },
+  // 03 — the sweep: drawn out along the ridges they are piling onto
+  { t: 0.36, sides: 3,  elong: 1.45, round: 0.14, hollow: 0.30, spike: 0.05, facet: 1.00 },
+  // higher modes splinter them
+  { t: 0.52, sides: 6,  elong: 1.30, round: 0.05, hollow: 0.20, spike: 0.14, facet: 1.12 },
+  // 04 — the volume: full hexagonal plates, the gyroid's own facet
+  { t: 0.70, sides: 6,  elong: 1.00, round: 0.03, hollow: 0.14, spike: 0.00, facet: 1.20 },
+  // 05 — the mark: hard rectangular chips, the ingot in miniature
+  { t: 0.88, sides: 4,  elong: 1.45, round: 0.00, hollow: 0.10, spike: 0.00, facet: 1.28 },
+  // 06 — struck: square tiles, the mark printed in dust
+  { t: 1.00, sides: 4,  elong: 1.00, round: 0.00, hollow: 0.06, spike: 0.00, facet: 1.38 },
+];
+
 /* A grain's radius in world units. Sizes in the grade table below are
    multipliers on this, not pixel counts: the renderer projects a sphere of
    this radius properly, so a grain grows as the camera closes on it and the
@@ -62,10 +91,10 @@ const GRADE = [
     bloom: 0.34, vig: 0.72, sat: 0.80, lift: 0.004, cast: '#b9cbdb', castAmt: 0.10, exposure: 1.0 },
   { t: 0.18, bg: '#060a0f', cold: '#627e9a', hot: '#cfa95f', size: 1.00, glow: 0.75, opacity: 1.00,
     bloom: 0.40, vig: 0.66, sat: 0.88, lift: 0.005, cast: '#cddced', castAmt: 0.12, exposure: 1.0 },
-  { t: 0.36, bg: '#070b12', cold: '#6886a6', hot: '#e3bd6c', size: 0.96, glow: 0.85, opacity: 1.00,
-    bloom: 0.46, vig: 0.62, sat: 0.94, lift: 0.006, cast: '#d8e3f0', castAmt: 0.12, exposure: 1.0 },
-  { t: 0.52, bg: '#080c14', cold: '#7191b2', hot: '#f0c873', size: 0.92, glow: 0.95, opacity: 1.00,
-    bloom: 0.52, vig: 0.58, sat: 1.00, lift: 0.007, cast: '#e2ecf6', castAmt: 0.10, exposure: 1.02 },
+  { t: 0.36, bg: '#070b12', cold: '#6886a6', hot: '#e3bd6c', size: 0.96, glow: 0.68, opacity: 1.00,
+    bloom: 0.36, vig: 0.62, sat: 0.94, lift: 0.006, cast: '#d8e3f0', castAmt: 0.12, exposure: 1.0 },
+  { t: 0.52, bg: '#080c14', cold: '#7191b2', hot: '#f0c873', size: 0.92, glow: 0.74, opacity: 1.00,
+    bloom: 0.40, vig: 0.58, sat: 1.00, lift: 0.007, cast: '#e2ecf6', castAmt: 0.10, exposure: 1.02 },
   { t: 0.70, bg: '#0a0d16', cold: '#7c9dbf', hot: '#ffd98a', size: 1.18, glow: 1.05, opacity: 1.00,
     bloom: 0.58, vig: 0.50, sat: 1.04, lift: 0.010, cast: '#eef4fb', castAmt: 0.08, exposure: 1.04 },
   { t: 0.88, bg: '#07090e', cold: '#6c8399', hot: '#ffe2a2', size: 0.95, glow: 1.10, opacity: 1.00,
@@ -138,6 +167,21 @@ function sampleScore(t) {
   _score.scatter = l(a.scatter, b.scatter);
   _score.off     = l(a.off, b.off);
   return _score;
+}
+
+const _shape = {};
+
+function sampleShape(t) {
+  const { a, b, s } = segment(SHAPE, t);
+  const e = s * s * (3 - 2 * s);
+  const l = (ka, kb) => ka + (kb - ka) * e;
+  _shape.sides  = l(a.sides, b.sides);
+  _shape.elong  = l(a.elong, b.elong);
+  _shape.round  = l(a.round, b.round);
+  _shape.hollow = l(a.hollow, b.hollow);
+  _shape.spike  = l(a.spike, b.spike);
+  _shape.facet  = l(a.facet, b.facet);
+  return _shape;
 }
 
 const _grade = {
@@ -282,6 +326,19 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     field.uniforms.uCold.value.copy(g.cold);
     field.uniforms.uHot.value.copy(g.hot);
     field.uniforms.uGrainRadius.value = GRAIN_RADIUS * g.size;
+
+    /* Shape follows the scroll, and a shaken plate splinters it: agitation
+       pulls the edges into spikes and sets the flakes tumbling, so scrubbing
+       visibly shatters the figure rather than only blurring it. */
+    const sh = sampleShape(t);
+    const ag2 = state.agitation;
+    field.uniforms.uSides.value  = sh.sides;
+    field.uniforms.uElong.value  = sh.elong;
+    field.uniforms.uRound.value  = sh.round;
+    field.uniforms.uHollow.value = Math.min(1, sh.hollow + ag2 * 0.45);
+    field.uniforms.uSpike.value  = Math.min(0.45, sh.spike + ag2 * 0.22);
+    field.uniforms.uFacet.value  = sh.facet;
+    field.uniforms.uTumble.value = ag2 * 0.09;
     field.uniforms.uGlow.value = g.glow;
     field.uniforms.uOpacity.value = g.opacity;
 

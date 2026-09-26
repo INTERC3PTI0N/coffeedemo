@@ -165,6 +165,11 @@ ${FIELD}
   uniform float uDimension;
   uniform vec3  uLightDir;
 
+  /* the grain's own geometry, morphed by the scroll */
+  uniform float uElong;
+  uniform float uTumble;
+  uniform float uTime;
+
   attribute vec2 aRef;
   attribute float aSeed;
 
@@ -220,8 +225,11 @@ ${FIELD}
     float slen = length(scr);
     vec2 axis = slen > 1e-6 ? scr / slen : vec2(1.0, 0.0);
 
-    // no two flakes settle at quite the same angle
-    float wob = (aSeed - 0.5) * 0.7;
+    // No two flakes settle at quite the same angle, and a shaken plate sets
+    // them tumbling at their own rates.
+    float wob = (aSeed - 0.5) * 0.7
+              + uTumble * (aSeed - 0.5) * 9.0
+              + uTumble * uTime * (0.6 + aSeed * 1.8);
     float cw = cos(wob), sw = sin(wob);
     vAxis = vec2(axis.x * cw - axis.y * sw, axis.x * sw + axis.y * cw);
 
@@ -233,6 +241,9 @@ ${FIELD}
                  * (0.72 + aSeed * 0.56);
 
     float px = 2.0 * radius * uProjScale / depth;
+
+    // an elongated grain needs a longer sprite to live in
+    px *= mix(1.0, sqrt(max(uElong, 1.0)), 0.6);
 
     float coc = clamp(abs(depth - uFocus) / uFocusRange, 0.0, 1.0);
     coc *= coc;
@@ -256,6 +267,11 @@ const RENDER_FRAG = /* glsl */ `
   uniform float uHazeDensity;
   uniform float uHazeNear;
   uniform float uFacet;     // how hard-edged the crystal reads
+  uniform float uSides;     // 3 triangle · 4 diamond · 6 hexagon · high = round
+  uniform float uElong;     // 1 equant · >1 drawn out into a needle
+  uniform float uRound;     // corner bluntness
+  uniform float uHollow;    // 1 outline only · 0 solid
+  uniform float uSpike;     // edges pulled into a star
 
   varying float vLock;
   varying float vSeed;
@@ -266,14 +282,22 @@ const RENDER_FRAG = /* glsl */ `
   varying vec2  vAxis;
   varying float vSquash;
 
-  /* signed distance to a regular hexagon — the facet, and the aperture the
-     out-of-focus grains take their shape from */
-  float hexSDF(vec2 p, float r) {
-    const vec3 k = vec3(-0.8660254, 0.5, 0.5773503);
-    p = abs(p);
-    p -= 2.0 * min(dot(k.xy, p), 0.0) * k.xy;
-    p -= vec2(clamp(p.x, -k.z * r, k.z * r), r);
-    return length(p) * sign(p.y);
+  /* One shape for the whole piece, described continuously rather than chosen
+     from a set: uSides slides from a round mote through triangle, diamond
+     and hexagon; uSpike pulls the edges into a star; uRound blunts the
+     corners; uElong draws it out into a needle. Morphing the parameters
+     morphs the grain, so the geometry can follow the scroll the way the
+     colour and the physics already do. */
+  float grainSDF(vec2 p, float sides, float radius, float spike) {
+    float a = atan(p.y, p.x);
+    float seg = 6.2831853 / sides;
+
+    // fold the plane into one wedge of the polygon
+    float fold = cos(floor(0.5 + a / seg) * seg - a) * length(p);
+
+    // pulling the radius with the angle turns the polygon into a star
+    float r = radius * (1.0 - spike * cos(sides * a));
+    return fold - r;
   }
 
   void main() {
@@ -284,16 +308,22 @@ const RENDER_FRAG = /* glsl */ `
     vec2 p = vec2(q.x * vAxis.x + q.y * vAxis.y,
                  -q.x * vAxis.y + q.y * vAxis.x);
     p.y /= max(vSquash, 0.16);
+    p.x /= max(uElong, 0.001);
 
-    float d = hexSDF(p, 0.34);
-    if (d > 0.22) discard;
+    // keep the longest axis inside the sprite it is drawn in
+    float radius = 0.32 / max(1.0, uElong * 0.7);
+
+    float d = grainSDF(p, uSides, radius, uSpike) - uRound * radius * 0.5;
+    if (d > 0.24) discard;
 
     // A loose grain is a hollow outline — a marker for something not yet
-    // there. A settled one has filled in and taken an edge.
+    // there. A settled one has filled in and taken an edge. How hollow the
+    // loose state reads is itself part of the shape's journey.
     float edge = fwidth(d) + 0.004;
     float fill = smoothstep(edge, -edge, d);
     float rim  = exp(-abs(d) * (42.0 * uFacet));
-    float shell = mix(rim, fill * 0.62 + rim * 0.9, vLock);
+    float loose = mix(fill * 0.5 + rim * 0.7, rim, uHollow);
+    float shell = mix(loose, fill * 0.62 + rim * 0.9, vLock);
 
     // diffraction spikes off the facets of the ones that have locked hard
     float spike = (exp(-abs(p.y) * 52.0) + exp(-abs(p.x) * 52.0))
@@ -456,6 +486,13 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
     uOpacity:     { value: 1 },
     uGlow:        { value: 1.3 },
     uFacet:       { value: 1.0 },
+    uSides:       { value: 6 },
+    uElong:       { value: 1 },
+    uRound:       { value: 0 },
+    uHollow:      { value: 0.2 },
+    uSpike:       { value: 0 },
+    uTumble:      { value: 0 },
+    uTime:        sim.uTime,
     uHazeDensity: { value: 0.00035 },
     uHazeNear:    { value: 500 },
   };
