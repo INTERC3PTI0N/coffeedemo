@@ -523,8 +523,15 @@ const RENDER_FRAG = /* glsl */ `
        twice as wide. So a far grain is drawn as its own hard silhouette and
        nothing else: no rim, no interior, and no fallback disc, which would
        have ignored the foreshortening every other grain is subject to and
-       quietly handed the distant ones more coverage than they had earned. */
-    float lowRes = fill * 0.62;
+       quietly handed the distant ones more coverage than they had earned.
+
+       Energy matters as much as width: the profile this replaced carried an
+       edge highlight as well as a body, so dropping to the bare silhouette at
+       0.62 halved the light and the mark read as haze rather than as three
+       solid digits. The silhouette therefore carries the whole of the old
+       peak, as fill alone — a rim term would put most of that light on the
+       thinnest feature under the sample, which is the stacking problem again. */
+    float lowRes = fill * 1.30;
     shape = mix(lowRes, shape, formLod);
 
     // defocus takes the aperture's shape rather than dissolving to a smudge
