@@ -87,7 +87,7 @@ ${FIELD}
     vec4 state = texture2D(texturePosition, uv);
     vec3 pos = state.xyz;
 
-    /* A twelfth of the field never joins the figure.
+    /* A fifth of the field never joins the figure.
     
        The figure is bounded — it has to be, it is a plate — and once the
        camera is down inside it the edge of that bound is simply black, which
@@ -96,8 +96,15 @@ ${FIELD}
        is always something between the lens and the dark however the camera is
        pointed. They never settle, so they stay cold and dim and cannot be
        mistaken for part of the figure: they read as the air it is suspended
-       in, which is what a plate of dust should have around it anyway. */
-    float amb = step(0.9167, hash(uv * 7.31 + 3.7));
+       in, which is what a plate of dust should have around it anyway.
+
+       Getting the quantity right matters more than the idea. A first pass put
+       a twelfth of the grains into a shell of radius 4.4, spreading them
+       through twelve times the figure's volume and leaving them some hundred
+       and fifty times too sparse to register — the frame stayed exactly as
+       black as before. A fifth of the field, in a shell a little over half
+       that size, is what actually reads as air. */
+    float amb = step(0.79, hash(uv * 7.31 + 3.7));
 
     /* --- the two fields, blended --- */
     float sP = plate(pos.xy, uMode);
@@ -120,7 +127,7 @@ ${FIELD}
        only ever be looked *at*. Giving the figure a thickness costs nothing —
        the nodal pattern lives in x and y — and buys the near-field the dive
        is made of. uThick is the slab's half-depth, in field units. */
-    float slab = mix(uThick, 2.6, amb);
+    float slab = mix(uThick, 1.9, amb);
     float over = pos.z - clamp(pos.z, -slab, slab);
     force.z += -over * 14.0 * (1.0 - uDimension) * (1.0 - amb * 0.85);
 
@@ -149,7 +156,7 @@ ${FIELD}
     /* --- soft containment ---
        The atmosphere is held in a far larger shell than the figure, and drifts
        inside it rather than being pulled anywhere. */
-    float cage = mix(1.9, 4.4, amb);
+    float cage = mix(1.9, 3.0, amb);
     float r = length(pos);
     if (r > cage) pos -= normalize(pos) * (r - cage) * 0.6;
 
@@ -163,7 +170,7 @@ ${FIELD}
     lock = mix(lock, 1.0, uGlyph);
     lock *= 1.0 - uScatter;
     // atmosphere never settles; it is what the figure is suspended in
-    lock *= 1.0 - amb * 0.93;
+    lock *= 1.0 - amb * 0.80;
 
     gl_FragColor = vec4(pos, lock);
   }
