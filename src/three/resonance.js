@@ -149,17 +149,17 @@ ${FIELD}
 
   /* dimensions, in world units — a grain is an actual size, not a magic number */
   uniform float uGrainRadius;   // radius of a loose grain
-  uniform float uSettledGain;   // settled grains pack tighter and read finer
+  uniform float uSettledGain;   // a settled grain has grown a facet; it reads larger
   uniform float uProjScale;     // drawingBufferHeight / (2 tan(fovY/2))
   uniform float uMinPx;
   uniform float uMaxPx;
 
   /* focus */
-  uniform float uFocus;         // view distance the lens is focused on
+  uniform float uFocus;
   uniform float uFocusRange;
-  uniform float uBokeh;         // how far a defocused grain spreads
+  uniform float uBokeh;
 
-  /* shading — the nodal set has a normal, so the dust can catch light */
+  /* the field the grain is sitting on */
   uniform vec2  uMode;
   uniform vec3  uGyroid;
   uniform float uDimension;
@@ -172,7 +172,10 @@ ${FIELD}
   varying float vSeed;
   varying float vBlur;
   varying float vShade;
+  varying float vGlint;
   varying float vDepth;
+  varying vec2  vAxis;    // screen direction the flake is longest in
+  varying float vSquash;  // minor/major — how edge-on we are seeing it
 
   void main() {
     vec4 state = texture2D(uPosition, aRef);
@@ -184,27 +187,53 @@ ${FIELD}
     float depth = max(-mv.z, 0.001);
     vDepth = depth;
 
-    /* --- the grain's normal is the gradient of the field it is sitting on.
-       On the plate that is the in-plane slope of the ridge it has piled into;
-       in the volume it is the true normal of the gyroid surface. Either way
-       the dust is lit as the form it describes, not as flat specks. --- */
+    /* --- the grain is a flake lying *in* the nodal set, so the field's own
+       gradient is its normal: on the plate the slope of the ridge it piled
+       into, in the volume the true normal of the gyroid surface. --- */
     vec2 gp = plateGrad(pos.xy, uMode);
     vec3 gv = volumeGrad(pos, uGyroid);
     vec3 n = normalize(mix(vec3(gp * 0.35, 1.0), gv, uDimension) + 1e-5);
+
+    vec3 viewDir = normalize(cameraPosition - (modelMatrix * vec4(pos, 1.0)).xyz);
+    float facing = abs(dot(n, viewDir));
+
     float lambert = dot(n, normalize(uLightDir));
     vShade = 0.70 + 0.36 * (lambert * 0.5 + 0.5);
 
-    /* --- true projected size of a sphere of this radius ---
-       A sphere of radius r at distance d subtends 2r/d radians, which is
-       2 r uProjScale / d pixels. No tuning constant: change the radius and
-       the grain changes by exactly that much. --- */
+    // a facet catches the light directly now and then, which is what makes it
+    // read as mineral rather than as a dot
+    vec3 halfway = normalize(normalize(uLightDir) + viewDir);
+    vGlint = pow(max(dot(n, halfway), 0.0), 26.0) * vLock;
+
+    /* --- the flake's silhouette ---
+       Widest across the direction perpendicular to both its normal and the
+       eye; foreshortened to a sliver as it turns edge-on. That ellipse is
+       the shape, so the geometry itself carries the depth. --- */
+    vec3 t = cross(n, viewDir);
+    float tlen = length(t);
+    t = tlen > 1e-4 ? t / tlen : vec3(1.0, 0.0, 0.0);
+
+    vec3 tv = (modelViewMatrix * vec4(t, 0.0)).xyz;
+    vec2 scr = vec2(tv.x - mv.x * tv.z / mv.z, tv.y - mv.y * tv.z / mv.z);
+    scr = vec2(projectionMatrix[0][0] * scr.x, projectionMatrix[1][1] * scr.y);
+
+    float slen = length(scr);
+    vec2 axis = slen > 1e-6 ? scr / slen : vec2(1.0, 0.0);
+
+    // no two flakes settle at quite the same angle
+    float wob = (aSeed - 0.5) * 0.7;
+    float cw = cos(wob), sw = sin(wob);
+    vAxis = vec2(axis.x * cw - axis.y * sw, axis.x * sw + axis.y * cw);
+
+    vSquash = clamp(facing, 0.16, 1.0);
+
+    /* --- true projected size of a sphere of this radius --- */
     float radius = uGrainRadius
                  * mix(1.0, uSettledGain, vLock)
                  * (0.72 + aSeed * 0.56);
 
     float px = 2.0 * radius * uProjScale / depth;
 
-    /* --- defocus: a grain off the focal plane spreads into a disc --- */
     float coc = clamp(abs(depth - uFocus) / uFocusRange, 0.0, 1.0);
     coc *= coc;
     vBlur = coc;
@@ -220,40 +249,71 @@ const RENDER_FRAG = /* glsl */ `
 
   uniform vec3  uCold;      // drifting, unresolved
   uniform vec3  uHot;       // settled on a node
-  uniform vec3  uHaze;      // what distance dissolves into
+  uniform vec3  uHaze;
   uniform float uOpacity;
   uniform float uGlow;
   uniform float uBokeh;
   uniform float uHazeDensity;
   uniform float uHazeNear;
+  uniform float uFacet;     // how hard-edged the crystal reads
 
   varying float vLock;
   varying float vSeed;
   varying float vBlur;
   varying float vShade;
+  varying float vGlint;
   varying float vDepth;
+  varying vec2  vAxis;
+  varying float vSquash;
+
+  /* signed distance to a regular hexagon — the facet, and the aperture the
+     out-of-focus grains take their shape from */
+  float hexSDF(vec2 p, float r) {
+    const vec3 k = vec3(-0.8660254, 0.5, 0.5773503);
+    p = abs(p);
+    p -= 2.0 * min(dot(k.xy, p), 0.0) * k.xy;
+    p -= vec2(clamp(p.x, -k.z * r, k.z * r), r);
+    return length(p) * sign(p.y);
+  }
 
   void main() {
-    vec2 d = gl_PointCoord - 0.5;
-    float r2 = dot(d, d);
-    if (r2 > 0.25) discard;
+    vec2 q = gl_PointCoord - 0.5;
 
-    /* A focused grain is a tight point; a defocused one is a soft disc with a
-       faintly brighter rim, which is what a real out-of-focus highlight does. */
-    float tight = exp(-r2 * 22.0);
-    float disc  = smoothstep(0.25, 0.10, r2) * (0.78 + 0.5 * smoothstep(0.06, 0.2, r2));
-    float falloff = mix(tight, disc, vBlur);
+    // into the flake's own frame: long across its axis, squashed across the
+    // other as it turns edge-on to us
+    vec2 p = vec2(q.x * vAxis.x + q.y * vAxis.y,
+                 -q.x * vAxis.y + q.y * vAxis.x);
+    p.y /= max(vSquash, 0.16);
+
+    float d = hexSDF(p, 0.34);
+    if (d > 0.22) discard;
+
+    // A loose grain is a hollow outline — a marker for something not yet
+    // there. A settled one has filled in and taken an edge.
+    float edge = fwidth(d) + 0.004;
+    float fill = smoothstep(edge, -edge, d);
+    float rim  = exp(-abs(d) * (42.0 * uFacet));
+    float shell = mix(rim, fill * 0.62 + rim * 0.9, vLock);
+
+    // diffraction spikes off the facets of the ones that have locked hard
+    float spike = (exp(-abs(p.y) * 52.0) + exp(-abs(p.x) * 52.0))
+                * exp(-dot(p, p) * 5.0) * vLock * 0.26;
+
+    // defocus takes the aperture's shape rather than dissolving to a smudge
+    float soft = smoothstep(0.24, -0.16, d) * (0.72 + 0.5 * smoothstep(-0.02, 0.16, d));
+    float shape = mix(shell + spike, soft, vBlur);
 
     vec3 col = mix(uCold, uHot, smoothstep(0.15, 0.95, vLock));
     col *= vShade;
     col *= 0.72 + vLock * uGlow;
+    col += uHot * vGlint * 0.40;
 
-    float a = falloff * uOpacity * (0.34 + vLock * 0.92) * (0.62 + vSeed * 0.46);
+    float a = shape * uOpacity * (0.19 + vLock * 0.40) * (0.62 + vSeed * 0.46);
 
-    /* spreading a grain over a wider disc must not brighten it */
+    // spreading a grain over a wider disc must not brighten it
     a /= 1.0 + vBlur * uBokeh * 0.85;
 
-    /* atmosphere: distance drains the dust toward the dark it hangs in */
+    // atmosphere: distance drains the dust toward the dark it hangs in
     float haze = 1.0 - exp(-max(vDepth - uHazeNear, 0.0) * uHazeDensity);
     col = mix(col, uHaze, haze * 0.62);
     a *= 1.0 - haze * 0.42;
@@ -374,11 +434,11 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
     // Dimensions are world-unit radii. The field is scaled by `scale`, so a
     // grain of 1.5 here is 1.5 world units across the plate's ~2000-unit span
     // — roughly a grain of silica on a 240mm plate, held to that ratio.
-    uGrainRadius: { value: 1.55 },
-    uSettledGain: { value: 0.78 },
+    uGrainRadius: { value: 1.85 },
+    uSettledGain: { value: 1.22 },
     uProjScale:   { value: 800 },
     uMinPx:       { value: 0.9 },
-    uMaxPx:       { value: 44 },
+    uMaxPx:       { value: 38 },
 
     uFocus:       { value: 1200 },
     uFocusRange:  { value: 900 },
@@ -395,6 +455,7 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
     uHaze:        { value: new THREE.Color('#070a0f') },
     uOpacity:     { value: 1 },
     uGlow:        { value: 1.3 },
+    uFacet:       { value: 1.0 },
     uHazeDensity: { value: 0.00035 },
     uHazeNear:    { value: 500 },
   };
