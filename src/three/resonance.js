@@ -168,6 +168,7 @@ ${FIELD}
   /* the grain's own geometry, morphed by the scroll */
   uniform float uElong;
   uniform float uTumble;
+  uniform float uAlign;   // 0 every grain at its own angle · 1 all on the flow
   uniform float uTime;
 
   attribute vec2 aRef;
@@ -181,6 +182,18 @@ ${FIELD}
   varying float vDepth;
   varying vec2  vAxis;    // screen direction the flake is longest in
   varying float vSquash;  // minor/major — how edge-on we are seeing it
+  varying float vPulse;   // how far out on the figure this grain sits
+  varying float vPx;      // the sprite's *sharp* size on screen, in pixels
+
+  /* a world-space direction, as the unit screen direction it projects to at
+     this grain's own depth */
+  vec2 screenDir(vec3 dir, vec4 mv) {
+    vec3 dv = (modelViewMatrix * vec4(dir, 0.0)).xyz;
+    vec2 s = vec2(dv.x - mv.x * dv.z / mv.z, dv.y - mv.y * dv.z / mv.z);
+    s = vec2(projectionMatrix[0][0] * s.x, projectionMatrix[1][1] * s.y);
+    float l = length(s);
+    return l > 1e-6 ? s / l : vec2(1.0, 0.0);
+  }
 
   void main() {
     vec4 state = texture2D(uPosition, aRef);
@@ -191,6 +204,10 @@ ${FIELD}
     vec4 mv = modelViewMatrix * vec4(pos, 1.0);
     float depth = max(-mv.z, 0.001);
     vDepth = depth;
+
+    // distance out across the plate, or through the volume: the phase at which
+    // a pulse leaving the centre reaches this grain
+    vPulse = mix(length(pos.xy), length(pos), uDimension);
 
     /* --- the grain is a flake lying *in* the nodal set, so the field's own
        gradient is its normal: on the plate the slope of the ridge it piled
@@ -217,17 +234,29 @@ ${FIELD}
     vec3 t = cross(n, viewDir);
     float tlen = length(t);
     t = tlen > 1e-4 ? t / tlen : vec3(1.0, 0.0, 0.0);
+    vec2 axis = screenDir(t, mv);
 
-    vec3 tv = (modelViewMatrix * vec4(t, 0.0)).xyz;
-    vec2 scr = vec2(tv.x - mv.x * tv.z / mv.z, tv.y - mv.y * tv.z / mv.z);
-    scr = vec2(projectionMatrix[0][0] * scr.x, projectionMatrix[1][1] * scr.y);
+    /* --- the flow the grain is riding ---
+       A nodal line on the plate runs perpendicular to the field's gradient,
+       and the same construction inside the volume gives a direction lying in
+       the gyroid's surface. Pointing the form along it is what turns a cloud
+       of unrelated motes into a shoal that is plainly going somewhere — so
+       the blades of the sweep line up with the ridges they are piling onto
+       instead of pointing anywhere at all. */
+    vec3 flow = mix(vec3(-gp.y, gp.x, 0.0), cross(gv, vec3(0.0, 0.0, 1.0)), uDimension);
+    float flen = length(flow);
+    if (flen > 1e-4 && uAlign > 0.001) {
+      vec2 af = screenDir(flow / flen, mv);
+      // the form's axis is a line, not an arrow: resolve the 180° ambiguity
+      // toward the grain's own angle so the blend cannot cancel to nothing
+      af *= dot(af, axis) < 0.0 ? -1.0 : 1.0;
+      axis = normalize(mix(axis, af, uAlign) + 1e-6);
+    }
 
-    float slen = length(scr);
-    vec2 axis = slen > 1e-6 ? scr / slen : vec2(1.0, 0.0);
-
-    // No two flakes settle at quite the same angle, and a shaken plate sets
-    // them tumbling at their own rates.
-    float wob = (aSeed - 0.5) * 0.7
+    // No two flakes settle at quite the same angle — except where the field is
+    // driving hard enough to line them all up, and a shaken plate sets them
+    // tumbling at their own rates again.
+    float wob = (aSeed - 0.5) * 0.7 * (1.0 - uAlign * 0.85)
               + uTumble * (aSeed - 0.5) * 9.0
               + uTumble * uTime * (0.6 + aSeed * 1.8);
     float cw = cos(wob), sw = sin(wob);
@@ -245,6 +274,13 @@ ${FIELD}
     // an elongated grain needs a longer sprite to live in
     px *= mix(1.0, sqrt(max(uElong, 1.0)), 0.6);
 
+    /* The size the grain would be drawn at if it were in focus. Defocus makes
+       the sprite larger without making the grain any more resolved, so the
+       detail level has to be read here, before the circle of confusion
+       inflates it — otherwise a distant out-of-focus speck is mistaken for a
+       close-up object and drawn with an inside it cannot possibly show. */
+    vPx = clamp(px, uMinPx, uMaxPx);
+
     float coc = clamp(abs(depth - uFocus) / uFocusRange, 0.0, 1.0);
     coc *= coc;
     vBlur = coc;
@@ -258,6 +294,8 @@ ${FIELD}
 const RENDER_FRAG = /* glsl */ `
   precision highp float;
 
+  #define TAU 6.2831853071
+
   uniform vec3  uCold;      // drifting, unresolved
   uniform vec3  uHot;       // settled on a node
   uniform vec3  uHaze;
@@ -266,12 +304,18 @@ const RENDER_FRAG = /* glsl */ `
   uniform float uBokeh;
   uniform float uHazeDensity;
   uniform float uHazeNear;
-  uniform float uFacet;     // how hard-edged the crystal reads
-  uniform float uSides;     // 3 triangle · 4 diamond · 6 hexagon · high = round
-  uniform float uElong;     // 1 equant · >1 drawn out into a needle
-  uniform float uRound;     // corner bluntness
-  uniform float uHollow;    // 1 outline only · 0 solid
-  uniform float uSpike;     // edges pulled into a star
+  uniform float uTime;
+
+  /* the grain's own geometry — see the form library below */
+  uniform float uFormA;     // the beat the scroll is leaving
+  uniform float uFormB;     // the beat it is arriving at
+  uniform float uFormMix;   // where between them it currently is
+  uniform float uElong;     // 1 equant · >1 drawn out along its axis
+  uniform float uHollow;    // 1 drawn outline · 0 solid body
+  uniform float uFacet;     // how hard-edged the form reads
+  uniform float uCore;      // how brightly the inner structure burns
+  uniform float uScan;      // the sweep of light that says it is running
+  uniform float uShatter;   // a shaken plate chips the edges off
 
   varying float vLock;
   varying float vSeed;
@@ -281,62 +325,201 @@ const RENDER_FRAG = /* glsl */ `
   varying float vDepth;
   varying vec2  vAxis;
   varying float vSquash;
+  varying float vPulse;
+  varying float vPx;
 
-  /* One shape for the whole piece, described continuously rather than chosen
-     from a set: uSides slides from a round mote through triangle, diamond
-     and hexagon; uSpike pulls the edges into a star; uRound blunts the
-     corners; uElong draws it out into a needle. Morphing the parameters
-     morphs the grain, so the geometry can follow the scroll the way the
-     colour and the physics already do. */
-  float grainSDF(vec2 p, float sides, float radius, float spike) {
+  /* ------------------------------------------------------------------
+     The form library.
+
+     Seven silhouettes, one per beat of the story, each a distinct object
+     rather than one polygon with its corner count turned up. Every form
+     returns two distances: the outline, and the inner structure that lights
+     as the grain locks — a pupil, a hub, a slot. That second channel is what
+     stops these reading as stamped shapes; each one has something going on
+     inside it.
+
+     They are written as signed distance fields for one reason: mixing two
+     fields gives a real in-between body, so scrubbing between two beats
+     morphs one machine into the next instead of cross-fading two pictures.
+     ------------------------------------------------------------------ */
+
+  float sdBox(vec2 p, vec2 b) {
+    vec2 q = abs(p) - b;
+    return min(max(q.x, q.y), 0.0) + length(max(q, 0.0));
+  }
+
+  /* a regular polygon, by folding the plane into one of its wedges */
+  float sdPoly(vec2 p, float sides, float r) {
     float a = atan(p.y, p.x);
-    float seg = 6.2831853 / sides;
+    float seg = TAU / sides;
+    return cos(floor(0.5 + a / seg) * seg - a) * length(p) - r;
+  }
 
-    // fold the plane into one wedge of the polygon
-    float fold = cos(floor(0.5 + a / seg) * seg - a) * length(p);
+  /* 0 — MOTE. Dormant. A soft body with the faintest possible centre: dust
+     that has not yet been asked to be anything. */
+  vec2 fMote(vec2 p) {
+    return vec2(length(p) - 0.255, length(p) - 0.075);
+  }
 
-    // pulling the radius with the angle turns the polygon into a star
-    float r = radius * (1.0 - spike * cos(sides * a));
-    return fold - r;
+  /* 1 — CELL. The first note strikes and the mote takes its first facet: a
+     hexagonal cell with a core coming alight inside it. */
+  vec2 fCell(vec2 p) {
+    return vec2(sdPoly(p, 6.0, 0.245), sdPoly(p, 6.0, 0.090));
+  }
+
+  /* 2 — DELTA. The sweep. A swept blade with a concave trailing edge and a
+     lit bar down its spine — the first form that is unmistakably going
+     somewhere, which is why this is the beat where the field starts to fly. */
+  vec2 fDelta(vec2 p) {
+    // two leading edges, folded about the axis
+    float lead = (p.x - 0.30) * 0.438 + abs(p.y) * 0.899;
+    // the trailing edge cuts back in to a tail point
+    float tail = -((p.x + 0.10) * 0.904 + abs(p.y) * 0.427);
+    float d = max(lead, tail);
+    return vec2(d, sdBox(p - vec2(0.03, 0.0), vec2(0.125, 0.021)));
+  }
+
+  /* 3 — APERTURE. The modes climb and the grain becomes an instrument: a
+     machined iris, its ring cut by six teeth, holding a pupil open. */
+  vec2 fAperture(vec2 p) {
+    float r = length(p);
+    float a = atan(p.y, p.x);
+    float ring = abs(r - 0.235) - 0.058;
+    // angular saw, converted to arc length so the teeth keep their width
+    float arc = (0.5 - abs(fract(a * 6.0 / TAU) - 0.5)) * (TAU / 6.0) * r;
+    return vec2(max(ring, 0.030 - arc), r - 0.078);
+  }
+
+  /* 4 — VANE. Inside the volume the field is a surface, and the grain becomes
+     the joint that holds it: three swept blades set at a pitch on a hard
+     hexagonal hub — the gyroid's own threefold symmetry, made into a part. */
+  vec2 fVane(vec2 p) {
+    float seg = TAU / 3.0;
+    float a = atan(p.y, p.x);
+    a = mod(a + seg * 0.5, seg) - seg * 0.5;   // fold into one blade's sector
+    vec2 q = vec2(cos(a), sin(a)) * length(p); // q.x now runs out the blade
+    q.y += q.x * 0.22;                         // the blade is set at a pitch
+
+    float blade = sdBox(q - vec2(0.165, 0.0), vec2(0.165, 0.052));
+    blade = max(blade, (q.x - 0.10) * 0.28 + abs(q.y) - 0.072);  // taper to the tip
+
+    float hub = sdPoly(p, 6.0, 0.088);
+    return vec2(min(blade, hub), sdPoly(p, 6.0, 0.046));
+  }
+
+  /* 5 — SHARD. The mark. A chip of the ingot itself, and it carries the
+     ingot's own section: a trapezoid, wider at the base because that is the
+     shape a thing takes when it is poured and then struck. Stamped with a
+     slot, corners knocked off the struck face. */
+  vec2 fShard(vec2 p) {
+    // draft angle — the sides lean in toward the face that took the die
+    float d = max(abs(p.y) - 0.118, abs(p.x) + (p.y + 0.118) * 0.26 - 0.300);
+    d = max(d, (abs(p.x) + p.y) * 0.7071 - 0.255);   // chamfer the struck corners
+    return vec2(d, sdBox(p - vec2(0.0, 0.012), vec2(0.150, 0.026)));
+  }
+
+  /* 6 — RUNE. Silence returns and every grain holds the house sigil: the same
+     hexagon-within-hexagon struck through by a bar that the mark in the
+     navigation carries. The dust ends up spelling the brand it came from,
+     one grain at a time — the last and smallest complete thing in the piece. */
+  vec2 fRune(vec2 p) {
+    float frame = max(sdPoly(p, 6.0, 0.265), -sdPoly(p, 6.0, 0.192));
+    float bar   = sdBox(p, vec2(0.030, 0.150));
+    return vec2(min(frame, bar), sdBox(p, vec2(0.030, 0.062)));
+  }
+
+  vec2 form(float id, vec2 p) {
+    if (id < 0.5) return fMote(p);
+    if (id < 1.5) return fCell(p);
+    if (id < 2.5) return fDelta(p);
+    if (id < 3.5) return fAperture(p);
+    if (id < 4.5) return fVane(p);
+    if (id < 5.5) return fShard(p);
+    return fRune(p);
   }
 
   void main() {
     vec2 q = gl_PointCoord - 0.5;
 
-    // into the flake's own frame: long across its axis, squashed across the
-    // other as it turns edge-on to us
+    // into the grain's own frame: aligned to its axis, foreshortened across
+    // the other as it turns edge-on, stretched by the beat's elongation
     vec2 p = vec2(q.x * vAxis.x + q.y * vAxis.y,
                  -q.x * vAxis.y + q.y * vAxis.x);
     p.y /= max(vSquash, 0.16);
     p.x /= max(uElong, 0.001);
 
-    // keep the longest axis inside the sprite it is drawn in
-    float radius = 0.32 / max(1.0, uElong * 0.7);
+    // A settled grain breathes. Nothing here is a still image of a machine;
+    // it is idling, and the eye reads that difference immediately.
+    float breath = 1.0 + 0.055 * sin(uTime * 1.7 + vSeed * TAU) * vLock * uCore;
+    p /= breath;
 
-    float d = grainSDF(p, uSides, radius, uSpike) - uRound * radius * 0.5;
-    if (d > 0.24) discard;
+    vec2 f = mix(form(uFormA, p), form(uFormB, p), uFormMix);
+    float d = f.x;
+    float inner = f.y;
 
-    // A loose grain is a hollow outline — a marker for something not yet
-    // there. A settled one has filled in and taken an edge. How hollow the
-    // loose state reads is itself part of the shape's journey.
+    // scrubbing hard chips the edges off — the form visibly takes damage
+    d += uShatter * 0.05 * sin(atan(p.y + 1e-6, p.x + 1e-6) * 9.0 + vSeed * 137.0);
+
+    if (d > 0.26) discard;
+
     float edge = fwidth(d) + 0.004;
     float fill = smoothstep(edge, -edge, d);
     float rim  = exp(-abs(d) * (42.0 * uFacet));
-    float loose = mix(fill * 0.5 + rim * 0.7, rim, uHollow);
-    float shell = mix(loose, fill * 0.62 + rim * 0.9, vLock);
+
+    // hollow draws the form as an outline; solid fills it in. Early on the
+    // grains are diagrams of themselves, and they acquire a body as they lock.
+    float body = mix(fill, rim, uHollow);
+
+    // the inner structure lights as the grain settles
+    float ce = fwidth(inner) + 0.004;
+    float core = smoothstep(ce, -ce, inner) * uCore * (0.25 + vLock * 0.90);
+
+    /* A scan sweep travels the long axis of each form — but its phase comes
+       from where the grain sits on the figure, not from the grain itself. The
+       light therefore crosses the whole plate as a ring leaving the centre,
+       and the dust reads as one body being driven rather than ten thousand
+       independent sparks blinking out of step. */
+    float phase = fract(uTime * 0.30 - vPulse * 0.55 + vSeed * 0.12);
+    float sb = (p.x + 0.36 - phase * 0.72) * 16.0;
+    float scan = exp(-sb * sb) * fill * uScan * vLock;
+
+    /* Everything here is additively blended, so a term that looks right on one
+       grain multiplies where a thousand of them crowd onto a node. The inner
+       structure is weighted to read on a single grain held up to the light,
+       not to survive being stacked — the nodal lines are the brightest thing
+       in the frame already. */
+    /* --- level of detail, in two stages ---
+       A silhouette and an interior are not equally affordable. Shaping a
+       grain's outline only moves its ink around, so the form can start
+       showing as soon as the sprite is a few pixels across. A lit core or a
+       scan line *adds* light, and on a figure carrying a hundred thousand
+       additively blended grains that addition stacks until the pattern the
+       grains are tracing closes into a solid mass — so the interior has to
+       wait until the grain is genuinely big enough, and in focus enough, to
+       have a visible inside at all. Getting this backwards fills the
+       counters of the closing mark and turns "999" into a smudge. */
+    float formLod  = smoothstep(1.4, 4.0, vPx);
+    float innerLod = smoothstep(3.0, 8.0, vPx) * (1.0 - vBlur);
+
+    float shell = body * (0.55 + vLock * 0.55) + rim * 0.35 * vLock;
+    float shape = shell + (core * 0.70 + scan * 0.45) * innerLod;
 
     // diffraction spikes off the facets of the ones that have locked hard
-    float spike = (exp(-abs(p.y) * 52.0) + exp(-abs(p.x) * 52.0))
-                * exp(-dot(p, p) * 5.0) * vLock * 0.26;
+    shape += (exp(-abs(p.y) * 52.0) + exp(-abs(p.x) * 52.0))
+           * exp(-dot(p, p) * 5.0) * vLock * 0.22;
+
+    shape = mix(exp(-dot(q, q) * 12.0) * 0.62, shape, formLod);
 
     // defocus takes the aperture's shape rather than dissolving to a smudge
-    float soft = smoothstep(0.24, -0.16, d) * (0.72 + 0.5 * smoothstep(-0.02, 0.16, d));
-    float shape = mix(shell + spike, soft, vBlur);
+    float soft = smoothstep(0.26, -0.18, d) * (0.72 + 0.5 * smoothstep(-0.02, 0.16, d));
+    shape = mix(shape, soft, vBlur);
 
     vec3 col = mix(uCold, uHot, smoothstep(0.15, 0.95, vLock));
     col *= vShade;
     col *= 0.72 + vLock * uGlow;
     col += uHot * vGlint * 0.40;
+    // the core and the scan line burn hotter than the body they sit in
+    col += uHot * (core * 0.30 + scan * 0.40) * innerLod;
 
     float a = shape * uOpacity * (0.19 + vLock * 0.40) * (0.62 + vSeed * 0.46);
 
@@ -485,12 +668,19 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
     uHaze:        { value: new THREE.Color('#070a0f') },
     uOpacity:     { value: 1 },
     uGlow:        { value: 1.3 },
-    uFacet:       { value: 1.0 },
-    uSides:       { value: 6 },
+
+    // the grain's geometry: which two forms the scroll is between, and how
+    // each of them is being drawn
+    uFormA:       { value: 0 },
+    uFormB:       { value: 0 },
+    uFormMix:     { value: 0 },
     uElong:       { value: 1 },
-    uRound:       { value: 0 },
-    uHollow:      { value: 0.2 },
-    uSpike:       { value: 0 },
+    uHollow:      { value: 0.9 },
+    uFacet:       { value: 0.5 },
+    uCore:        { value: 0.15 },
+    uScan:        { value: 0 },
+    uShatter:     { value: 0 },
+    uAlign:       { value: 0 },
     uTumble:      { value: 0 },
     uTime:        sim.uTime,
     uHazeDensity: { value: 0.00035 },

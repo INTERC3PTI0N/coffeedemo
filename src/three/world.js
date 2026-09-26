@@ -51,30 +51,39 @@ const SCORE = [
 /* ------------------------------------------------------------------ *
  * The grain's own geometry, chapter by chapter.
  *
- * The shape is described continuously rather than picked from a set, so it
- * morphs with the scroll the way the palette and the physics already do:
- * formless dust takes its first facet, is drawn out into needles along the
- * ridges, splinters as the modes climb, opens into plates inside the volume,
- * hardens into ingot chips at the mark, and ends as the struck tile.
+ * Seven forms, one per beat, each a distinct machined object rather than one
+ * polygon with its corner count turned up — and each carrying its own inner
+ * structure, so there is something going on inside every grain on the plate.
+ *
+ *   0 MOTE      dormant dust, a body with the faintest of centres
+ *   1 CELL      the first facet, a hexagonal cell with a core coming alight
+ *   2 DELTA     a swept blade, lit down the spine, flying the nodal ridges
+ *   3 APERTURE  a machined iris, ring cut by six teeth, holding a pupil open
+ *   4 VANE      a three-bladed rotor on a hard hub — the gyroid's own joint
+ *   5 SHARD     a chip of the ingot: bevelled plate, chamfered, slotted
+ *   6 RUNE      the house sigil: a hexagonal frame struck through by a bar
+ *
+ * The renderer holds two of them at once and mixes their distance fields, so
+ * scrubbing between beats morphs one machine into the next rather than
+ * cross-fading two pictures. `align` is the storytelling dial of the set: at
+ * 0 every grain sits at its own angle, at 1 they all swing onto the flow of
+ * the field and the cloud reads as a shoal with somewhere to be.
  * ------------------------------------------------------------------ */
 const SHAPE = [
-  // Kept deliberately subtle: the grain's shape is the texture of the figure,
-  // not a competitor to it. Overdrawn elongation turned the nodal lines into
-  // a scatter of streaks and the structure stopped reading.
-  // 01 — silence: round, hollow, barely there. Not yet a crystal.
-  { t: 0.00, sides: 14, elong: 1.00, round: 0.82, hollow: 0.88, spike: 0.00, facet: 0.55 },
-  // 02 — the first note: the first facet, a diamond
-  { t: 0.18, sides: 4,  elong: 1.06, round: 0.34, hollow: 0.50, spike: 0.00, facet: 0.85 },
-  // 03 — the sweep: drawn out along the ridges they are piling onto
-  { t: 0.36, sides: 3,  elong: 1.45, round: 0.14, hollow: 0.30, spike: 0.05, facet: 1.00 },
-  // higher modes splinter them
-  { t: 0.52, sides: 6,  elong: 1.30, round: 0.05, hollow: 0.20, spike: 0.14, facet: 1.12 },
-  // 04 — the volume: full hexagonal plates, the gyroid's own facet
-  { t: 0.70, sides: 6,  elong: 1.00, round: 0.03, hollow: 0.14, spike: 0.00, facet: 1.20 },
-  // 05 — the mark: hard rectangular chips, the ingot in miniature
-  { t: 0.88, sides: 4,  elong: 1.45, round: 0.00, hollow: 0.10, spike: 0.00, facet: 1.28 },
-  // 06 — struck: square tiles, the mark printed in dust
-  { t: 1.00, sides: 4,  elong: 1.00, round: 0.00, hollow: 0.06, spike: 0.00, facet: 1.38 },
+  // 01 — silence: dormant, drawn as an outline, barely a centre to it
+  { t: 0.00, form: 0, elong: 1.00, hollow: 0.92, facet: 0.50, core: 0.12, scan: 0.00, align: 0.00 },
+  // 02 — the first note: the cell closes and a core lights inside it
+  { t: 0.18, form: 1, elong: 1.00, hollow: 0.55, facet: 0.92, core: 0.55, scan: 0.10, align: 0.30 },
+  // 03 — the sweep: blades, all of them swung onto the ridges they ride
+  { t: 0.36, form: 2, elong: 1.26, hollow: 0.28, facet: 1.05, core: 0.52, scan: 0.28, align: 0.88 },
+  // the modes climb and the grain becomes an instrument
+  { t: 0.52, form: 3, elong: 1.00, hollow: 0.40, facet: 1.15, core: 0.55, scan: 0.40, align: 0.55 },
+  // 04 — the volume: rotors holding the surface together
+  { t: 0.70, form: 4, elong: 1.00, hollow: 0.18, facet: 1.25, core: 0.88, scan: 0.28, align: 0.45 },
+  // 05 — the mark: the ingot, in chips
+  { t: 0.88, form: 5, elong: 1.30, hollow: 0.10, facet: 1.30, core: 0.95, scan: 0.62, align: 0.75 },
+  // 06 — struck: the hallmark, printed in dust and holding
+  { t: 1.00, form: 6, elong: 1.00, hollow: 0.18, facet: 1.45, core: 1.00, scan: 0.18, align: 0.92 },
 ];
 
 /* A grain's radius in world units. Sizes in the grade table below are
@@ -171,16 +180,23 @@ function sampleScore(t) {
 
 const _shape = {};
 
+/* The two forms either side of the playhead go to the shader together with
+   the eased fraction between them: the silhouette is interpolated on the GPU
+   as a distance field, which is the only way an aperture can genuinely become
+   a rotor rather than dissolve into one. */
 function sampleShape(t) {
   const { a, b, s } = segment(SHAPE, t);
   const e = s * s * (3 - 2 * s);
   const l = (ka, kb) => ka + (kb - ka) * e;
-  _shape.sides  = l(a.sides, b.sides);
+  _shape.formA  = a.form;
+  _shape.formB  = b.form;
+  _shape.mix    = e;
   _shape.elong  = l(a.elong, b.elong);
-  _shape.round  = l(a.round, b.round);
   _shape.hollow = l(a.hollow, b.hollow);
-  _shape.spike  = l(a.spike, b.spike);
   _shape.facet  = l(a.facet, b.facet);
+  _shape.core   = l(a.core, b.core);
+  _shape.scan   = l(a.scan, b.scan);
+  _shape.align  = l(a.align, b.align);
   return _shape;
 }
 
@@ -327,18 +343,23 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     field.uniforms.uHot.value.copy(g.hot);
     field.uniforms.uGrainRadius.value = GRAIN_RADIUS * g.size;
 
-    /* Shape follows the scroll, and a shaken plate splinters it: agitation
-       pulls the edges into spikes and sets the flakes tumbling, so scrubbing
-       visibly shatters the figure rather than only blurring it. */
+    /* Shape follows the scroll, and a shaken plate takes it apart: agitation
+       chips the edges, hollows the bodies out, breaks the formation and sets
+       the grains tumbling, so scrubbing visibly damages the figure rather
+       than only blurring it — and coming to rest visibly repairs it. */
     const sh = sampleShape(t);
     const ag2 = state.agitation;
-    field.uniforms.uSides.value  = sh.sides;
-    field.uniforms.uElong.value  = sh.elong;
-    field.uniforms.uRound.value  = sh.round;
-    field.uniforms.uHollow.value = Math.min(1, sh.hollow + ag2 * 0.45);
-    field.uniforms.uSpike.value  = Math.min(0.45, sh.spike + ag2 * 0.22);
-    field.uniforms.uFacet.value  = sh.facet;
-    field.uniforms.uTumble.value = ag2 * 0.09;
+    field.uniforms.uFormA.value   = sh.formA;
+    field.uniforms.uFormB.value   = sh.formB;
+    field.uniforms.uFormMix.value = sh.mix;
+    field.uniforms.uElong.value   = sh.elong;
+    field.uniforms.uHollow.value  = Math.min(1, sh.hollow + ag2 * 0.40);
+    field.uniforms.uFacet.value   = sh.facet;
+    field.uniforms.uCore.value    = sh.core * (1 - ag2 * 0.55);
+    field.uniforms.uScan.value    = sh.scan * (1 - ag2 * 0.70);
+    field.uniforms.uAlign.value   = sh.align * (1 - ag2 * 0.85);
+    field.uniforms.uShatter.value = ag2 * 0.85;
+    field.uniforms.uTumble.value  = ag2 * 0.09;
     field.uniforms.uGlow.value = g.glow;
     field.uniforms.uOpacity.value = g.opacity;
 
