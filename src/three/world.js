@@ -86,7 +86,7 @@ const SHAPE = [
   // the modes climb: it closes into a ring on an axis, and turns
   { t: 0.52, form: 3, elong: 1.00, hollow: 0.38, facet: 1.15, core: 0.55, scan: 0.42, align: 0.50, spin: 0.35 },
   // 04 — the volume: the ring opens into a braced cell as the field lifts
-  { t: 0.70, form: 4, elong: 1.00, hollow: 0.20, facet: 1.25, core: 0.85, scan: 0.30, align: 0.40, spin: 0.12 },
+  { t: 0.70, form: 4, elong: 1.00, hollow: 0.16, facet: 1.55, core: 0.48, scan: 0.18, align: 0.40, spin: 0.12 },
   // 05 — the mark: compacted, struck, and holding still
   { t: 0.88, form: 5, elong: 1.25, hollow: 0.10, facet: 1.30, core: 0.92, scan: 0.60, align: 0.72, spin: 0.00 },
   // 06 — struck: the house mark, one grain at a time

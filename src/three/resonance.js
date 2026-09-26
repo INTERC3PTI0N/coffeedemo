@@ -444,11 +444,17 @@ const RENDER_FRAG = /* glsl */ `
   /* 4 — CAGE. The ring opens out into an eight-sided cell braced on an inner
      diamond — volume, at the beat where the field leaves the plate. */
   vec2 fCage(vec2 p) {
-    float shell = abs(sdPoly(p, 8.0, 0.250)) - 0.024;
-    float core  = abs(sdPoly(vec2(p.y, p.x), 4.0, 0.105)) - 0.020;
+    /* Drawn with as few separate edges as the shape can carry. Every edge in
+       a form is a rim highlight, and this is the beat where the camera is
+       inside the field with the grains at their largest — a wireframe here
+       puts a dozen highlights on every one of a hundred thousand cells and
+       the gyroid disappears into its own glow. The brace bars earn their
+       edges; the core is solid rather than outlined. */
+    float shell = abs(sdPoly(p, 8.0, 0.248)) - 0.030;
+    float core  = sdPoly(vec2(p.y, p.x), 4.0, 0.100);
     vec2  q = foldN(p, 4.0);
-    float brace = sdBar(vec2(q.x - 0.100, q.y), 0.140, 0.017);
-    return vec2(min(min(shell, core), brace), sdPoly(vec2(p.y, p.x), 4.0, 0.058));
+    float brace = sdBar(vec2(q.x - 0.098, q.y), 0.140, 0.017);
+    return vec2(min(min(shell, core), brace), sdPoly(vec2(p.y, p.x), 4.0, 0.052));
   }
 
   /* 5 — SEAL. The cage compacts into a slab and takes two struck slots. Mass:
