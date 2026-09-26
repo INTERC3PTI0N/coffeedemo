@@ -39,6 +39,17 @@ const FIELD = /* glsl */ `
     );
   }
 
+  /* One hash, shared by the simulation and the renderer, so both agree to the
+     bit on which grains are atmosphere rather than figure. Two copies of
+     "roughly the same" random function would classify differently and the
+     atmosphere would be simulated as one set and drawn as another. */
+  float ghash(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+  }
+  float ambientOf(vec2 uv) {
+    return step(0.79, ghash(uv * 7.31 + 3.7));
+  }
+
   /* --- volume: S = 0 is the gyroid surface --- */
   float volume(vec3 p, vec3 k) {
     return sin(k.x * p.x) * cos(k.y * p.y)
@@ -104,7 +115,7 @@ ${FIELD}
        and fifty times too sparse to register — the frame stayed exactly as
        black as before. A fifth of the field, in a shell a little over half
        that size, is what actually reads as air. */
-    float amb = step(0.79, hash(uv * 7.31 + 3.7));
+    float amb = ambientOf(uv);
 
     /* --- the two fields, blended --- */
     float sP = plate(pos.xy, uMode);
@@ -219,6 +230,7 @@ ${FIELD}
   varying float vSquash;  // minor/major — how edge-on we are seeing it
   varying float vPulse;   // how far out on the figure this grain sits
   varying float vPx;      // the sprite's *sharp* size on screen, in pixels
+  varying float vAmb;     // 1 if this grain is atmosphere rather than figure
 
   /* a world-space direction, as the unit screen direction it projects to at
      this grain's own depth */
@@ -235,6 +247,7 @@ ${FIELD}
     vec3 pos = state.xyz;
     vLock = state.w;
     vSeed = aSeed;
+    vAmb = ambientOf(aRef);
 
     vec4 mv = modelViewMatrix * vec4(pos, 1.0);
     float depth = max(-mv.z, 0.001);
@@ -304,9 +317,15 @@ ${FIELD}
     vSquash = clamp(facing, 0.16, 1.0);
 
     /* --- true projected size of a sphere of this radius --- */
+    /* Atmosphere is drawn as motes several times the size of a figure grain.
+       This is the quality a dive has that a wide shot does not: something
+       large and unresolved passing close to the lens, against small sharp
+       structure behind it. Matching the figure's grain size would have put
+       the same speck everywhere and read as noise rather than as air. */
     float radius = uGrainRadius
                  * mix(1.0, uSettledGain, vLock)
-                 * (0.72 + aSeed * 0.56);
+                 * (0.72 + aSeed * 0.56)
+                 * mix(1.0, 3.4 + aSeed * 2.2, vAmb);
 
     float px = 2.0 * radius * uProjScale / depth;
 
@@ -367,6 +386,7 @@ const RENDER_FRAG = /* glsl */ `
   varying float vSquash;
   varying float vPulse;
   varying float vPx;
+  varying float vAmb;
 
   /* ------------------------------------------------------------------
      The form library.
@@ -628,7 +648,8 @@ const RENDER_FRAG = /* glsl */ `
        more light between the digits than three 9s can survive. So the forms
        hand the frame back: by the time the mark is fully struck each grain is
        a plain speck again, which is exactly what the closing shot wants. */
-    float formLod   = smoothstep(1.6, 5.0, vPx) * uFormFade;
+    // atmosphere is never a contraption: it is out of focus by definition
+    float formLod   = smoothstep(1.6, 5.0, vPx) * uFormFade * (1.0 - vAmb);
     float innerLod  = smoothstep(4.0, 9.5, vPx) * (1.0 - vBlur) * uFormFade;
     // a third tier, for grains close enough that machining would be visible
     float detailLod = smoothstep(9.0, 20.0, vPx) * (1.0 - vBlur) * uFormFade;
@@ -669,6 +690,12 @@ const RENDER_FRAG = /* glsl */ `
        thinnest feature under the sample, which is the stacking problem again. */
     float lowRes = fill * 1.30;
     shape = mix(lowRes, shape, formLod);
+
+    /* A mote is a soft body with no edge — the defocus of something too close
+       to resolve. Weighted well below a figure grain so that a fifth of the
+       field can fill the frame without ever competing with the figure for
+       attention: it is what the figure hangs in, not part of it. */
+    shape = mix(shape, exp(-dot(q, q) * 7.0) * 0.30, vAmb);
 
     // defocus takes the aperture's shape rather than dissolving to a smudge
     float soft = smoothstep(0.26, -0.18, d) * (0.72 + 0.5 * smoothstep(-0.02, 0.16, d));
