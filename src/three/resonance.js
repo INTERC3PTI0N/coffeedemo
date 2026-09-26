@@ -325,7 +325,7 @@ ${FIELD}
     float radius = uGrainRadius
                  * mix(1.0, uSettledGain, vLock)
                  * (0.72 + aSeed * 0.56)
-                 * mix(1.0, 3.4 + aSeed * 2.2, vAmb);
+                 * mix(1.0, 2.6 + aSeed * 1.5, vAmb);
 
     float px = 2.0 * radius * uProjScale / depth;
 
@@ -695,7 +695,7 @@ const RENDER_FRAG = /* glsl */ `
        to resolve. Weighted well below a figure grain so that a fifth of the
        field can fill the frame without ever competing with the figure for
        attention: it is what the figure hangs in, not part of it. */
-    shape = mix(shape, exp(-dot(q, q) * 7.0) * 0.30, vAmb);
+    shape = mix(shape, exp(-dot(q, q) * 7.0) * 0.15, vAmb);
 
     // defocus takes the aperture's shape rather than dissolving to a smudge
     float soft = smoothstep(0.26, -0.18, d) * (0.72 + 0.5 * smoothstep(-0.02, 0.16, d));
