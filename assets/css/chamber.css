@@ -72,9 +72,8 @@
   transition:background .4s;
 }
 .roastbtn__label{
-  font-family:var(--display);
-  font-size:14px; font-weight:600;
-  letter-spacing:.08em; text-transform:uppercase;
+  font-size:11px; font-weight:700;
+  letter-spacing:.14em; text-transform:uppercase;
   position:relative;
 }
 .roastbtn__label::after{
@@ -220,7 +219,7 @@
 }
 .gauge span{ color:rgba(239,231,212,.5); }
 .gauge b{
-  font-family:var(--display); font-weight:600;
+  font-family:var(--serif); font-weight:400;
   font-size:clamp(18px,2vw,28px); line-height:1;
 }
 .gauge em{ font-style:normal; font-size:.55em; opacity:.6; margin-left:2px; }
@@ -231,8 +230,7 @@
 }
 .ch-phases li{
   display:flex; align-items:center; gap:11px;
-  font-family:var(--display);
-  font-size:15px; letter-spacing:.06em; text-transform:uppercase;
+  font-size:11px; letter-spacing:.14em; text-transform:uppercase;
   font-weight:600;
   color:rgba(239,231,212,.34);
   transition:color .4s var(--ease);
@@ -404,7 +402,7 @@
   letter-spacing:.16em; text-transform:uppercase;
   color:rgba(33,70,57,.5);
 }
-.po-facts dd{ margin:0; font-family:var(--display); font-size:18px; font-weight:600; letter-spacing:.01em; color:#1A382D; }
+.po-facts dd{ margin:0; font-size:13px; font-weight:600; color:#1A382D; }
 
 @media (max-width:900px){
   .chamber__hud{
@@ -505,7 +503,7 @@
 }
 .spec__facts dd{
   margin:0;
-  font-family:var(--display); font-weight:600;
+  font-family:var(--serif); font-weight:400;
   font-size:clamp(16px,1.8vw,24px);
   line-height:1;
 }

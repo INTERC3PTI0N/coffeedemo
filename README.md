@@ -129,50 +129,6 @@ falloff of a real roasted bean. Ambient fill came down from 1.35 to 0.95 on the
 light sections too: ambient lands equally on every face, and at that level it
 filled each bean's shadow side nearly to its lit side, so it had no form.
 
-## Typography
-
-Three voices, one job each:
-
-| Face | Role |
-|------|------|
-| **CC Dynamic Duo SemiBold Italic** (`--display`, `assets/fonts/roast-duo.woff2`) | The house speaking: the name, every heading, the coffees, the numbers, the pull quote, the manifesto, anything you press, the print on the cups |
-| **Archivo** (`--sans`) | Running copy |
-| **JetBrains Mono** (`--mono`) | Small data labels — eyebrows, prices, coordinates, units |
-
-> **Licence.** CC Dynamic Duo is © 2020 John Roshell / ComicBookFonts.com, all
-> rights reserved, and this build (W03) is a commercial webfont. Publishing the
-> site publishes the font file, so a webfont licence from Comicraft is needed.
-> Swapping it out is one file and the `@font-face` pair at the top of
-> `assets/css/base.css`; everything else refers to `--display`.
-
-Duo is condensed, dense and slanted — superb from about 18px up, cramped below
-it — which is why running copy stays in Archivo. Its native job is comic
-lettering: capitals at a small size, read at a glance. So every button and link
-is lettered in it in uppercase, slightly larger than the sans it replaced. The
-mono labels stay mono partly for contrast and partly because Duo has no `′` or
-`₹`, and those labels carry both.
-
-It ships as one 600 italic cut, so it is declared twice — normal and italic —
-across the whole weight range. Otherwise a rule asking for italic or for 800
-gets a browser-synthesised slant or smear on top of letters that are already
-slanted and already heavy. Converted to WOFF2 it is 32 KB (99 KB as TTF) and is
-preloaded, because the hero, the loader word and the printed cups all use it.
-
-Two things the slant needed:
-
-- **Room in the reveal masks.** The top of a slanted letter leans past its
-  advance box on the right and its foot trails past it on the left and below,
-  so a mask sized to the box shaved the bottom of every hero capital and the
-  foot of an "l" at the start of a quote line. Every `.clip` now has padding on
-  all sides with an equal negative margin, so the layout does not move and the
-  letters stop being cut. The loader's letters carry the same box, because the
-  flight into the hero title measures both sets of boxes — it still lands
-  within 4px on an 852px word.
-- **Cups that repaint.** Canvas text is set in whatever font is ready at the
-  instant it is drawn, and the cups are built during the loader, usually before
-  the font has arrived. The sleeve and board textures now paint once, and paint
-  again when `document.fonts.load` resolves for Duo.
-
 **Where the brand lives in 3D.** The house cup wears a forest sleeve with the
 wordmark laid in gold foil (a vertical ramp across the type's band, so it reads
 as foil rather than mustard paint) and a deep green lid; the coffees on the shelf

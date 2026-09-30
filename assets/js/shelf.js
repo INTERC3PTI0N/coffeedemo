@@ -275,21 +275,6 @@
   /* is the printed outside, above it the interior, which has to go dark */
   /* toward the base because nothing in here casts an occlusion.         */
   /* ------------------------------------------------------------------ */
-  /* The house face. Canvas text is set in whatever font is ready at the
-     instant it is drawn, and the cups are built during the loader — as a
-     rule before a webfont has arrived — so the first paint falls back to
-     Archivo. Anything printed in the house face paints again once it has
-     loaded; a CanvasTexture only needs its canvas redrawn and a flag set. */
-  var DISPLAY = '"Roast Duo", Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif';
-  function whenDisplayReady(fn) {
-    var fonts = global.document && document.fonts;
-    if (!fonts || !fonts.load) return;
-    if (fonts.check('600 40px "Roast Duo"')) return;
-    fonts.load('600 40px "Roast Duo"').then(function (faces) {
-      if (faces && faces.length) fn();
-    }, function () {});
-  }
-
   var PAPER = {};
   function paperTexture(brand) {
     var key = brand ? 'brand' : 'plain';
@@ -298,92 +283,88 @@
     var cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     var g = cv.getContext('2d');
-    function draw() {
 
-      /* flipY is on, so canvas row 0 is v = 1 — the far end of the profile,
-         which is the inside of the base. The interior occupies the top of
-         the canvas and the outside wall the bottom. */
-      var inTop = 0, inBot = (1 - INSIDE_V) * H;
+    /* flipY is on, so canvas row 0 is v = 1 — the far end of the profile,
+       which is the inside of the base. The interior occupies the top of
+       the canvas and the outside wall the bottom. */
+    var inTop = 0, inBot = (1 - INSIDE_V) * H;
 
-      var deep = g.createLinearGradient(0, inTop, 0, inBot);
-      deep.addColorStop(0.00, '#150f09');      // the base, in shadow
-      deep.addColorStop(0.55, '#413426');
-      deep.addColorStop(1.00, '#a0907b');      // up near the rim
-      g.fillStyle = deep;
-      g.fillRect(0, inTop, W, inBot);
+    var deep = g.createLinearGradient(0, inTop, 0, inBot);
+    deep.addColorStop(0.00, '#150f09');      // the base, in shadow
+    deep.addColorStop(0.55, '#413426');
+    deep.addColorStop(1.00, '#a0907b');      // up near the rim
+    g.fillStyle = deep;
+    g.fillRect(0, inTop, W, inBot);
 
-      /* The waterline. The coffee is a separate mesh, so nothing shadows the
-         wall behind it — this is the band of dark the liquid would throw,
-         painted where the profile reaches the fill height. */
-      var wl = inBot * 0.87;
-      var line = g.createLinearGradient(0, wl - inBot * 0.16, 0, wl + inBot * 0.05);
-      line.addColorStop(0.00, 'rgba(12,7,3,0)');
-      line.addColorStop(0.72, 'rgba(12,7,3,0.55)');
-      line.addColorStop(1.00, 'rgba(12,7,3,0.78)');
-      g.fillStyle = line;
-      g.fillRect(0, wl - inBot * 0.16, W, inBot * 0.21);
+    /* The waterline. The coffee is a separate mesh, so nothing shadows the
+       wall behind it — this is the band of dark the liquid would throw,
+       painted where the profile reaches the fill height. */
+    var wl = inBot * 0.87;
+    var line = g.createLinearGradient(0, wl - inBot * 0.16, 0, wl + inBot * 0.05);
+    line.addColorStop(0.00, 'rgba(12,7,3,0)');
+    line.addColorStop(0.72, 'rgba(12,7,3,0.55)');
+    line.addColorStop(1.00, 'rgba(12,7,3,0.78)');
+    g.fillStyle = line;
+    g.fillRect(0, wl - inBot * 0.16, W, inBot * 0.21);
 
-      // the outside: bleached board, faintly warm
-      g.fillStyle = '#f4efe6';
-      g.fillRect(0, inBot, W, H - inBot);
+    // the outside: bleached board, faintly warm
+    g.fillStyle = '#f4efe6';
+    g.fillRect(0, inBot, W, H - inBot);
 
-      /* The side seam, where the blank is glued. Faint: at full strength it
-         reads as a stripe printed on the cup rather than a fold in it. */
-      g.fillStyle = 'rgba(178,160,136,0.15)';
-      g.fillRect(W * 0.5 - 5, inBot, 10, H - inBot);
-      g.fillStyle = 'rgba(120,102,80,0.11)';
-      g.fillRect(W * 0.5 - 6, inBot, 2, H - inBot);
+    /* The side seam, where the blank is glued. Faint: at full strength it
+       reads as a stripe printed on the cup rather than a fold in it. */
+    g.fillStyle = 'rgba(178,160,136,0.15)';
+    g.fillRect(W * 0.5 - 5, inBot, 10, H - inBot);
+    g.fillStyle = 'rgba(120,102,80,0.11)';
+    g.fillRect(W * 0.5 - 6, inBot, 2, H - inBot);
 
-      // fibre: board is never flat white
-      for (var i = 0; i < 9000; i++) {
-        var x = Math.random() * W, y = Math.random() * H;
-        g.fillStyle = Math.random() > 0.5
-          ? 'rgba(186,170,146,0.10)' : 'rgba(255,253,248,0.12)';
-        g.fillRect(x, y, 1 + Math.random() * 4, 1);
-      }
-
-      /* The hero's cup is printed board rather than plain: a tone-on-tone
-         repeat above the sleeve and the wordmark low on the body, both set
-         barely darker than the stock so they read as printed on it rather
-         than stuck to it. */
-      if (brand) {
-        var wallTop = inBot, wallBot = H;
-
-        g.save();
-        g.globalAlpha = 0.16;
-        g.strokeStyle = '#6b5636';
-        for (var bx = 0; bx < 16; bx++) {
-          for (var by = 0; by < 5; by++) {
-            var mx = (bx + (by % 2) * 0.5) * (W / 16);
-            var my = wallTop + 26 + by * 52;
-            if (my > wallBot - 30) continue;
-            g.save();
-            g.translate(mx, my);
-            g.lineWidth = 2;
-            g.beginPath(); g.ellipse(0, 0, 5.5, 8, 0, 0, 6.283); g.stroke();
-            g.restore();
-          }
-        }
-        g.restore();
-
-        g.save();
-        g.globalAlpha = 0.20;
-        g.fillStyle = '#6b5636';
-        g.textAlign = 'center';
-        g.font = '600 50px ' + DISPLAY;
-        for (var k = 0; k < 4; k++) {
-          g.fillText('ROAST LAB', (k + 0.5) * (W / 4), wallBot - 96);
-        }
-        g.restore();
-      }
+    // fibre: board is never flat white
+    for (var i = 0; i < 9000; i++) {
+      var x = Math.random() * W, y = Math.random() * H;
+      g.fillStyle = Math.random() > 0.5
+        ? 'rgba(186,170,146,0.10)' : 'rgba(255,253,248,0.12)';
+      g.fillRect(x, y, 1 + Math.random() * 4, 1);
     }
-    draw();
+
+    /* The hero's cup is printed board rather than plain: a tone-on-tone
+       repeat above the sleeve and the wordmark low on the body, both set
+       barely darker than the stock so they read as printed on it rather
+       than stuck to it. */
+    if (brand) {
+      var wallTop = inBot, wallBot = H;
+
+      g.save();
+      g.globalAlpha = 0.16;
+      g.strokeStyle = '#6b5636';
+      for (var bx = 0; bx < 16; bx++) {
+        for (var by = 0; by < 5; by++) {
+          var mx = (bx + (by % 2) * 0.5) * (W / 16);
+          var my = wallTop + 26 + by * 52;
+          if (my > wallBot - 30) continue;
+          g.save();
+          g.translate(mx, my);
+          g.lineWidth = 2;
+          g.beginPath(); g.ellipse(0, 0, 5.5, 8, 0, 0, 6.283); g.stroke();
+          g.restore();
+        }
+      }
+      g.restore();
+
+      g.save();
+      g.globalAlpha = 0.20;
+      g.fillStyle = '#6b5636';
+      g.textAlign = 'center';
+      g.font = '800 44px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif';
+      for (var k = 0; k < 4; k++) {
+        g.fillText('ROAST LAB', (k + 0.5) * (W / 4), wallBot - 96);
+      }
+      g.restore();
+    }
 
     var tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
     PAPER[key] = tex;
-    if (brand) whenDisplayReady(function () { draw(); tex.needsUpdate = true; });
     return tex;
   }
 
@@ -422,189 +403,183 @@
     cv.width = W; cv.height = H;
     var g = cv.getContext('2d');
 
-    function draw() {
-      /* Two stocks. The house cup is the brand's own object, so it wears the
-         brand: a forest sleeve with the print laid in gold foil. The coffees
-         on the shelf keep kraft — it is a paper sleeve, and kraft already sits
-         in the gold's family — with the print in the forest ink, which is what
-         ties five different coffees back to one house. */
-      var STOCK = brandOnly
-        ? { ground: '#214639', fleckDark: 'rgba(8,26,19,0.22)', fleckLight: 'rgba(214,236,222,0.07)',
-            fluteDark: 'rgba(6,20,15,0.32)', fluteLight: 'rgba(220,240,228,0.07)', ink: [197,157,88] }
-        : { ground: '#d8bc8e', fleckDark: 'rgba(126,95,52,0.16)', fleckLight: 'rgba(247,232,204,0.18)',
-            fluteDark: 'rgba(92,66,34,0.22)', fluteLight: 'rgba(255,240,214,0.10)', ink: [27,59,47] };
+    /* Two stocks. The house cup is the brand's own object, so it wears the
+       brand: a forest sleeve with the print laid in gold foil. The coffees
+       on the shelf keep kraft — it is a paper sleeve, and kraft already sits
+       in the gold's family — with the print in the forest ink, which is what
+       ties five different coffees back to one house. */
+    var STOCK = brandOnly
+      ? { ground: '#214639', fleckDark: 'rgba(8,26,19,0.22)', fleckLight: 'rgba(214,236,222,0.07)',
+          fluteDark: 'rgba(6,20,15,0.32)', fluteLight: 'rgba(220,240,228,0.07)', ink: [197,157,88] }
+      : { ground: '#d8bc8e', fleckDark: 'rgba(126,95,52,0.16)', fleckLight: 'rgba(247,232,204,0.18)',
+          fluteDark: 'rgba(92,66,34,0.22)', fluteLight: 'rgba(255,240,214,0.10)', ink: [27,59,47] };
 
-      g.fillStyle = STOCK.ground;
-      g.fillRect(0, 0, W, H);
+    g.fillStyle = STOCK.ground;
+    g.fillRect(0, 0, W, H);
 
-      // flecks in the pulp, and the shadow in each flute
-      for (var i = 0; i < 4200; i++) {
-        var fx = Math.random() * W, fy = Math.random() * H;
-        g.fillStyle = Math.random() > 0.5 ? STOCK.fleckDark : STOCK.fleckLight;
-        g.fillRect(fx, fy, 1 + Math.random() * 4, 1);
-      }
-      var flutePx = W / FLUTES;
-      for (i = 0; i < FLUTES; i++) {
-        var sh = g.createLinearGradient(i * flutePx, 0, (i + 1) * flutePx, 0);
-        sh.addColorStop(0.00, STOCK.fluteDark);
-        sh.addColorStop(0.45, STOCK.fluteLight);
-        sh.addColorStop(1.00, STOCK.fluteDark);
-        g.fillStyle = sh;
-        g.fillRect(i * flutePx, 0, flutePx, H);
-      }
-
-      function ink(a) { return 'rgba(' + STOCK.ink.join(',') + ',' + a + ')'; }
-      var INK = ink(1);
-
-      /* Foil is not a flat colour: it is bright where it faces the light and
-         dark where it turns away. A vertical ramp across the type's own band
-         is enough to stop gold print reading as mustard paint. */
-      function foil(y, h) {
-        var f = g.createLinearGradient(0, y - h / 2, 0, y + h / 2);
-        f.addColorStop(0.00, '#EBD6A6');
-        f.addColorStop(0.42, '#C59D58');
-        f.addColorStop(0.62, '#A8823F');
-        f.addColorStop(1.00, '#DCC08A');
-        return f;
-      }
-
-      /* Letterspacing by hand — canvas letterSpacing is not dependable.
-         `cx` is the centre of one wrap; the print is repeated so that
-         however far the cup is turned, a whole panel faces out. */
-      function line(text, cx, y, font, track, fill) {
-        g.font = font;
-        g.fillStyle = fill;
-        g.textBaseline = 'middle';
-        var widths = [], total = 0, j;
-        for (j = 0; j < text.length; j++) {
-          widths[j] = g.measureText(text[j]).width;
-          total += widths[j] + track;
-        }
-        total -= track;
-        var x = cx - total / 2;
-        for (j = 0; j < text.length; j++) {
-          g.fillText(text[j], x, y);
-          x += widths[j] + track;
-        }
-        return total;
-      }
-
-      function panel(cx) {
-        // the bean mark, set in a ruled roundel
-        g.save();
-        g.translate(cx, H * 0.125);
-        g.strokeStyle = ink(0.30);
-        g.lineWidth = 1.6;
-        g.beginPath(); g.arc(0, 0, 40, 0, 6.283); g.stroke();
-        g.strokeStyle = INK; g.lineWidth = 3;
-        g.beginPath(); g.ellipse(0, 0, 16, 24, 0, 0, 6.283); g.stroke();
-        g.lineWidth = 2.4;
-        g.beginPath();
-        g.moveTo(0, -21); g.bezierCurveTo(7, -8, -7, 8, 0, 21); g.stroke();
-        g.restore();
-
-        var w = line('ROAST LAB', cx, H * 0.315,
-          '600 66px ' + DISPLAY,
-          10, INK);
-
-        // a double rule, the way a letterpress panel is closed off
-        g.strokeStyle = ink(0.44);
-        g.lineWidth = 2.4;
-        g.beginPath();
-        g.moveTo(cx - w / 2, H * 0.400); g.lineTo(cx + w / 2, H * 0.400);
-        g.stroke();
-        g.lineWidth = 1;
-        g.beginPath();
-        g.moveTo(cx - w / 2, H * 0.425); g.lineTo(cx + w / 2, H * 0.425);
-        g.stroke();
-
-        line(product.name.toUpperCase(), cx, H * 0.525,
-          '600 42px ' + DISPLAY,
-          5, ink(0.94));
-
-        line(product.roastLine, cx, H * 0.635,
-          '500 21px "JetBrains Mono", ui-monospace, monospace',
-          5, ink(0.70));
-
-        /* The roast as five dots, filled to the stop this coffee is taken
-           to. It is the one thing on the sleeve you can read at a glance
-           from across a table, which is what a sleeve is for. */
-        var lvl = product.roastLevel || 3;
-        var gap = 26, dots = 5;
-        var dx = cx - ((dots - 1) * gap) / 2;
-        for (var d = 0; d < dots; d++) {
-          g.beginPath();
-          g.arc(dx + d * gap, H * 0.730, 6.5, 0, 6.283);
-          if (d < lvl) { g.fillStyle = ink(0.82); g.fill(); }
-          else { g.strokeStyle = ink(0.42); g.lineWidth = 1.8; g.stroke(); }
-        }
-
-        line((product.lot || '') + '  \u00B7  SINGLE ORIGIN', cx, H * 0.835,
-          '500 17px "JetBrains Mono", ui-monospace, monospace',
-          4, ink(0.55));
-      }
-
-      /* The hero's sleeve says one thing. With a lid on the cup there is no
-         coffee to look at, so the print is the whole object — and a cup you
-         meet before you have read a word about the coffee should carry the
-         name of the house and nothing else. */
-      function brandPanel(cx) {
-        g.save();
-        g.translate(cx, H * 0.170);
-        g.strokeStyle = ink(0.26);
-        g.lineWidth = 1.6;
-        g.beginPath(); g.arc(0, 0, 46, 0, 6.283); g.stroke();
-        g.strokeStyle = INK; g.lineWidth = 3.4;
-        g.beginPath(); g.ellipse(0, 0, 19, 28, 0, 0, 6.283); g.stroke();
-        g.lineWidth = 2.6;
-        g.beginPath();
-        g.moveTo(0, -25); g.bezierCurveTo(8, -9, -8, 9, 0, 25); g.stroke();
-        g.restore();
-
-        var bw = line('ROAST LAB', cx, H * 0.450,
-          '600 88px ' + DISPLAY,
-          12, foil(H * 0.450, 76));
-
-        g.strokeStyle = ink(0.46);
-        g.lineWidth = 2.6;
-        g.beginPath();
-        g.moveTo(cx - bw / 2, H * 0.560); g.lineTo(cx + bw / 2, H * 0.560);
-        g.stroke();
-        g.lineWidth = 1;
-        g.beginPath();
-        g.moveTo(cx - bw / 2, H * 0.590); g.lineTo(cx + bw / 2, H * 0.590);
-        g.stroke();
-      }
-
-      if (brandOnly) {
-        brandPanel(W * 0.25);
-        brandPanel(W * 0.75);
-
-        /* A micro-repeat that runs the whole way round rather than sitting
-           inside a panel, so there is no seam to line up and the band reads
-           as continuous however far the cup is turned. */
-        g.save();
-        g.font = '600 20px "JetBrains Mono", ui-monospace, monospace';
-        g.fillStyle = ink(0.46);
-        g.textAlign = 'left';
-        var word = 'ROAST LAB   \u00B7   ';
-        var step = g.measureText(word).width;
-        for (var rx = -step; rx < W + step; rx += step) {
-          g.fillText(word, rx, H * 0.735);
-        }
-        g.restore();
-        return;
-      }
-
-      // two wraps: one is always turned toward the reader
-      panel(W * 0.25);
-      panel(W * 0.75);
+    // flecks in the pulp, and the shadow in each flute
+    for (var i = 0; i < 4200; i++) {
+      var fx = Math.random() * W, fy = Math.random() * H;
+      g.fillStyle = Math.random() > 0.5 ? STOCK.fleckDark : STOCK.fleckLight;
+      g.fillRect(fx, fy, 1 + Math.random() * 4, 1);
+    }
+    var flutePx = W / FLUTES;
+    for (i = 0; i < FLUTES; i++) {
+      var sh = g.createLinearGradient(i * flutePx, 0, (i + 1) * flutePx, 0);
+      sh.addColorStop(0.00, STOCK.fluteDark);
+      sh.addColorStop(0.45, STOCK.fluteLight);
+      sh.addColorStop(1.00, STOCK.fluteDark);
+      g.fillStyle = sh;
+      g.fillRect(i * flutePx, 0, flutePx, H);
     }
 
-    draw();
-    var tex = finish();
-    whenDisplayReady(function () { draw(); tex.needsUpdate = true; });
-    return tex;
+    function ink(a) { return 'rgba(' + STOCK.ink.join(',') + ',' + a + ')'; }
+    var INK = ink(1);
+
+    /* Foil is not a flat colour: it is bright where it faces the light and
+       dark where it turns away. A vertical ramp across the type's own band
+       is enough to stop gold print reading as mustard paint. */
+    function foil(y, h) {
+      var f = g.createLinearGradient(0, y - h / 2, 0, y + h / 2);
+      f.addColorStop(0.00, '#EBD6A6');
+      f.addColorStop(0.42, '#C59D58');
+      f.addColorStop(0.62, '#A8823F');
+      f.addColorStop(1.00, '#DCC08A');
+      return f;
+    }
+
+    /* Letterspacing by hand — canvas letterSpacing is not dependable.
+       `cx` is the centre of one wrap; the print is repeated so that
+       however far the cup is turned, a whole panel faces out. */
+    function line(text, cx, y, font, track, fill) {
+      g.font = font;
+      g.fillStyle = fill;
+      g.textBaseline = 'middle';
+      var widths = [], total = 0, j;
+      for (j = 0; j < text.length; j++) {
+        widths[j] = g.measureText(text[j]).width;
+        total += widths[j] + track;
+      }
+      total -= track;
+      var x = cx - total / 2;
+      for (j = 0; j < text.length; j++) {
+        g.fillText(text[j], x, y);
+        x += widths[j] + track;
+      }
+      return total;
+    }
+
+    function panel(cx) {
+      // the bean mark, set in a ruled roundel
+      g.save();
+      g.translate(cx, H * 0.125);
+      g.strokeStyle = ink(0.30);
+      g.lineWidth = 1.6;
+      g.beginPath(); g.arc(0, 0, 40, 0, 6.283); g.stroke();
+      g.strokeStyle = INK; g.lineWidth = 3;
+      g.beginPath(); g.ellipse(0, 0, 16, 24, 0, 0, 6.283); g.stroke();
+      g.lineWidth = 2.4;
+      g.beginPath();
+      g.moveTo(0, -21); g.bezierCurveTo(7, -8, -7, 8, 0, 21); g.stroke();
+      g.restore();
+
+      var w = line('ROAST LAB', cx, H * 0.315,
+        '800 56px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
+        14, INK);
+
+      // a double rule, the way a letterpress panel is closed off
+      g.strokeStyle = ink(0.44);
+      g.lineWidth = 2.4;
+      g.beginPath();
+      g.moveTo(cx - w / 2, H * 0.400); g.lineTo(cx + w / 2, H * 0.400);
+      g.stroke();
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(cx - w / 2, H * 0.425); g.lineTo(cx + w / 2, H * 0.425);
+      g.stroke();
+
+      line(product.name.toUpperCase(), cx, H * 0.525,
+        '600 38px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
+        7, ink(0.94));
+
+      line(product.roastLine, cx, H * 0.635,
+        '500 21px "JetBrains Mono", ui-monospace, monospace',
+        5, ink(0.70));
+
+      /* The roast as five dots, filled to the stop this coffee is taken
+         to. It is the one thing on the sleeve you can read at a glance
+         from across a table, which is what a sleeve is for. */
+      var lvl = product.roastLevel || 3;
+      var gap = 26, dots = 5;
+      var dx = cx - ((dots - 1) * gap) / 2;
+      for (var d = 0; d < dots; d++) {
+        g.beginPath();
+        g.arc(dx + d * gap, H * 0.730, 6.5, 0, 6.283);
+        if (d < lvl) { g.fillStyle = ink(0.82); g.fill(); }
+        else { g.strokeStyle = ink(0.42); g.lineWidth = 1.8; g.stroke(); }
+      }
+
+      line((product.lot || '') + '  \u00B7  SINGLE ORIGIN', cx, H * 0.835,
+        '500 17px "JetBrains Mono", ui-monospace, monospace',
+        4, ink(0.55));
+    }
+
+    /* The hero's sleeve says one thing. With a lid on the cup there is no
+       coffee to look at, so the print is the whole object — and a cup you
+       meet before you have read a word about the coffee should carry the
+       name of the house and nothing else. */
+    function brandPanel(cx) {
+      g.save();
+      g.translate(cx, H * 0.170);
+      g.strokeStyle = ink(0.26);
+      g.lineWidth = 1.6;
+      g.beginPath(); g.arc(0, 0, 46, 0, 6.283); g.stroke();
+      g.strokeStyle = INK; g.lineWidth = 3.4;
+      g.beginPath(); g.ellipse(0, 0, 19, 28, 0, 0, 6.283); g.stroke();
+      g.lineWidth = 2.6;
+      g.beginPath();
+      g.moveTo(0, -25); g.bezierCurveTo(8, -9, -8, 9, 0, 25); g.stroke();
+      g.restore();
+
+      var bw = line('ROAST LAB', cx, H * 0.450,
+        '800 72px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
+        18, foil(H * 0.450, 64));
+
+      g.strokeStyle = ink(0.46);
+      g.lineWidth = 2.6;
+      g.beginPath();
+      g.moveTo(cx - bw / 2, H * 0.560); g.lineTo(cx + bw / 2, H * 0.560);
+      g.stroke();
+      g.lineWidth = 1;
+      g.beginPath();
+      g.moveTo(cx - bw / 2, H * 0.590); g.lineTo(cx + bw / 2, H * 0.590);
+      g.stroke();
+    }
+
+    if (brandOnly) {
+      brandPanel(W * 0.25);
+      brandPanel(W * 0.75);
+
+      /* A micro-repeat that runs the whole way round rather than sitting
+         inside a panel, so there is no seam to line up and the band reads
+         as continuous however far the cup is turned. */
+      g.save();
+      g.font = '600 20px "JetBrains Mono", ui-monospace, monospace';
+      g.fillStyle = ink(0.46);
+      g.textAlign = 'left';
+      var word = 'ROAST LAB   \u00B7   ';
+      var step = g.measureText(word).width;
+      for (var rx = -step; rx < W + step; rx += step) {
+        g.fillText(word, rx, H * 0.735);
+      }
+      g.restore();
+      return finish();
+    }
+
+    // two wraps: one is always turned toward the reader
+    panel(W * 0.25);
+    panel(W * 0.75);
+    return finish();
 
     function finish() {
       var tex = new THREE.CanvasTexture(cv);

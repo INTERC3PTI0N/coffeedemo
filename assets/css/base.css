@@ -1,26 +1,7 @@
 /* =====================================================================
-   ROAST LAB — base layer
+   LATTECANO — base layer
    Tokens, resets, typography, chrome (nav, cursor, loader, grain)
    ===================================================================== */
-
-/* The house face: CC Dynamic Duo SemiBold Italic (John Roshell,
-   ComicBookFonts.com). It is a commercial face — publishing it on the web
-   needs a webfont licence from Comicraft.
-
-   It exists in one cut only, a 600 italic, so it is declared twice — as the
-   normal and the italic style — and across the whole weight range. Otherwise
-   a rule asking for italic, or for 800, gets a browser-synthesised slant or
-   smear laid on top of letters that are already slanted and already heavy. */
-@font-face{
-  font-family:"Roast Duo";
-  src:url("../fonts/roast-duo.woff2") format("woff2");
-  font-weight:100 900; font-style:normal; font-display:swap;
-}
-@font-face{
-  font-family:"Roast Duo";
-  src:url("../fonts/roast-duo.woff2") format("woff2");
-  font-weight:100 900; font-style:italic; font-display:swap;
-}
 
 :root{
   /* --- palette -----------------------------------------------------
@@ -72,14 +53,8 @@
   --hair:     rgba(19,43,34,.13);
 
   /* --- type -------------------------------------------------------- */
-  /* Three voices, one job each. Duo is the house speaking — the name, every
-     heading, the coffees, the numbers, the quote, anything you press. It is
-     condensed and dense, superb from about 18px up and cramped below it, so
-     running copy stays in Archivo, and the small data labels stay in mono
-     (they also carry ′ and ₹, which Duo does not have). */
-  --display: "Roast Duo", "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --sans: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  --serif: var(--display);   /* the old display serif's roles all go to Duo */
+  --serif: "Bodoni Moda", "Didot", "Playfair Display", Georgia, serif;
   --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
   /* --- rhythm ------------------------------------------------------ */
@@ -132,14 +107,12 @@ h1,h2,h3,h4,p,figure,blockquote{ margin:0; }
   font-weight:500;
 }
 
-/* Duo is condensed, so a heading can run larger than the serif did in the
-   same measure. Its ascender is tall; under 1.0 the lines start to touch. */
 .display{
-  font-family:var(--display);
-  font-weight:600;
-  letter-spacing:.004em;
-  line-height:1;
-  font-size:clamp(40px,6.9vw,114px);
+  font-family:var(--serif);
+  font-weight:400;
+  letter-spacing:-.005em;
+  line-height:.98;
+  font-size:clamp(38px,6.4vw,104px);
 }
 
 .eyebrow{
@@ -152,15 +125,11 @@ h1,h2,h3,h4,p,figure,blockquote{ margin:0; }
 .chamber .eyebrow,
 .footer .eyebrow{ color:var(--gold-lt); }
 
-/* Anything you press is lettered in Duo. Comic lettering is drawn to be
-   read in capitals at a small size — that is its native job — so the labels
-   stay uppercase and only a touch larger than the sans they replace. */
 .link{
   position:relative;
   display:inline-block;
-  font-family:var(--display);
-  font-size:13.5px;
-  letter-spacing:.07em;
+  font-size:12px;
+  letter-spacing:.09em;
   text-transform:uppercase;
   font-weight:600;
   padding-bottom:3px;
@@ -181,9 +150,8 @@ h1,h2,h3,h4,p,figure,blockquote{ margin:0; }
   padding:14px 26px;
   border:1px solid currentColor;
   border-radius:100px;
-  font-family:var(--display);
-  font-size:14px; font-weight:600;
-  letter-spacing:.07em; text-transform:uppercase;
+  font-size:12px; font-weight:600;
+  letter-spacing:.1em; text-transform:uppercase;
   overflow:hidden; position:relative;
   transition:color .45s var(--ease);
 }
@@ -209,16 +177,7 @@ h1,h2,h3,h4,p,figure,blockquote{ margin:0; }
 /* text-reveal primitives ------------------------------------------- */
 /* An inline-block is a block container, so inherited text-indent would be
    re-applied to every single clip. Kill it here once. */
-/* Duo is slanted: the top of every letter leans past its advance box on the
-   right, and the foot trails past it on the left and below. A mask sized to
-   the advance box shaves all three — the foot of an "l" at the start of a
-   line, the bottom of every capital in the hero. So each mask gets room on
-   all sides, and an equal negative margin gives that room straight back to
-   the layout: nothing moves, the letters simply stop being cut. */
-.clip{
-  display:inline-block; overflow:hidden; vertical-align:bottom; text-indent:0;
-  padding:0 .14em .1em; margin:0 -.14em -.1em;
-}
+.clip{ display:inline-block; overflow:hidden; vertical-align:bottom; text-indent:0; }
 .clip > .ch,
 .clip > .word,
 .clip > .line{ display:inline-block; text-indent:0; will-change:transform; }
@@ -320,22 +279,18 @@ h1,h2,h3,h4,p,figure,blockquote{ margin:0; }
    size and the tracking differ, and both of those are tweened. */
 .loader__word{
   display:flex; justify-content:center;
-  font-family:var(--display);
-  font-weight:600;
-  font-size:clamp(26px,5vw,54px);
-  line-height:.86;
-  letter-spacing:.1em;
+  font-family:var(--sans);
+  font-weight:800;
+  font-size:clamp(24px,4.6vw,48px);
+  line-height:.82;
+  letter-spacing:.14em;
   color:var(--oat);
   overflow:hidden;
-  /* room under the slanted feet, handed straight back to the layout */
-  padding-bottom:.14em; margin-bottom:-.14em;
   will-change:transform;
 }
-/* The same box as a hero-title letter, padding and all — the flight measures
-   both sets of boxes to land one word on the other, so they have to agree. */
 .loader__word b{
   display:block; flex:0 0 auto;
-  padding:0 .12em .12em; margin:0 -.12em -.12em;
+  padding-bottom:.02em;
   transform:translateY(110%); opacity:0;
 }
 .loader__meta{
@@ -461,10 +416,9 @@ body.is-loading .hero__cue{ opacity:0; }
 
 .nav__pill{
   position:relative;
-  padding:8px 18px 9px;
-  font-family:var(--display);
-  font-size:13px; font-weight:600;
-  letter-spacing:.07em; text-transform:uppercase;
+  padding:9px 18px;
+  font-size:11px; font-weight:600;
+  letter-spacing:.09em; text-transform:uppercase;
   border:1px solid currentColor;
   border-radius:100px;
   opacity:.82;
@@ -495,9 +449,8 @@ body.is-loading .hero__cue{ opacity:0; }
 .nav__brand{ display:flex; flex-direction:column; align-items:center; gap:3px; }
 .nav__logo{ width:34px; height:22px; }
 .nav__wordmark{
-  font-family:var(--display);
-  font-size:15px; font-weight:600;
-  letter-spacing:.3em; text-indent:.3em;
+  font-size:11px; font-weight:700;
+  letter-spacing:.42em; text-indent:.42em;
 }
 
 /* edge rail tab ----------------------------------------------------- */
@@ -509,8 +462,7 @@ body.is-loading .hero__cue{ opacity:0; }
   padding:22px 9px;
   border-radius:4px 0 0 4px;
   display:flex; flex-direction:column; align-items:center; gap:12px;
-  font-family:var(--display);
-  font-size:13px; letter-spacing:.12em; text-transform:uppercase;
+  font-size:10px; letter-spacing:.16em; text-transform:uppercase;
   font-weight:600;
   transition:padding-right .35s var(--ease), background .35s;
 }
@@ -539,8 +491,7 @@ body.is-loading .hero__cue{ opacity:0; }
   border:1px solid rgba(197,157,88,.55);
   border-radius:100px;
   color:var(--oat);
-  font-family:var(--display);
-  font-size:14px; letter-spacing:.08em; text-transform:uppercase;
+  font-size:11px; letter-spacing:.11em; text-transform:uppercase;
   font-weight:600;
   backdrop-filter:blur(8px);
   transition:border-color .4s, background .4s;
@@ -559,10 +510,9 @@ body.is-loading .hero__cue{ opacity:0; }
 .stats{ display:flex; gap:clamp(20px,2.2vw,34px); flex-wrap:wrap; margin-top:34px; }
 .stats li{ display:flex; flex-direction:column; gap:2px; }
 .stats b{
-  font-family:var(--display);
-  font-size:clamp(32px,4vw,54px);
-  line-height:1; font-weight:600;
-  letter-spacing:.01em;
+  font-family:var(--serif);
+  font-size:clamp(26px,3.4vw,44px);
+  line-height:1; font-weight:400;
 }
 .stats span{
   font-family:var(--mono);
@@ -581,10 +531,10 @@ body.is-loading .hero__cue{ opacity:0; }
   .nav__group--left .nav__pill:nth-child(n+2){ display:none; }
   .nav__group--right .nav__pill:not(.nav__pill--solid){ display:none; }
   .railtab{ display:none; }
-  .nav__wordmark{ font-size:13px; letter-spacing:.24em; text-indent:.24em; }
+  .nav__wordmark{ font-size:9px; letter-spacing:.3em; }
   .nav{ gap:10px; }
   .nav__group{ min-width:0; }
-  .nav__pill{ padding:7px 14px 8px; font-size:12.5px; letter-spacing:.06em; }
+  .nav__pill{ padding:8px 13px; font-size:10px; letter-spacing:.07em; }
 }
 /* A phone cannot hold a pill, the wordmark and a pill. The nav came out at
    460px on a 390px screen, and because it is fixed, mobile Chrome zoomed the
