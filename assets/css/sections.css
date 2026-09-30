@@ -92,7 +92,7 @@ section{ position:relative; }
   font-size:clamp(56px,15.4vw,260px);
   line-height:.82;
   letter-spacing:-.015em;
-  color:var(--paper);
+  color:var(--gold);             /* the logo, in its own colour */
   pointer-events:none;
   will-change:transform;
 }
@@ -100,6 +100,9 @@ section{ position:relative; }
    fit measurement always return the container width */
 .hero__title .clip{ flex:0 0 auto; overflow:hidden; line-height:.82; padding-bottom:.02em; }
 .hero__title .ch{ transform:translateY(110%); display:block; }
+/* each letter is a slice of the logo, sized off the title's font-size so the
+   fit in app.js still works by measuring the boxes */
+.hero__title .rl-l{ height:.8em; width:auto; }
 
 .hero__cue{
   position:absolute;
@@ -324,6 +327,12 @@ section{ position:relative; }
 }
 .panel__vert span{ writing-mode:vertical-rl; }
 .panel.is-open .panel__vert{ opacity:0; }
+/* A closed panel answers the pointer in place: its beans lift a little and
+   its name warms to gold. Nothing is laid over it, and it only opens once
+   the pointer has rested (see initPanels). */
+.panel:not(.is-open):hover .panel__art{ filter:saturate(1.08) brightness(1.1); }
+.panel__vert{ transition:opacity .4s var(--ease), color .4s var(--ease); }
+.panel:not(.is-open):hover .panel__vert{ color:var(--gold-hi); }
 
 .panel__body{
   z-index:2;
@@ -1061,7 +1070,7 @@ section{ position:relative; }
     rgba(12,32,25,.34) 58%, rgba(12,32,25,0) 78%);
 }
 
-.footer__brand svg{ width:44px; height:28px; color:var(--crema); margin-bottom:14px; }
+.footer__mark{ width:auto; height:40px; color:var(--gold); margin-bottom:16px; }
 .footer__brand p{
   font-family:var(--serif); font-style:italic;
   font-size:14px; line-height:1.6; color:rgba(239,231,212,.72);

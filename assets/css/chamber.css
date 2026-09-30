@@ -129,21 +129,22 @@
 }
 .card__bag i{ color:rgba(245,240,228,.72); }
 
+/* The cue has a line of its own. It used to sit on top of the coordinates
+   and hide them while it showed, so pointing at a coffee took away one of
+   the facts about it. The line is reserved whether or not it is showing,
+   so nothing jumps when it arrives. */
 .card__cue{
-  position:absolute; left:18px; bottom:16px;
-  display:inline-flex; align-items:center; gap:8px;
+  display:flex; align-items:center; gap:8px;
+  margin:0 18px 14px;
   color:var(--gold-lt);
-  opacity:0; transform:translateY(8px);
+  opacity:0; transform:translateX(-6px);
   transition:opacity .4s var(--ease), transform .45s var(--ease);
 }
 .card__cue::before{
   content:""; width:16px; height:1px; background:currentColor;
 }
 .card:hover .card__cue,
-.card:focus-visible .card__cue{ opacity:1; transform:translateY(0); }
-.card:hover .card__coord,
-.card:focus-visible .card__coord{ opacity:0; }
-.card__coord{ transition:opacity .35s; }
+.card:focus-visible .card__cue{ opacity:1; transform:translateX(0); }
 
 /* =================================================================== */
 /* THE CHAMBER                                                         */

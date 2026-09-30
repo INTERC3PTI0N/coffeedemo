@@ -325,7 +325,7 @@
           y: ty - cy - (ly - cy) * sc,
           scale: sc,
           letterSpacing: (ls / sc) + 'px',
-          color: '#F7F2E8',
+          color: '#C59D58',
           duration: 1.35, ease: 'expo.inOut'
         });
 
@@ -387,11 +387,20 @@
        way. Only media — a panel, a card, the film, the drum — gets the
        labelled ring, and that ring stays at a size that frames the pointer
        rather than covering the thing under it. */
+    /* A panel or a card is one big target, but it is not all picture: an open
+       roast panel carries its whole description. Offsetting the ring was not
+       enough — over a paragraph it only moved onto the next line. So the
+       labelled ring shows over imagery alone; over words, in any target, the
+       cursor stays a pip and the words stay clear. */
+    var TEXTY = 'p, h1, h2, h3, h4, li, dt, dd, label, input, a, button, ' +
+                '.panel__body, .card__text, .card__coord, .card__cue, .docket';
     document.addEventListener('pointerover', function (e) {
       var t = e.target.closest ? e.target.closest('[data-cursor]') : null;
       if (t) {
         var kind = t.getAttribute('data-cursor');
-        label.textContent = LABELS[kind] || '';
+        var overText = kind !== 'link' && e.target.closest(TEXTY) &&
+                       e.target.closest(TEXTY) !== t;
+        label.textContent = overText ? '' : (LABELS[kind] || '');
         var media = !!label.textContent;
         cur.classList.toggle('is-active', media);
         cur.classList.toggle('is-text', !media);
@@ -416,29 +425,33 @@
     var nav = $('#nav');
     var bar = $('#progressBar');
 
-    // light/dark inversion per section
-    $$('[data-theme]').forEach(function (sec) {
-      ST.create({
-        trigger: sec,
-        start: 'top 40px',
-        end: 'bottom 40px',
-        onToggle: function (self) {
-          if (self.isActive) nav.classList.toggle('is-light', sec.dataset.theme === 'light');
-        }
-      });
-      // the cursor reads its ground from the middle of the screen, where it
-      // mostly is, rather than from the nav's line at the top
-      ST.create({
-        trigger: sec,
-        start: 'top center',
-        end: 'bottom center',
-        onToggle: function (self) {
-          if (self.isActive) {
-            document.documentElement.classList.toggle('on-light', sec.dataset.theme === 'light');
-          }
-        }
-      });
+    /* Light/dark inversion, for the nav and for the cursor. Each section used
+       to own a trigger that ran from its top to its bottom — which leaves a
+       gap wherever a section is pinned, because the pin adds scroll the
+       section's own box does not cover. Through the back half of the pinned
+       collection no trigger was active, so the nav and the cursor kept
+       whatever the section before had set: dark type on the dark shelf if
+       you came to it from below. So instead: the last section whose top has
+       crossed the line wins. There are no gaps in that. The nav reads its
+       line just under itself; the cursor reads the middle of the screen,
+       where it mostly is. */
+    var themed = $$('[data-theme]').map(function (sec) {
+      // a measuring trigger: `start` is the scroll at which this section's
+      // top reaches the top of the viewport, pins accounted for
+      return { light: sec.dataset.theme === 'light',
+               st: ST.create({ trigger: sec, start: 'top top' }) };
     });
+    function toneAt(line) {
+      var t = themed[0];
+      for (var i = 0; i < themed.length; i++) if (line >= themed[i].st.start) t = themed[i];
+      return t ? t.light : false;
+    }
+    function applyTone(y) {
+      nav.classList.toggle('is-light', toneAt(y + 40));
+      document.documentElement.classList.toggle('on-light', toneAt(y + window.innerHeight / 2));
+    }
+    ST.create({ start: 0, end: 'max', onUpdate: function (self) { applyTone(self.scroll()); } });
+    ST.addEventListener('refresh', function () { applyTone(window.scrollY); });
 
     // hide going down, show coming back up
     var lastY = 0;

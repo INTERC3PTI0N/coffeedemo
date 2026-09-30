@@ -129,6 +129,53 @@ falloff of a real roasted bean. Ambient fill came down from 1.35 to 0.95 on the
 light sections too: ambient lands equally on every face, and at that level it
 filled each bean's shadow side nearly to its lit side, so it had no form.
 
+## The logo
+
+`assets/img/roast-lab-logo.svg` is the supplied artwork traced into vector
+paths — thresholded on distance-to-gold against distance-to-forest at 4× scale,
+traced with potrace, one path per letter plus its counters. The source was a
+soft-edged 944×203 raster; the trace is sharp at any size, transparent, and
+14 curves in 13 KB.
+
+In the page it lives once, as a hidden sprite at the top of `index.html`, and
+everything else draws it with `<use>`: the nav, the footer, the hero title and
+the loader word. The hero and the loader get it a letter at a time — each
+letter an SVG whose viewBox is its own slice of the logo, running to the next
+letter's left edge so the slices sit edge to edge exactly as drawn — which is
+what lets the hero keep its per-letter reveal and the loader keep its flight.
+Because the two sets of boxes are now the same shapes, the flight lands with
+no error at all. The cups print it from the same paths, read out of the sprite
+into `Path2D`s; each path is moved into place with a matrix on the path rather
+than on the canvas, so the house cup's gold foil — a gradient in canvas space —
+still runs across the letters.
+
+`<use>` clones only the element it references, never the group around it, so
+colour reaches each letter from outside: `fill: currentColor` on the drawing
+svg. Gold on the greens, forest on the ivory — the two colours the artwork was
+drawn in.
+
+## Hover
+
+Every hover marks its target without laying anything over it:
+
+- **The cursor** is a dot, and over imagery it trails a hollow tag (OPEN, PLAY,
+  ROAST) offset down and to the right. Over any text, even inside a clickable
+  panel or card, it stays a dot — the tag used to sit centred on the pointer
+  with a blurred glass behind it, and blurred the description you were reading.
+- **Roast panels** open only once the pointer rests on one, and never because
+  the row reflowed under a still pointer; a closed panel answers in place, its
+  beans brightening and its name turning gold.
+- **Collection cards** keep every fact on hover. The "Open the bag" cue has its
+  own reserved line instead of replacing the coordinates, the name turns gold,
+  and the cup leans in only a third of the way rather than lifting over it.
+- **The nav logo** ripples, each letter rising a hair in turn; links wipe their
+  underline through; buttons fill from below.
+
+The nav's and the cursor's light/dark come from the last section whose top has
+crossed their line, not from each section's own top-to-bottom range — a pinned
+section adds scroll its box does not cover, and inside that gap the old
+triggers left both on whatever the previous section had set.
+
 **Where the brand lives in 3D.** The house cup wears a forest sleeve with the
 wordmark laid in gold foil (a vertical ramp across the type's band, so it reads
 as foil rather than mustard paint) and a deep green lid; the coffees on the shelf

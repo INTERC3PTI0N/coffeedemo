@@ -275,6 +275,40 @@
   /* is the printed outside, above it the interior, which has to go dark */
   /* toward the base because nothing in here casts an occlusion.         */
   /* ------------------------------------------------------------------ */
+  /* The logo, read out of the page's sprite, so the cups print the very
+     paths the nav and the hero draw rather than a typed stand-in. Each path
+     is moved into place with a matrix on the path, not on the canvas: a
+     transformed canvas would transform the fill too, and the house cup's
+     gold foil is a gradient laid in canvas space across the band. */
+  var LOGO;
+  function logo() {
+    if (LOGO !== undefined) return LOGO;
+    LOGO = null;
+    var doc = global.document;
+    var grp = doc && doc.getElementById('rl-letters');
+    var ref = doc && doc.querySelector('.rl-logo');
+    if (!grp || !ref || typeof Path2D === 'undefined' || typeof DOMMatrix === 'undefined') return LOGO;
+    var vb = (ref.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+    var ps = grp.querySelectorAll('path');
+    if (vb.length !== 4 || !ps.length) return LOGO;
+    var list = [];
+    for (var i = 0; i < ps.length; i++) list.push(new Path2D(ps[i].getAttribute('d')));
+    LOGO = { paths: list, x: vb[0], y: vb[1], w: vb[2], h: vb[3] };
+    return LOGO;
+  }
+  // centred on (cx, cy) at a given height; returns the width drawn, 0 if none
+  function drawLogo(g, cx, cy, height, fill) {
+    var L = logo();
+    if (!L) return 0;
+    var k = height / L.h, w = L.w * k;
+    var m = new DOMMatrix().translate(cx - w / 2, cy - height / 2).scale(k).translate(-L.x, -L.y);
+    var all = new Path2D();
+    for (var i = 0; i < L.paths.length; i++) all.addPath(L.paths[i], m);
+    g.fillStyle = fill;
+    g.fill(all, 'evenodd');
+    return w;
+  }
+
   var PAPER = {};
   function paperTexture(brand) {
     var key = brand ? 'brand' : 'plain';
@@ -356,7 +390,9 @@
       g.textAlign = 'center';
       g.font = '800 44px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif';
       for (var k = 0; k < 4; k++) {
-        g.fillText('ROAST LAB', (k + 0.5) * (W / 4), wallBot - 96);
+        if (!drawLogo(g, (k + 0.5) * (W / 4), wallBot - 112, 36, '#6b5636')) {
+          g.fillText('ROAST LAB', (k + 0.5) * (W / 4), wallBot - 96);
+        }
       }
       g.restore();
     }
@@ -483,9 +519,10 @@
       g.moveTo(0, -21); g.bezierCurveTo(7, -8, -7, 8, 0, 21); g.stroke();
       g.restore();
 
-      var w = line('ROAST LAB', cx, H * 0.315,
-        '800 56px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
-        14, INK);
+      var w = drawLogo(g, cx, H * 0.315, 56, INK) ||
+        line('ROAST LAB', cx, H * 0.315,
+          '800 56px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
+          14, INK);
 
       // a double rule, the way a letterpress panel is closed off
       g.strokeStyle = ink(0.44);
@@ -541,9 +578,10 @@
       g.moveTo(0, -25); g.bezierCurveTo(8, -9, -8, 9, 0, 25); g.stroke();
       g.restore();
 
-      var bw = line('ROAST LAB', cx, H * 0.450,
-        '800 72px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
-        18, foil(H * 0.450, 64));
+      var bw = drawLogo(g, cx, H * 0.450, 82, foil(H * 0.450, 82)) ||
+        line('ROAST LAB', cx, H * 0.450,
+          '800 72px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
+          18, foil(H * 0.450, 64));
 
       g.strokeStyle = ink(0.46);
       g.lineWidth = 2.6;
@@ -904,7 +942,11 @@
 
         c.hover = lerp(c.hover, c.hoverTarget, damp(0.10, dt));
         c.turn = lerp(c.turn, reduced ? 0 : aim * (1 - c.hover), damp(0.09, dt));
-        c.focus = lerp(c.focus, Math.max(1 - awayRaw, c.hover), damp(0.07, dt));
+        /* Hover used to drive a cup to full focus wherever it stood on the
+           shelf, so an off-centre cup tipped open and lifted toward its own
+           name. It now leans in only a third of the way; the light (below)
+           says which cup the pointer is on. */
+        c.focus = lerp(c.focus, Math.max(1 - awayRaw, c.hover * 0.33), damp(0.07, dt));
 
         var loose = 1 - c.focus;
         var idleX = reduced ? 0 : Math.sin(t * 0.34 + c.phase) * 0.055;
