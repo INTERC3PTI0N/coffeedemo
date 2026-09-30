@@ -91,11 +91,15 @@
       bumpMap: Beans.grainTexture(),
       bumpScale: 1.3,
       roughnessMap: Beans.matteTexture(),
-      roughness: 0.94,
+      roughness: 0.82,
       metalness: 0.0,
-      clearcoat: 0.18,
-      clearcoatRoughness: 0.6,
-      envMapIntensity: 0.9
+      // the same oil film and amber edge as the page's own beans
+      clearcoat: 0.36,
+      clearcoatRoughness: 0.32,
+      sheen: 0.55,
+      sheenRoughness: 0.52,
+      sheenColor: new THREE.Color(0xc0824a),
+      envMapIntensity: 1.05
     });
   }
 
@@ -402,16 +406,19 @@
        material, because this is the only view where the surface is the
        whole point. */
     var specMat = new THREE.MeshPhysicalMaterial({
-      color: 0x6e3e1d,
+      color: 0x5a2f17,
       vertexColors: true,
       bumpMap: Beans.grainTexture(),
       bumpScale: 1.9,
       roughnessMap: Beans.matteTexture(),
-      roughness: 0.94,
+      roughness: 0.84,
       metalness: 0.0,
-      clearcoat: 0.2,
-      clearcoatRoughness: 0.58,
-      envMapIntensity: 1.0
+      clearcoat: 0.42,
+      clearcoatRoughness: 0.30,
+      sheen: 0.55,
+      sheenRoughness: 0.52,
+      sheenColor: new THREE.Color(0xc0824a),
+      envMapIntensity: 1.1
     });
     var specimen = new THREE.Mesh(Beans.beanGeometry(120, 3), specMat);
     specimen.scale.setScalar(2.35);
@@ -603,7 +610,7 @@
       running: false,
       drumSpin: 0,
       roastT: 0,                       // 0 green → 1 fully roasted
-      target: new THREE.Color(0x6e3e1d),
+      target: new THREE.Color(0x5a2f17),
       specReveal: 1,
       cardIn: 0,
       camShake: 0
@@ -880,7 +887,7 @@
       setSpecimen: function (hex, rough, oil) {
         specMat.color.set(hex);
         specMat.roughness = 0.72 + (typeof rough === 'number' ? rough : 0.9) * 0.28;
-        specMat.clearcoat = typeof oil === 'number' ? oil : 0.2;
+        specMat.clearcoat = typeof oil === 'number' ? oil : 0.42;
       },
       setSpecReveal: function (v) { st.specReveal = clamp(v, 0, 1); },
       nudgeSpecimen: function (dx) { specDragTarget += dx; },

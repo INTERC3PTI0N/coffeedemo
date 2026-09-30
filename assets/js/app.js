@@ -380,20 +380,30 @@
       GS.set(ring, { x: ringPos.x, y: ringPos.y });
     });
 
+    /* Two kinds of target, treated oppositely. A link or button is text, and
+       it already answers the hover itself — its fill, its underline. The ring
+       used to grow to 1.4× on top of it and sit across the very words it was
+       pointing at, so over text it now shrinks to a pip and gets out of the
+       way. Only media — a panel, a card, the film, the drum — gets the
+       labelled ring, and that ring stays at a size that frames the pointer
+       rather than covering the thing under it. */
     document.addEventListener('pointerover', function (e) {
       var t = e.target.closest ? e.target.closest('[data-cursor]') : null;
       if (t) {
         var kind = t.getAttribute('data-cursor');
         label.textContent = LABELS[kind] || '';
-        cur.classList.add('is-active');
-        GS.to(ring, { scale: label.textContent ? 1.75 : 1.4, duration: 0.4, ease: 'power3.out' });
+        var media = !!label.textContent;
+        cur.classList.toggle('is-active', media);
+        cur.classList.toggle('is-text', !media);
+        GS.to(ring, { scale: media ? 1.5 : 0.42, opacity: media ? 1 : 0.55,
+                      duration: 0.35, ease: 'power3.out', overwrite: 'auto' });
       }
     });
     document.addEventListener('pointerout', function (e) {
       var t = e.target.closest ? e.target.closest('[data-cursor]') : null;
       if (t) {
-        cur.classList.remove('is-active');
-        GS.to(ring, { scale: 1, duration: 0.4, ease: 'power3.out' });
+        cur.classList.remove('is-active', 'is-text');
+        GS.to(ring, { scale: 1, opacity: 1, duration: 0.35, ease: 'power3.out', overwrite: 'auto' });
       }
     });
   }
@@ -414,6 +424,18 @@
         end: 'bottom 40px',
         onToggle: function (self) {
           if (self.isActive) nav.classList.toggle('is-light', sec.dataset.theme === 'light');
+        }
+      });
+      // the cursor reads its ground from the middle of the screen, where it
+      // mostly is, rather than from the nav's line at the top
+      ST.create({
+        trigger: sec,
+        start: 'top center',
+        end: 'bottom center',
+        onToggle: function (self) {
+          if (self.isActive) {
+            document.documentElement.classList.toggle('on-light', sec.dataset.theme === 'light');
+          }
         }
       });
     });
@@ -460,7 +482,12 @@
     clips.forEach(function (c) { w += c.getBoundingClientRect().width; });
     if (!w) return;
 
-    var size = probe * (window.innerWidth * 0.96) / w;
+    /* The layout width, not innerWidth: on a phone innerWidth is the visual
+       viewport, and if anything ever makes the browser zoom the page out,
+       innerWidth grows with it and the title is fitted to a page wider than
+       the screen. */
+    var W = document.documentElement.clientWidth || window.innerWidth;
+    var size = probe * (W * 0.96) / w;
     size = Math.min(size, window.innerHeight * 0.30);
     t.style.fontSize = size + 'px';
 
@@ -812,8 +839,34 @@
       panels.forEach(function (x) { x.classList.toggle('is-open', x === p); });
     }
 
+    /* Hover used to open a panel on mouseenter, and that took the copy away
+       from whoever was reading it. Opening a panel reflows the row, so the
+       panels slide under a pointer that has not moved: you point at one, a
+       different one lands under you and opens, and the coffee you were
+       reading about collapses to a vertical label. Two rules fix it.
+
+       Only real movement counts. Panels are armed from pointermove, which a
+       reflow never fires — a panel sliding under a still pointer does
+       nothing. And a pass is not a choice: the pointer has to rest on a
+       panel for a moment before it opens, so sweeping across the row to
+       reach something else leaves the open one alone. Clicking still opens
+       at once. */
+    var DWELL = 240;
+    var armed = null, armTimer = 0;
+    function disarm() { clearTimeout(armTimer); armed = null; }
+
     panels.forEach(function (p, i) {
-      p.addEventListener('mouseenter', function () { open(p); });
+      p.addEventListener('pointermove', function (e) {
+        if (e.pointerType !== 'mouse') return;
+        if (p.classList.contains('is-open') || armed === p) return;
+        disarm();
+        armed = p;
+        armTimer = setTimeout(function () {
+          if (armed === p && p.matches(':hover')) open(p);
+          armed = null;
+        }, DWELL);
+      });
+      p.addEventListener('pointerleave', function () { if (armed === p) disarm(); });
       p.addEventListener('focusin', function () { open(p); });
 
       /* Clicking a closed panel expands it; clicking the one already open
@@ -848,39 +901,40 @@
   // Each roast: where it sits on the scale, how hot and how long it runs,
   // and the colour it lands on.
   var LOTS = [
-    { name: 'Cascara Morning', hex: 0xC9A06A, temp: 196, secs: 550,
+    // graded to the same roast colours as the Studio's stops (see ROAST_STOPS)
+    { name: 'Cascara Morning', hex: 0xB0814F, temp: 196, secs: 550,
       note: 'Dropped early, while the acidity is still in front.' },
-    { name: 'Terrace No. 7',   hex: 0xA9773C, temp: 205, secs: 630,
+    { name: 'Terrace No. 7',   hex: 0x87502B, temp: 205, secs: 630,
       note: 'A slow ramp through drying to keep the honey sweetness.' },
-    { name: 'Canopy Blend',    hex: 0x6E3E1D, temp: 214, secs: 710,
+    { name: 'Canopy Blend',    hex: 0x5A2F17, temp: 214, secs: 710,
       note: 'Held to the edge of first crack, then developed for cocoa.' },
-    { name: 'Night Terminal',  hex: 0x3F1E0D, temp: 228, secs: 820,
+    { name: 'Night Terminal',  hex: 0x36190C, temp: 228, secs: 820,
       note: 'Taken well past first crack until the oils come up.' },
-    { name: 'Cold Cellar',     hex: 0x33180B, temp: 232, secs: 860,
+    { name: 'Cold Cellar',     hex: 0x2B150A, temp: 232, secs: 860,
       note: 'The longest development we run — built to be brewed cold.' }
   ];
 
   // Flavour axes for the wheel, 0–100
   var PRODUCTS = [
-    { name: 'Cascara Morning', hex: 0xC9A06A,
+    { name: 'Cascara Morning', hex: 0xB0814F,
       desc: 'Jasmine, white peach and a lime-leaf finish that stays bright as it cools.',
       facts: [['Process','Washed'],['Altitude','2,150 m'],['Varietal','Heirloom'],['Roast','Light']],
       roastLevel: 1, lot: 'LOT 01', glow: 'rgba(232,207,166,0.55)', roastLine: 'LIGHT \u00B7 WASHED',
       coord: '[ 06\u00B0 09\u2032 N, 38\u00B0 12\u2032 E ]',
       notes: ['Jasmine', 'White peach', 'Lime leaf'] },
-    { name: 'Terrace No. 7', hex: 0xA9773C,
+    { name: 'Terrace No. 7', hex: 0x87502B,
       desc: 'Apricot and brown sugar over a soft, tea-like body. Sixteen days of rest.',
       facts: [['Process','Honey'],['Altitude','2,080 m'],['Varietal','Kurume'],['Roast','Med-light']],
       roastLevel: 2, lot: 'LOT 02', glow: 'rgba(216,178,124,0.50)', roastLine: 'MED-LIGHT \u00B7 HONEY',
       coord: '[ 06\u00B0 11\u2032 N, 38\u00B0 15\u2032 E ]',
       notes: ['Apricot', 'Brown sugar', 'Black tea'] },
-    { name: 'Canopy Blend', hex: 0x6E3E1D,
+    { name: 'Canopy Blend', hex: 0x5A2F17,
       desc: 'Cocoa, hazelnut and dried fig. Two farms, one drum, roasted every Tuesday.',
       facts: [['Process','Mixed'],['Altitude','1,900 m'],['Varietal','Blend'],['Roast','Medium']],
       roastLevel: 3, lot: 'LOT 03', glow: 'rgba(192,143,82,0.45)', roastLine: 'MEDIUM \u00B7 BLEND',
       coord: '[ 06\u00B0 04\u2032 N, 38\u00B0 02\u2032 E ]',
       notes: ['Cocoa', 'Hazelnut', 'Dried fig'] },
-    { name: 'Night Terminal', hex: 0x3F1E0D,
+    { name: 'Night Terminal', hex: 0x36190C,
       desc: 'Dark chocolate, molasses and walnut. Built to hold its own under milk.',
       facts: [['Process','Natural'],['Altitude','1,840 m'],['Varietal','Bourbon'],['Roast','Dark']],
       roastLevel: 5, lot: 'LOT 04', glow: 'rgba(74,128,104,0.45)', roastLine: 'DARK \u00B7 NATURAL',
@@ -1417,7 +1471,7 @@
       jobs.push(function () {
         var art = $('.panel__art', panel);
         if (!art) return;
-        var url = render(LOTS[i] ? LOTS[i].hex : 0x6e3e1d, 560, 820, i);
+        var url = render(LOTS[i] ? LOTS[i].hex : 0x5a2f17, 560, 820, i);
         art.style.backgroundImage = 'url(' + url + ')';
         art.classList.add('is-bed');
       });
@@ -1427,7 +1481,7 @@
        is only ever seen on the fallback path. */
     $$('.card__bed').forEach(function (bed, i) {
       jobs.push(function () {
-        var url = render(PRODUCTS[i] ? PRODUCTS[i].hex : 0x6e3e1d, 420, 520, i + 9);
+        var url = render(PRODUCTS[i] ? PRODUCTS[i].hex : 0x5a2f17, 420, 520, i + 9);
         bed.style.backgroundImage = 'url(' + url + ')';
       });
     });
@@ -1572,11 +1626,17 @@
   /* ================================================================= */
   // Roast stops. `oil` is the clearcoat: light roasts are dry and matte, dark
   // roasts push oil to the surface and start to shine.
+  /* Every bean on the page takes its colour from here — the Studio's slider
+     starts at 50, and the whole field is set from it on load. The old stops
+     were graded yellow: the page opened on #7F4A24, an orange-brown that read
+     as terracotta. These sit on real roast colour instead — cinnamon, then
+     chestnut, chocolate and near-black — redder and deeper at every stop,
+     with the oil climbing steeply past medium the way it does in the drum. */
   var ROAST_STOPS = [
-    { at: 0,   hex: 0xC9A06A, rough: 0.86, oil: 0.08, name: 'LIGHT',        temp: 196, time: '09:10' },
-    { at: 30,  hex: 0xA56C33, rough: 0.78, oil: 0.18, name: 'MEDIUM-LIGHT', temp: 205, time: '10:30' },
-    { at: 60,  hex: 0x6E3E1D, rough: 0.64, oil: 0.40, name: 'MEDIUM',       temp: 214, time: '11:50' },
-    { at: 100, hex: 0x33180B, rough: 0.52, oil: 0.55, name: 'DARK',         temp: 228, time: '13:40' }
+    { at: 0,   hex: 0xB0814F, rough: 0.82, oil: 0.10, name: 'LIGHT',        temp: 196, time: '09:10' },
+    { at: 30,  hex: 0x87502B, rough: 0.72, oil: 0.24, name: 'MEDIUM-LIGHT', temp: 205, time: '10:30' },
+    { at: 60,  hex: 0x5A2F17, rough: 0.60, oil: 0.46, name: 'MEDIUM',       temp: 214, time: '11:50' },
+    { at: 100, hex: 0x2B150A, rough: 0.46, oil: 0.72, name: 'DARK',         temp: 228, time: '13:40' }
   ];
 
   function roastAt(t) {
@@ -1997,6 +2057,15 @@
     initJourney();
     initBrew();
     initOutro();
+
+    /* ScrollTrigger refreshes in creation order, and a trigger only knows
+       about the pins refreshed before it. The chrome's light/dark triggers
+       and the bean-field zones are made first — ahead of the collection's
+       horizontal pin — so every one below that pin was measured without its
+       spacer: about 1,500px short, which left the nav and the field reading
+       the wrong section from the Journey down. Sorting puts them back in page
+       order, so the pin is measured before anything that sits under it. */
+    if (hasGSAP && ST.sort) { ST.sort(); ST.refresh(); }
 
     initLoader(function () {
       if (window.__heroIntro) window.__heroIntro.play();

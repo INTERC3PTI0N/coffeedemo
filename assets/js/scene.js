@@ -188,15 +188,30 @@
       var fibre = 0.62 + 0.76 * fbm3(v.y * 22 + sd, v.x * 5, 1.7, 3);
 
       // roasting is never even: patches scorch harder than others
-      var mottle = 0.80 + 0.30 * fbm3(v.x * 3.2 + sd, v.y * 2.6, v.z * 3.2, 3)
-                        + 0.14 * fbm3(v.x * 1.3 - sd, v.y * 1.1, v.z * 1.3, 2);
+      var mottle = 0.74 + 0.36 * fbm3(v.x * 3.2 + sd, v.y * 2.6, v.z * 3.2, 3)
+                        + 0.16 * fbm3(v.x * 1.3 - sd, v.y * 1.1, v.z * 1.3, 2);
 
-      var tint = mottle * (1 - 0.32 * wall) + fill * 1.75 * fibre;
+      /* The ends sit closest to the drum wall and take the most heat, so a
+         roasted bean is darker at its tips than across its middle. */
+      var tips = Math.pow(Math.abs(v.y) / 1.45, 3);
+
+      var body = mottle * (1 - 0.32 * wall) * (1 - 0.24 * tips);
+
+      /* Richness is hue, not just value. A scorched patch is not the same
+         brown made darker — sugars caramelise toward red and then toward
+         black, so the green and blue fall away faster than the red does.
+         Varying only brightness is what made the beans read as terracotta:
+         one flat orange-brown at different exposures. */
+      var deep = clamp((1.04 - body) / 0.34, 0, 1);
+      var r = body * (1 + 0.04 * deep);
+      var g = body * (1 - 0.13 * deep);
+      var b = body * (1 - 0.26 * deep);
 
       // the silverskin is drier and paler than the bean, so it loses the red
-      col[i * 3]     = tint;
-      col[i * 3 + 1] = tint * (1 + 0.05 * fill);
-      col[i * 3 + 2] = tint * (1 + 0.16 * fill);
+      var silk = fill * 1.75 * fibre;
+      col[i * 3]     = r + silk;
+      col[i * 3 + 1] = g + silk * 1.05;
+      col[i * 3 + 2] = b + silk * 1.16;
     }
     geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
 
@@ -291,7 +306,7 @@
      module — same profile, same rolled rim, same corrugated sleeve, same
      coffee — with steam added, because here it stands still long enough
      for steam to read. */
-  var HERO_CUP = { name: 'Lattecano', hex: 0x6E3E1D, roastLevel: 3 };
+  var HERO_CUP = { name: 'Roast Lab', hex: 0x6E3E1D, roastLevel: 3 };
 
   function buildCup(scene) {
     var cup = new THREE.Group();
@@ -618,7 +633,11 @@
     // Sunlit tops, cool undersides — the contrast between the two is what
     // makes a billboard read as a cloud rather than as a smudge.
     var SUN = new THREE.Color(0xffffff);
-    var SHADE = new THREE.Color(0x61806f);   // green-grey: the palette's own shadow
+    /* A sage shadow, well lifted. At the palette's own mid-green the cloud
+       undersides read as green smoke — heavy, and muddy against the ivory.
+       Cloud shade is sky light, so it stays close to white and only leans
+       green. */
+    var SHADE = new THREE.Color(0x8aa697);
 
     for (i = 0; i < COUNT; i++) {
       var p = puffs[i];
@@ -948,7 +967,7 @@
     var small = global.innerWidth < 760;
     var COUNT = small ? 24 : 60;
 
-    var baseColour = new THREE.Color(0x6b3d20);
+    var baseColour = new THREE.Color(0x5e3219);
     var grain = grainTexture();
     var matte = matteTexture();
     var beans = [];
@@ -969,12 +988,20 @@
         roughnessMap: matte,
         roughness: 0.94,
         metalness: 0.0,
-        clearcoat: 0.20,
-        clearcoatRoughness: 0.58,
-        sheen: 0.25,
-        sheenRoughness: 0.9,
-        sheenColor: new THREE.Color(0x8a6244),
-        envMapIntensity: 0.85
+        /* The oil a roast pushes to the surface is a thin, fairly smooth
+           film over a rough body — so the clearcoat is tighter than the base
+           and throws small, bright glints rather than a wash. The amount
+           still comes from the roast (see setRoast); only its polish is set
+           here. */
+        clearcoat: 0.40,
+        clearcoatRoughness: 0.30,
+        /* Sheen is the warm, velvety falloff at the silhouette. A roasted
+           bean glows amber at its edges where light skims the surface; the
+           old grey-brown sheen was part of why the beans read as clay. */
+        sheen: 0.55,
+        sheenRoughness: 0.52,
+        sheenColor: new THREE.Color(0xc0824a),
+        envMapIntensity: 1.0
       });
 
       var m = new THREE.Mesh(sharedGeo(level), mat);
@@ -1020,12 +1047,16 @@
       building: false,
       light: 0,            // 0 = dark section, 1 = light section
       lightCur: 0,
-      roast: { target: new THREE.Color(0x6b3d20), cur: new THREE.Color(0x6b3d20),
-               oil: 0.20, oilCur: 0.20, rough: 0.74, roughCur: 0.74 },
+      roast: { target: new THREE.Color(0x5e3219), cur: new THREE.Color(0x5e3219),
+               oil: 0.40, oilCur: 0.40, rough: 0.66, roughCur: 0.66 },
       running: false, hidden: false
     };
 
-    if (!HAZE) HAZE = new THREE.Color(0xBACDC1);
+    /* Warm, not cool. The beans are redder now, and a red-brown lerped
+       toward a cool green-grey passes through salmon on the way — distant
+       beans went pink. A haze with some of the ivory's warmth in it takes
+       them through tan instead, which is what distance does to brown. */
+    if (!HAZE) HAZE = new THREE.Color(0xCBD1C0);
 
     var clock = new THREE.Clock();
     var tmp = new THREE.Vector3();
@@ -1125,8 +1156,12 @@
       /* daylight on the cream sections, roastery gloom on the dark ones */
       state.lightCur = lerp(state.lightCur, state.light, damp(0.06, dt));
       var L = state.lightCur;
-      ambient.intensity = lerp(0.55, 1.35, L);
-      key.intensity = lerp(2.6, 3.8, L);
+      /* Less fill, more key. Ambient light lands equally on every face, so
+         at 1.35 on the light sections it filled the shadow side of each bean
+         up to nearly the lit side — no form, and a flat bean reads as a
+         painted one however good its colour is. The key picks up the slack. */
+      ambient.intensity = lerp(0.50, 0.95, L);
+      key.intensity = lerp(2.9, 4.2, L);
       rim.intensity = lerp(1.5, 0.75, L);
       cherry.intensity = lerp(18 + Math.sin(t * 1.1) * 5, 4, L);
       renderer.toneMappingExposure = lerp(1.08, 0.98, L);
@@ -1196,7 +1231,7 @@
         }
         b.mat.clearcoat = R.oilCur;
         b.mat.roughness = R.roughCur;
-        b.mat.envMapIntensity = lerp(0.85, 1.35, L);
+        b.mat.envMapIntensity = lerp(1.05, 1.4, L);
       }
 
       renderer.render(scene, camera);

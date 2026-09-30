@@ -1,4 +1,4 @@
-# LATTECANO
+# ROAST LAB
 
 An immersive, scroll-driven site for a single-origin coffee house. Built as a
 static page — no build step, no bundler. Open `index.html` or run a static
@@ -19,9 +19,9 @@ Ten sections, each with its own motion idea rather than one effect repeated:
 | 01 | Hero | A takeaway cup turned on a lathe, orbited by beans, lit by a sun flare; the framed window opens to full bleed as the camera closes on it |
 | 02 | Manifesto | Per-word `rotateX` reveal through a clipping mask; beans loiter in the margins |
 | 03 | The Harvest | A GSAP-scrubbed dive: a corridor of beans running back into a WebGL cloud bank, rushing the lens as the camera goes in with them |
-| 04 | Our Roasts | Five panels that expand on hover/focus over beds of real beans; clicking the open one opens that bean as a specimen, "Roast this lot" opens the drum |
+| 04 | Our Roasts | Five panels that expand when the pointer rests on one, or on focus, over beds of real beans; clicking the open one opens that bean as a specimen, "Roast this lot" opens the drum |
 | 05 | Founder quote | Line-by-line mask reveal and a signature that draws itself |
-| 06 | Roast Lab | The field forms a ring around one large bean you can drag; the slider re-roasts every bean on the page |
+| 06 | Roast Studio | The field forms a ring around one large bean you can drag; the slider re-roasts every bean on the page |
 | 07 | The Collection | Pinned horizontal scroll; the shelf holds real 3D cups, and clicking one sends it into a deck of cups while a paper docket falls in with the notes |
 | 08 | Bean to Cup | Parallax airport-code slab, closing on the traceability note |
 | 09 | Brew Guide | Working calculator — method × servings → dose, water, ratio, grind, temp, time and steps |
@@ -31,11 +31,13 @@ Ten sections, each with its own motion idea rather than one effect repeated:
 
 Four, all real rather than decorative:
 
-- **Roast Lab** (`#lab`) — drag the slider from light to dark. Every bean on
+- **Roast Studio** (`#lab`) — drag the slider from light to dark. Every bean on
   the page is the same lot, so the whole field takes the roast: colour,
   roughness and oil sheen interpolate across four stops, and the acidity /
   body / sweetness / bitterness bars move with it. Drag the big bean to spin
-  it. "Open in Roast Lab" on any roast panel jumps the slider to that coffee.
+  it. "Open in the Studio" on any roast panel jumps the slider to that coffee.
+  (The section was called the Roast Lab until the house took that name; one
+  name on the page now means one thing.)
 
 - **The Specimen** (`#roasts` → click the open panel) — the panel's own art
   opens out to full bleed and dissolves off a single bean of that lot, at a
@@ -79,7 +81,8 @@ those four rather than added to them.
 
 | Token | Value | Use |
 |-------|-------|-----|
-| `--forest` | `#214639` | The dark sections: hero frame, Roast Lab, Journey, CTA |
+| `--forest` | `#214639` | The dark sections: hero frame, Roast Studio, Journey, CTA |
+| `--forest-lit` / `--forest-shade` | `#285443` / `#183B2F` | The forest with light on it and turning away — every dark section carries a light rather than a flat fill |
 | `--spruce` / `--pine` | `#21463B` / `#254533` | Raised surfaces on the greens |
 | `--gold` | `#C59D58` | Fills, rules, glows, the progress rail, the gold-foil print |
 | `--ink` | `#132B22` | The deepest green: body type on ivory, the darkest ground |
@@ -98,6 +101,33 @@ would be 2.4:1.
 **What stays brown.** The product: the beans, the coffee in the cups, and the
 roast-level art on the panels and sliders. Those encode something — how dark a
 roast is — and recolouring them would be decoration overriding information.
+
+**The green, lit.** A large field in one flat green reads as paint, so each dark
+section is the forest with light falling across it: `--forest-lit` pooled where
+the subject is (behind the Studio's feature bean, along the shelf, in the middle
+of the Journey), easing to `--forest-shade` at the edges. The Studio, the
+collection and the Journey run dark end to end, so each hands over to the next
+at `--forest-shade` and the joins don't show. The collection used to sit on a
+conic gradient that met itself in a hard pinch — a visible pinwheel in the
+middle of the shelf; it is soft pools now. The harvest mist was lifted too: at
+the palette's own mid-green the cloud undersides read as green smoke, and cloud
+shade is sky light, so it stays close to white and only leans sage.
+
+**Rich beans.** Three things made the beans read as terracotta, and none was the
+geometry. *Colour*: every bean takes its roast from the Studio slider, which
+starts at 50, and the old stops were graded yellow — the page opened on an
+orange-brown `#7F4A24`. The stops now sit on real roast colour (cinnamon,
+chestnut, chocolate, near-black), redder and deeper at each. *Hue in the
+variation*: the surface was mottled in brightness only, one orange at different
+exposures. A scorched patch is redder and then darker — sugars caramelise, and
+green and blue fall away faster than red — so the vertex colour now shifts hue
+as it darkens, and the tips, which sit nearest the drum wall, roast darker than
+the middle. *Surface*: a near-matte coat with barely any oil. The clearcoat is
+now a tighter film (roughness 0.30) whose amount still comes from the roast and
+climbs steeply past medium, and an amber sheen gives the silhouette the warm
+falloff of a real roasted bean. Ambient fill came down from 1.35 to 0.95 on the
+light sections too: ambient lands equally on every face, and at that level it
+filled each bean's shadow side nearly to its lit side, so it had no form.
 
 **Where the brand lives in 3D.** The house cup wears a forest sleeve with the
 wordmark laid in gold foil (a vertical ramp across the type's band, so it reads
@@ -118,7 +148,7 @@ files in this repo.
 **One field, not one widget.** A single fixed canvas runs the length of the
 page, layered above each section's background and below its copy. A pool of
 beans is re-choreographed as you scroll: they swarm the hero, drift past the
-manifesto, rain through the harvest, hold a ring in the Roast Lab, stream with
+manifesto, rain through the harvest, hold a ring in the Roast Studio, stream with
 the collection, travel the shipping arc, and halo the closing form. Formations
 blend into each other rather than cutting.
 
@@ -176,7 +206,7 @@ that profile comes out squat, so the group carries a 1.24 vertical stretch to
 reach the 1.6 : 1 a real cup has. Behind it sits a sun flare with an
 anamorphic streak and a starfield; above it, three plumes of steam.
 
-The sleeve is LATTECANO's own: a kraft board drawn on a canvas — flecks, fibre,
+The sleeve is ROAST LAB's own: a kraft board drawn on a canvas — flecks, fibre,
 wordmark, bean mark and strapline — and wrapped by the lathe's UVs, so the
 brand is on the cup rather than floating beside it. It is stamped three times
 around, and the cup *rocks* around front instead of spinning, because a cup
@@ -260,9 +290,16 @@ for driven formations (0.17 against 0.075), because on the slow rate the scale
 reaches zero well after the formation wanted the bean gone, and the teleport it
 is guarding waits with it.
 
-The section itself is 118svh, not the 165 it used to be. Its copy is sticky, so
-every extra viewport of height was another viewport of scrolling past a block
-of text that was not moving — about 1,200px of it.
+The section itself is 118svh, not the 165 it used to be; the extra height was
+only empty sky under the copy. (The copy's stylesheet asks for `sticky`, but the
+layering rules at the end of `sections.css` set every copy block to `relative`
+so it sits above the bean canvas, and those win — it scrolls with the page.)
+
+It also clips sideways, with `overflow-x: clip` rather than `hidden` so it does
+not become a scroll container. The ivory halo behind the copy reaches past the
+column, and on a phone that pushed past the screen edge; mobile browsers zoom a
+page out to fit whatever pokes out, so the whole site rendered at 496px on a
+390px screen — the hero title ran off both sides and Subscribe was cut in half.
 
 **The roaster.** The drum is perforated sheet with scorch marks painted into
 its colour, bump and roughness maps, set inside a housing with legs and a
@@ -427,7 +464,7 @@ assets/
   js/chamber.js       the drum / deck stage, and the still bean-bed renders
   js/shelf.js         the cup — profile, sleeve, crema — and the shelf
   js/footer.js        the surface of coffee the page ends on
-  js/app.js           Lenis + GSAP/ScrollTrigger, Roast Lab, Brew Guide
+  js/app.js           Lenis + GSAP/ScrollTrigger, Roast Studio, Brew Guide
   img/favicon.svg
   vendor/             GSAP 3.12.5 + ScrollTrigger, Lenis 1.1.13, three.js r160
                       — vendored so the page runs offline

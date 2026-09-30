@@ -21,6 +21,13 @@
   --forest:   #214639;
   --gold:     #C59D58;
 
+  /* The forest lit and in shade. A large field in one flat green reads as
+     paint; the same green with light falling across it reads as a room.
+     These two are the forest a few steps either way, same hue, so every
+     dark section can carry a light without leaving the palette. */
+  --forest-lit:   #285443;
+  --forest-shade: #183B2F;
+
   --ink:      #132B22;   /* the deepest green: type on ivory (13:1), darkest ground */
   --ink-2:    #1A382D;   /* between ink and forest, for surfaces set on the greens */
   --ink-3:    var(--pine);
@@ -324,30 +331,49 @@ body.is-loading .hero__cue{ opacity:0; }
 /* =================================================================== */
 /* CURSOR                                                              */
 /* =================================================================== */
+/* No blend mode. `difference` kept the cursor visible on any ground by
+   inverting whatever sat under it — which, over type, meant inverting the
+   type: a pink smear across the words the pointer was on. The cursor takes
+   the palette instead, gold on the greens and deep green on the ivory, and
+   whatever it passes over keeps its own colour. */
 .cursor{
   position:fixed; top:0; left:0; z-index:8000;
   pointer-events:none;
-  mix-blend-mode:difference;
   opacity:0;
+  --cur:var(--gold-lt);
 }
+.on-light .cursor{ --cur:var(--ink); }
+/* the takeovers are dark whatever section opened them */
+.on-light body.no-scroll .cursor{ --cur:var(--gold-lt); }
 .cursor__dot{
   position:absolute; width:6px; height:6px; border-radius:50%;
-  background:#fff; transform:translate(-50%,-50%);
+  background:var(--cur); transform:translate(-50%,-50%);
+  transition:opacity .25s, background-color .4s;
 }
 .cursor__ring{
   position:absolute;
   width:38px; height:38px; border-radius:50%;
-  border:1px solid rgba(255,255,255,.7);
+  border:1px solid var(--cur);
+  opacity:.8;
   transform:translate(-50%,-50%);
   display:grid; place-items:center;
+  transition:border-color .4s, background-color .35s;
 }
 .cursor__label{
-  color:#fff; font-size:8px; opacity:0; white-space:nowrap;
-  letter-spacing:.14em;
+  color:var(--cur); font-size:7.5px; opacity:0; white-space:nowrap;
+  letter-spacing:.16em;
+  transition:opacity .25s;
 }
-.cursor.is-active .cursor__ring{ border-color:rgba(255,255,255,.95); }
+/* A labelled ring is the one moment the cursor sits over imagery, so it
+   gets a faint tinted glass behind the word — enough to read the label
+   over busy bean art, not enough to hide the art. */
+.cursor.is-active .cursor__ring{
+  background:rgba(12,32,25,.30);
+  backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+  border-color:var(--gold);
+}
+.cursor.is-active .cursor__label{ opacity:1; color:var(--gold-hi); }
 .cursor.is-active .cursor__dot{ opacity:0; }
-.cursor.is-active .cursor__label{ opacity:1; }
 
 @media (hover:none),(pointer:coarse){ .cursor{ display:none; } }
 
@@ -506,4 +532,15 @@ body.is-loading .hero__cue{ opacity:0; }
   .nav__group--right .nav__pill:not(.nav__pill--solid){ display:none; }
   .railtab{ display:none; }
   .nav__wordmark{ font-size:9px; letter-spacing:.3em; }
+  .nav{ gap:10px; }
+  .nav__group{ min-width:0; }
+  .nav__pill{ padding:8px 13px; font-size:10px; letter-spacing:.07em; }
+}
+/* A phone cannot hold a pill, the wordmark and a pill. The nav came out at
+   460px on a 390px screen, and because it is fixed, mobile Chrome zoomed the
+   whole page out to 496px to fit it — the hero title sized itself to that
+   wider page and ran off both edges, and Subscribe was cut in half. Below
+   this width the nav is the house and the one action. */
+@media (max-width:480px){
+  .nav__group--left .nav__pill{ display:none; }
 }

@@ -356,7 +356,7 @@
       g.textAlign = 'center';
       g.font = '800 44px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif';
       for (var k = 0; k < 4; k++) {
-        g.fillText('LATTECANO', (k + 0.5) * (W / 4), wallBot - 96);
+        g.fillText('ROAST LAB', (k + 0.5) * (W / 4), wallBot - 96);
       }
       g.restore();
     }
@@ -483,7 +483,7 @@
       g.moveTo(0, -21); g.bezierCurveTo(7, -8, -7, 8, 0, 21); g.stroke();
       g.restore();
 
-      var w = line('LATTECANO', cx, H * 0.315,
+      var w = line('ROAST LAB', cx, H * 0.315,
         '800 56px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
         14, INK);
 
@@ -541,7 +541,7 @@
       g.moveTo(0, -25); g.bezierCurveTo(8, -9, -8, 9, 0, 25); g.stroke();
       g.restore();
 
-      var bw = line('LATTECANO', cx, H * 0.450,
+      var bw = line('ROAST LAB', cx, H * 0.450,
         '800 72px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
         18, foil(H * 0.450, 64));
 
@@ -567,7 +567,7 @@
       g.font = '600 20px "JetBrains Mono", ui-monospace, monospace';
       g.fillStyle = ink(0.46);
       g.textAlign = 'left';
-      var word = 'LATTECANO   \u00B7   ';
+      var word = 'ROAST LAB   \u00B7   ';
       var step = g.measureText(word).width;
       for (var rx = -step; rx < W + step; rx += step) {
         g.fillText(word, rx, H * 0.735);
@@ -919,7 +919,7 @@
            see the coffee in it — positive about X brings the opening to
            face the camera. Off to the side it stands straight, so the row
            reads as a shelf rather than a row of spills. */
-        var open = c.focus * 0.58 + c.hover * 0.16;
+        var open = c.focus * 0.58 + c.hover * 0.08;
 
         c.group.rotation.x = open + idleX * loose +
                              (-state.pointer.y * 0.09) * c.hover;
@@ -928,8 +928,11 @@
                              c.intro * Math.PI;
         c.group.rotation.z = idleZ * loose + c.turn * 0.22 + c.intro * 0.14;
 
-        // it lifts toward you when it settles, and arrives from further off
-        c.group.position.z = c.focus * 0.55 + c.hover * 0.5 - c.intro * 1.6;
+        /* It lifts toward you when it settles, and arrives from further off.
+           Hover adds only a touch: a full half-unit toward the lens grew the
+           cup down over its own name and notes, so pointing at a coffee hid
+           what it was. The light (below) does the work of "this one" now. */
+        c.group.position.z = c.focus * 0.55 + c.hover * 0.14 - c.intro * 1.6;
 
         /* It catches the light as you point at it. Brightening the
            environment rather than adding a lamp keeps the highlight
