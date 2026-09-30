@@ -71,12 +71,12 @@
     if ('outputColorSpace' in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.92;
-    renderer.setClearColor(0x090604, 1);
+    renderer.setClearColor(0x0a1c16, 1);   // the page's deepest green
 
     var scene = new THREE.Scene();
     /* The far edge of the surface has to dissolve rather than end. Fog is
        what turns a plane into a distance. */
-    scene.fog = new THREE.FogExp2(0x0b0705, 0.052);
+    scene.fog = new THREE.FogExp2(0x0b1d17, 0.052);
 
     /* Just above the surface and pitched a touch up, so the horizon sits
        low in the frame and the copy above it is on black. A camera high
@@ -91,11 +91,11 @@
        surface toward the reader as a long streak. That streak is the
        whole trick: it is what a flat dark plane needs to read as a
        liquid rather than as a floor. */
-    scene.add(new THREE.AmbientLight(0x2a1c12, 0.9));
-    var key = new THREE.DirectionalLight(0xffcf92, 1.5);
+    scene.add(new THREE.AmbientLight(0x1f3a2f, 0.9));
+    var key = new THREE.DirectionalLight(0xf2d49a, 1.5);   // gold, low and far
     key.position.set(-2.2, 2.6, -18);
     scene.add(key);
-    var fill = new THREE.DirectionalLight(0xc36a3a, 0.5);
+    var fill = new THREE.DirectionalLight(0x5f9a7c, 0.45);  // the forest, from behind the reader
     fill.position.set(5, 3, 6);
     scene.add(fill);
 
@@ -105,7 +105,7 @@
       new THREE.MeshBasicMaterial({
         map: glowTexture(), transparent: true, depthWrite: false,
         blending: THREE.AdditiveBlending, toneMapped: false,
-        color: 0xffb765, opacity: 0.42
+        color: 0xe0b86e, opacity: 0.42
       }));
     sun.position.set(-2.2, 0.15, -26);
     scene.add(sun);
@@ -483,14 +483,14 @@
     var c = document.createElement('canvas');
     c.width = 512; c.height = 256;
     var g = c.getContext('2d');
-    g.fillStyle = '#080503';
+    g.fillStyle = '#07130f';
     g.fillRect(0, 0, 512, 256);
 
     var band = g.createLinearGradient(0, 112, 0, 140);
-    band.addColorStop(0.00, 'rgba(255,190,120,0)');
-    band.addColorStop(0.45, 'rgba(255,205,145,0.9)');
-    band.addColorStop(0.64, 'rgba(198,108,52,0.4)');
-    band.addColorStop(1.00, 'rgba(110,52,22,0)');
+    band.addColorStop(0.00, 'rgba(236,206,146,0)');
+    band.addColorStop(0.45, 'rgba(240,214,160,0.9)');
+    band.addColorStop(0.64, 'rgba(197,157,88,0.4)');
+    band.addColorStop(1.00, 'rgba(33,70,57,0)');
     g.fillStyle = band;
     g.fillRect(0, 112, 512, 28);
 

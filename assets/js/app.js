@@ -883,7 +883,7 @@
     { name: 'Night Terminal', hex: 0x3F1E0D,
       desc: 'Dark chocolate, molasses and walnut. Built to hold its own under milk.',
       facts: [['Process','Natural'],['Altitude','1,840 m'],['Varietal','Bourbon'],['Roast','Dark']],
-      roastLevel: 5, lot: 'LOT 04', glow: 'rgba(196,72,52,0.42)', roastLine: 'DARK \u00B7 NATURAL',
+      roastLevel: 5, lot: 'LOT 04', glow: 'rgba(74,128,104,0.45)', roastLine: 'DARK \u00B7 NATURAL',
       coord: '[ 05\u00B0 58\u2032 N, 37\u00B0 54\u2032 E ]',
       notes: ['Dark chocolate', 'Molasses', 'Walnut'] }
   ];

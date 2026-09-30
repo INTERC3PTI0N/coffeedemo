@@ -190,7 +190,7 @@
     var group = new THREE.Group();
 
     var shellMat = new THREE.MeshPhysicalMaterial({
-      color: 0x17120f, roughness: 0.46, metalness: 0.05,
+      color: 0x132b22, roughness: 0.46, metalness: 0.05,
       clearcoat: 0.5, clearcoatRoughness: 0.32,
       envMapIntensity: 0.75, side: THREE.DoubleSide
     });
@@ -198,7 +198,7 @@
 
     // the concentric moulding that runs round the dome
     var ringMat = new THREE.MeshPhysicalMaterial({
-      color: 0x1b1512, roughness: 0.5, metalness: 0.05, clearcoat: 0.4
+      color: 0x183529, roughness: 0.5, metalness: 0.05, clearcoat: 0.4
     });
     var ring = new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.017, 8, 72), ringMat);
     ring.position.y = 1.424;
@@ -214,7 +214,7 @@
     var lip = new THREE.Mesh(
       new THREE.TorusGeometry(0.135, 0.028, 8, 30),
       new THREE.MeshPhysicalMaterial({
-        color: 0x2c2420, roughness: 0.4, clearcoat: 0.5 }));
+        color: 0x214639, roughness: 0.4, clearcoat: 0.5 }));
     lip.position.set(hx, 1.430, hz);
     lip.rotation.x = Math.PI / 2 - 0.16;
     lip.scale.set(1.35, 1, 1);
@@ -222,7 +222,7 @@
 
     var hole = new THREE.Mesh(
       new THREE.CircleGeometry(0.125, 32),
-      new THREE.MeshBasicMaterial({ color: 0x090705 }));
+      new THREE.MeshBasicMaterial({ color: 0x06140f }));
     hole.position.set(hx, 1.426, hz);
     hole.rotation.x = -Math.PI / 2 + 0.16;
     hole.scale.set(1.35, 1, 1);
@@ -256,8 +256,8 @@
       g.fillStyle = rg; g.fillRect(0, 0, 512, 256);
     }
     blob(96, 86, 90, 'rgba(255,255,255,0.95)');
-    blob(372, 96, 120, 'rgba(226,182,120,0.5)');
-    blob(470, 168, 80, 'rgba(196,72,52,0.3)');
+    blob(372, 96, 120, 'rgba(210,176,116,0.5)');  // the gold fill
+    blob(470, 168, 80, 'rgba(58,110,88,0.34)');   // green bounce
 
     var tex = new THREE.CanvasTexture(c);
     tex.mapping = THREE.EquirectangularReflectionMapping;
@@ -403,27 +403,50 @@
     cv.width = W; cv.height = H;
     var g = cv.getContext('2d');
 
-    g.fillStyle = '#d8bc8e';
+    /* Two stocks. The house cup is the brand's own object, so it wears the
+       brand: a forest sleeve with the print laid in gold foil. The coffees
+       on the shelf keep kraft — it is a paper sleeve, and kraft already sits
+       in the gold's family — with the print in the forest ink, which is what
+       ties five different coffees back to one house. */
+    var STOCK = brandOnly
+      ? { ground: '#214639', fleckDark: 'rgba(8,26,19,0.22)', fleckLight: 'rgba(214,236,222,0.07)',
+          fluteDark: 'rgba(6,20,15,0.32)', fluteLight: 'rgba(220,240,228,0.07)', ink: [197,157,88] }
+      : { ground: '#d8bc8e', fleckDark: 'rgba(126,95,52,0.16)', fleckLight: 'rgba(247,232,204,0.18)',
+          fluteDark: 'rgba(92,66,34,0.22)', fluteLight: 'rgba(255,240,214,0.10)', ink: [27,59,47] };
+
+    g.fillStyle = STOCK.ground;
     g.fillRect(0, 0, W, H);
 
-    // kraft: flecks of unbleached pulp, and the shadow in each flute
+    // flecks in the pulp, and the shadow in each flute
     for (var i = 0; i < 4200; i++) {
       var fx = Math.random() * W, fy = Math.random() * H;
-      g.fillStyle = Math.random() > 0.5
-        ? 'rgba(126,95,52,0.16)' : 'rgba(247,232,204,0.18)';
+      g.fillStyle = Math.random() > 0.5 ? STOCK.fleckDark : STOCK.fleckLight;
       g.fillRect(fx, fy, 1 + Math.random() * 4, 1);
     }
     var flutePx = W / FLUTES;
     for (i = 0; i < FLUTES; i++) {
       var sh = g.createLinearGradient(i * flutePx, 0, (i + 1) * flutePx, 0);
-      sh.addColorStop(0.00, 'rgba(92,66,34,0.22)');
-      sh.addColorStop(0.45, 'rgba(255,240,214,0.10)');
-      sh.addColorStop(1.00, 'rgba(92,66,34,0.22)');
+      sh.addColorStop(0.00, STOCK.fluteDark);
+      sh.addColorStop(0.45, STOCK.fluteLight);
+      sh.addColorStop(1.00, STOCK.fluteDark);
       g.fillStyle = sh;
       g.fillRect(i * flutePx, 0, flutePx, H);
     }
 
-    var INK = '#25170a';
+    function ink(a) { return 'rgba(' + STOCK.ink.join(',') + ',' + a + ')'; }
+    var INK = ink(1);
+
+    /* Foil is not a flat colour: it is bright where it faces the light and
+       dark where it turns away. A vertical ramp across the type's own band
+       is enough to stop gold print reading as mustard paint. */
+    function foil(y, h) {
+      var f = g.createLinearGradient(0, y - h / 2, 0, y + h / 2);
+      f.addColorStop(0.00, '#EBD6A6');
+      f.addColorStop(0.42, '#C59D58');
+      f.addColorStop(0.62, '#A8823F');
+      f.addColorStop(1.00, '#DCC08A');
+      return f;
+    }
 
     /* Letterspacing by hand — canvas letterSpacing is not dependable.
        `cx` is the centre of one wrap; the print is repeated so that
@@ -450,7 +473,7 @@
       // the bean mark, set in a ruled roundel
       g.save();
       g.translate(cx, H * 0.125);
-      g.strokeStyle = 'rgba(37,23,10,0.30)';
+      g.strokeStyle = ink(0.30);
       g.lineWidth = 1.6;
       g.beginPath(); g.arc(0, 0, 40, 0, 6.283); g.stroke();
       g.strokeStyle = INK; g.lineWidth = 3;
@@ -465,7 +488,7 @@
         14, INK);
 
       // a double rule, the way a letterpress panel is closed off
-      g.strokeStyle = 'rgba(37,23,10,0.44)';
+      g.strokeStyle = ink(0.44);
       g.lineWidth = 2.4;
       g.beginPath();
       g.moveTo(cx - w / 2, H * 0.400); g.lineTo(cx + w / 2, H * 0.400);
@@ -477,11 +500,11 @@
 
       line(product.name.toUpperCase(), cx, H * 0.525,
         '600 38px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
-        7, 'rgba(37,23,10,0.94)');
+        7, ink(0.94));
 
       line(product.roastLine, cx, H * 0.635,
         '500 21px "JetBrains Mono", ui-monospace, monospace',
-        5, 'rgba(37,23,10,0.70)');
+        5, ink(0.70));
 
       /* The roast as five dots, filled to the stop this coffee is taken
          to. It is the one thing on the sleeve you can read at a glance
@@ -492,13 +515,13 @@
       for (var d = 0; d < dots; d++) {
         g.beginPath();
         g.arc(dx + d * gap, H * 0.730, 6.5, 0, 6.283);
-        if (d < lvl) { g.fillStyle = 'rgba(37,23,10,0.82)'; g.fill(); }
-        else { g.strokeStyle = 'rgba(37,23,10,0.42)'; g.lineWidth = 1.8; g.stroke(); }
+        if (d < lvl) { g.fillStyle = ink(0.82); g.fill(); }
+        else { g.strokeStyle = ink(0.42); g.lineWidth = 1.8; g.stroke(); }
       }
 
       line((product.lot || '') + '  \u00B7  SINGLE ORIGIN', cx, H * 0.835,
         '500 17px "JetBrains Mono", ui-monospace, monospace',
-        4, 'rgba(37,23,10,0.55)');
+        4, ink(0.55));
     }
 
     /* The hero's sleeve says one thing. With a lid on the cup there is no
@@ -508,7 +531,7 @@
     function brandPanel(cx) {
       g.save();
       g.translate(cx, H * 0.170);
-      g.strokeStyle = 'rgba(37,23,10,0.26)';
+      g.strokeStyle = ink(0.26);
       g.lineWidth = 1.6;
       g.beginPath(); g.arc(0, 0, 46, 0, 6.283); g.stroke();
       g.strokeStyle = INK; g.lineWidth = 3.4;
@@ -520,9 +543,9 @@
 
       var bw = line('LATTECANO', cx, H * 0.450,
         '800 72px Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif',
-        18, INK);
+        18, foil(H * 0.450, 64));
 
-      g.strokeStyle = 'rgba(37,23,10,0.46)';
+      g.strokeStyle = ink(0.46);
       g.lineWidth = 2.6;
       g.beginPath();
       g.moveTo(cx - bw / 2, H * 0.560); g.lineTo(cx + bw / 2, H * 0.560);
@@ -542,7 +565,7 @@
          as continuous however far the cup is turned. */
       g.save();
       g.font = '600 20px "JetBrains Mono", ui-monospace, monospace';
-      g.fillStyle = 'rgba(37,23,10,0.46)';
+      g.fillStyle = ink(0.46);
       g.textAlign = 'left';
       var word = 'LATTECANO   \u00B7   ';
       var step = g.measureText(word).width;
@@ -680,7 +703,7 @@
        catch the studio band as it passes — pure black reads as holes in
        the stage rather than as objects in it. */
     return new THREE.MeshPhysicalMaterial({
-      color: 0x2b2018, roughness: 0.42, metalness: 0.12,
+      color: 0x1a382d, roughness: 0.42, metalness: 0.12,
       clearcoat: 0.6, clearcoatRoughness: 0.34,
       envMapIntensity: 1.3, side: THREE.DoubleSide
     });
@@ -783,7 +806,7 @@
     scene.add(new THREE.AmbientLight(0xffe9cf, 0.55));
     var key = new THREE.DirectionalLight(0xfff4e4, 2.4);
     key.position.set(-4, 6, 8); scene.add(key);
-    var rim = new THREE.DirectionalLight(0xd9a96c, 1.1);
+    var rim = new THREE.DirectionalLight(0xc59d58, 1.1);
     rim.position.set(6, -3, 4); scene.add(rim);
 
     var cups = [];

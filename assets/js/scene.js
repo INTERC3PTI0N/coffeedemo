@@ -318,7 +318,7 @@
     var steamMat = new THREE.MeshBasicMaterial({
       map: sunTexture(), transparent: true, opacity: 0,
       depthWrite: false, blending: THREE.AdditiveBlending,
-      toneMapped: false, color: 0xd8cbb6
+      toneMapped: false, color: 0xe6dcc6
     });
     var steam = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), steamMat, 14);
     steam.frustumCulled = false;
@@ -618,14 +618,14 @@
     // Sunlit tops, cool undersides — the contrast between the two is what
     // makes a billboard read as a cloud rather than as a smudge.
     var SUN = new THREE.Color(0xffffff);
-    var SHADE = new THREE.Color(0x6d8095);
+    var SHADE = new THREE.Color(0x61806f);   // green-grey: the palette's own shadow
 
     for (i = 0; i < COUNT; i++) {
       var p = puffs[i];
       // distance pales them out — ordinary atmospheric perspective
       var far = clamp((-p.z - 6) / 40, 0, 1);
       col.copy(SHADE).lerp(SUN, clamp(0.52 + p.lift * 2.2, 0, 1));
-      col.lerp(new THREE.Color(0xc4d0d9), far * 0.5);
+      col.lerp(new THREE.Color(0xc6d5cb), far * 0.5);
       mesh.setColorAt(i, col);
     }
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
@@ -669,10 +669,11 @@
     var g = c.getContext('2d');
 
     var sky = g.createLinearGradient(0, 0, 0, 256);
-    sky.addColorStop(0.00, '#d8c4a6');
-    sky.addColorStop(0.42, '#7a6450');
-    sky.addColorStop(0.52, '#2e2218');
-    sky.addColorStop(1.00, '#0b0805');
+    // a gold-lit ceiling over a forest floor: the room the palette describes
+    sky.addColorStop(0.00, '#e2cfa4');
+    sky.addColorStop(0.42, '#6f6a4c');
+    sky.addColorStop(0.52, '#20382d');
+    sky.addColorStop(1.00, '#08140f');
     g.fillStyle = sky; g.fillRect(0, 0, 512, 256);
 
     function blob(x, y, r, colour) {
@@ -682,8 +683,8 @@
       g.fillStyle = rg; g.fillRect(0, 0, 512, 256);
     }
     blob(132, 54, 118, 'rgba(255,250,242,0.95)'); // key
-    blob(360, 96, 150, 'rgba(214,180,138,0.62)'); // warm fill
-    blob(470, 150, 96, 'rgba(180,78,58,0.24)');   // cherry bounce
+    blob(360, 96, 150, 'rgba(210,176,116,0.62)'); // gold fill
+    blob(470, 150, 96, 'rgba(58,110,88,0.30)');   // green bounce
 
     var tex = new THREE.CanvasTexture(c);
     tex.mapping = THREE.EquirectangularReflectionMapping;
@@ -928,11 +929,14 @@
     key.position.set(-5, 6, 7);
     scene.add(key);
 
-    var rim = new THREE.DirectionalLight(0xd9a96c, 1.5);
+    /* Gold key and lamp, green rim. The rim is the light that separates a
+       bean from a dark ground, so it takes the ground's colour — a bean on
+       the forest is edged by the forest, the way it would be in the room. */
+    var rim = new THREE.DirectionalLight(0x9cc4ab, 1.5);
     rim.position.set(6, -2, -5);
     scene.add(rim);
 
-    var cherry = new THREE.PointLight(0xc33c2b, 20, 30, 2);
+    var cherry = new THREE.PointLight(0xc59d58, 20, 30, 2);   // the gold lamp
     cherry.position.set(5, -2, 4);
     scene.add(cherry);
 
@@ -1021,7 +1025,7 @@
       running: false, hidden: false
     };
 
-    if (!HAZE) HAZE = new THREE.Color(0xB6C6D2);
+    if (!HAZE) HAZE = new THREE.Color(0xBACDC1);
 
     var clock = new THREE.Clock();
     var tmp = new THREE.Vector3();

@@ -36,10 +36,10 @@
     c.width = 512; c.height = 256;
     var g = c.getContext('2d');
     var sky = g.createLinearGradient(0, 0, 0, 256);
-    sky.addColorStop(0.00, '#ddc9ab');
-    sky.addColorStop(0.42, '#7d6752');
-    sky.addColorStop(0.52, '#2c2016');
-    sky.addColorStop(1.00, '#0a0705');
+    sky.addColorStop(0.00, '#e2cfa4');
+    sky.addColorStop(0.42, '#6f6a4c');
+    sky.addColorStop(0.52, '#20382d');
+    sky.addColorStop(1.00, '#08140f');
     g.fillStyle = sky; g.fillRect(0, 0, 512, 256);
     function blob(x, y, r, colour) {
       var rg = g.createRadialGradient(x, y, 2, x, y, r);
@@ -47,8 +47,8 @@
       g.fillStyle = rg; g.fillRect(0, 0, 512, 256);
     }
     blob(128, 50, 120, 'rgba(255,250,242,0.98)');
-    blob(368, 96, 150, 'rgba(216,182,140,0.6)');
-    blob(470, 152, 96, 'rgba(184,80,58,0.22)');
+    blob(368, 96, 150, 'rgba(210,176,116,0.6)');
+    blob(470, 152, 96, 'rgba(58,110,88,0.30)');
 
     var tex = new THREE.CanvasTexture(c);
     tex.mapping = THREE.EquirectangularReflectionMapping;
@@ -133,7 +133,7 @@
     scene.add(new THREE.AmbientLight(0xffe8cc, 0.85));
     var key = new THREE.DirectionalLight(0xfff2de, 3.0);
     key.position.set(-6, 9, 4); scene.add(key);
-    var rim = new THREE.PointLight(0xd9a96c, 26, 34, 2);
+    var rim = new THREE.PointLight(0xc59d58, 26, 34, 2);
     rim.position.set(7, 5, -5); scene.add(rim);
 
     var geo = Beans.beanGeometry(40, 2);
@@ -215,7 +215,7 @@
     scene.add(new THREE.AmbientLight(0xffe4c4, 0.8));
     var key = new THREE.DirectionalLight(0xfff0d8, 3.0);
     key.position.set(-6, 7, 8); scene.add(key);
-    var rim = new THREE.DirectionalLight(0xd9a96c, 1.5);
+    var rim = new THREE.DirectionalLight(0xc59d58, 1.5);
     rim.position.set(7, -2, -5); scene.add(rim);
     var fire = new THREE.PointLight(0xff6a2a, 0, 26, 2);   // the burner
     fire.position.set(0, -4.4, 2); scene.add(fire);
@@ -301,7 +301,8 @@
     // a front rim so the opening reads as an opening
     var rimRing = new THREE.Mesh(
       new THREE.TorusGeometry(DRUM_R + 0.05, 0.14, 12, 80),
-      new THREE.MeshPhysicalMaterial({ color: 0x4a3524, metalness: 0.9, roughness: 0.34 }));
+      // brass, not bronze: the trim is where the house gold lives on the machine
+      new THREE.MeshPhysicalMaterial({ color: 0xa8843f, metalness: 0.92, roughness: 0.3 }));
     rimRing.position.z = DRUM_D / 2;
     drum.add(rimRing);
 
@@ -310,13 +311,18 @@
     /* The drum alone floats in the dark. A housing, a hopper throat and a
        glowing burner slot underneath give it somewhere to be. */
     var rig = new THREE.Group();
+    /* Forest enamel, the way specialty roasters are actually finished — and
+       enamel is paint, so it is a dielectric with a clearcoat, not a metal.
+       A green colour on a high metalness only tints its reflections green
+       and reads as anodised aluminium. The steel stays in the drum. */
     var caseMat = new THREE.MeshPhysicalMaterial({
-      color: 0x241a12, metalness: 0.7, roughness: 0.58, envMapIntensity: 0.8 });
+      color: 0x1d3d31, metalness: 0.18, roughness: 0.46,
+      clearcoat: 0.7, clearcoatRoughness: 0.28, envMapIntensity: 0.9 });
 
     var housing = new THREE.Mesh(
       new THREE.CylinderGeometry(DRUM_R + 0.75, DRUM_R + 0.75, DRUM_D + 1.5, 64, 1, true),
       new THREE.MeshPhysicalMaterial({
-        color: 0x1a120c, metalness: 0.6, roughness: 0.7,
+        color: 0x13291f, metalness: 0.15, roughness: 0.6,
         side: THREE.BackSide, envMapIntensity: 0.5 }));
     housing.rotation.x = Math.PI / 2;
     housing.position.z = -0.6;
@@ -440,7 +446,7 @@
       var n = global.innerWidth < 760 ? 10 : 16;
       for (var i = 0; i < n; i++) {
         var m = global.LattecanoShelf.blankMaterial();
-        m.color.setHex(0x0d0a07);
+        m.color.setHex(0x0a1c16);
         m.envMapIntensity = 1.1;
         m.transparent = true;
         var mesh = new THREE.Mesh(geo, m);

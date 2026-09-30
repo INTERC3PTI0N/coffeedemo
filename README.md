@@ -72,19 +72,43 @@ to whatever opened them.
 
 ## Palette
 
-Espresso and oat milk, with coffee cherry as the accent — the red is the actual
-colour of a ripe coffee cherry, which is where the accent came from.
+Forest and antique gold, from
+[coolors.co/254533-21463b-214639-c59d58](https://coolors.co/254533-21463b-214639-c59d58):
+three deep greens a hair apart, and one gold. Every other value is derived from
+those four rather than added to them.
 
 | Token | Value | Use |
 |-------|-------|-----|
-| `--ink` | `#120B07` | Espresso black — dark sections |
-| `--roast` | `#4A2A18` | Mid roast |
-| `--cocoa` | `#7A4A2E` | Drawn flourishes |
-| `--crema` | `#D9A96C` | Highlights, rules, the crema on a cup |
-| `--oat` | `#F2E7D6` | Oat milk — text on dark, footer |
-| `--cream` / `--paper` | `#FBF5EC` / `#FFFCF7` | Light sections |
-| `--cherry` | `#C33C2B` | Accent: rail tab, eyebrows, CTA |
-| `--leaf` | `#5F7A55` | Arabica leaf — the highlands |
+| `--forest` | `#214639` | The dark sections: hero frame, Roast Lab, Journey, CTA |
+| `--spruce` / `--pine` | `#21463B` / `#254533` | Raised surfaces on the greens |
+| `--gold` | `#C59D58` | Fills, rules, glows, the progress rail, the gold-foil print |
+| `--ink` | `#132B22` | The deepest green: body type on ivory, the darkest ground |
+| `--deep` | `#0C2019` | Vignettes, scrims, the foot of the page |
+| `--gold-lt` | `#D6B77E` | Small gold type on the greens |
+| `--gold-dk` | `#83622A` | Small gold type on ivory, drawn flourishes |
+| `--oat` | `#EFE7D4` | Type on the greens |
+| `--cream` / `--paper` | `#F5F0E4` / `#FBF8F0` | Light sections — an ivory warmed toward the gold |
+
+**Why three golds.** The palette gold is right for fills, rules and display type
+and wrong for a ten-pixel label: it manages 4.2:1 on the forest and only 2.2:1 on
+ivory. So small gold type takes `--gold-lt` on the greens (5.5:1) and `--gold-dk`
+on ivory (4.9:1). Gold buttons carry `--ink` type, 6:1 — ivory type on the gold
+would be 2.4:1.
+
+**What stays brown.** The product: the beans, the coffee in the cups, and the
+roast-level art on the panels and sliders. Those encode something — how dark a
+roast is — and recolouring them would be decoration overriding information.
+
+**Where the brand lives in 3D.** The house cup wears a forest sleeve with the
+wordmark laid in gold foil (a vertical ramp across the type's band, so it reads
+as foil rather than mustard paint) and a deep green lid; the coffees on the shelf
+keep kraft sleeves printed in forest ink. The roaster is forest enamel with a
+brass rim — enamel as a clearcoated dielectric, since a green colour on a high
+metalness only tints its reflections and reads as anodised aluminium. Across the
+scenes the key light and the old red lamp are gold, the rim light is green (it is
+the light that separates a bean from a dark ground, so it takes the ground's
+colour), and the harvest sky, cloud shadows and the dive's aerial haze are a
+green-grey highland mist.
 
 ## How the 3D works
 
