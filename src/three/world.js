@@ -144,20 +144,26 @@ const GRAIN_RADIUS = 1.85;
  * The look.
  * ------------------------------------------------------------------ */
 const GRADE = [
-  { t: 0.00, bg: '#05070a', cold: '#566d82', hot: '#8ea7bd', size: 1.05, glow: 0.55, opacity: 0.72,
-    bloom: 0.34, vig: 0.72, sat: 0.80, lift: 0.004, cast: '#b9cbdb', castAmt: 0.10, exposure: 1.0 },
-  { t: 0.18, bg: '#060a0f', cold: '#627e9a', hot: '#cfa95f', size: 1.00, glow: 0.75, opacity: 1.00,
-    bloom: 0.40, vig: 0.66, sat: 0.88, lift: 0.005, cast: '#cddced', castAmt: 0.12, exposure: 1.0 },
-  { t: 0.36, bg: '#070b12', cold: '#6886a6', hot: '#e3bd6c', size: 0.96, glow: 0.68, opacity: 1.00,
-    bloom: 0.36, vig: 0.62, sat: 0.94, lift: 0.006, cast: '#d8e3f0', castAmt: 0.12, exposure: 1.0 },
-  { t: 0.52, bg: '#080c14', cold: '#7191b2', hot: '#f0c873', size: 0.92, glow: 0.74, opacity: 1.00,
-    bloom: 0.40, vig: 0.58, sat: 1.00, lift: 0.007, cast: '#e2ecf6', castAmt: 0.10, exposure: 1.02 },
-  { t: 0.70, bg: '#0a0d16', cold: '#7c9dbf', hot: '#ffd98a', size: 1.18, glow: 1.05, opacity: 1.00,
-    bloom: 0.44, vig: 0.50, sat: 1.04, lift: 0.010, cast: '#eef4fb', castAmt: 0.08, exposure: 1.04 },
-  { t: 0.88, bg: '#07090e', cold: '#6c8399', hot: '#ffe2a2', size: 0.95, glow: 1.10, opacity: 1.00,
-    bloom: 0.46, vig: 0.60, sat: 1.00, lift: 0.006, cast: '#ffeecb', castAmt: 0.16, exposure: 1.02 },
-  { t: 1.00, bg: '#05070a', cold: '#5a7084', hot: '#c9a24f', size: 0.60, glow: 0.70, opacity: 0.72,
-    bloom: 0.38, vig: 0.70, sat: 0.86, lift: 0.004, cast: '#cfdbe8', castAmt: 0.10, exposure: 1.0 },
+  /* Lifted, and lifted mostly in the cold. The field was carrying its colour
+     almost entirely in the gold, with the unsettled grains left a muddy
+     slate — which reads as grey dust rather than as mineral, and flattens the
+     one contrast the piece is built on. Raising the cold end into a true
+     daylight blue and the hot into cream gives the same opposition far more
+     air, and the grains stop looking like soot catching a lamp. */
+  { t: 0.00, bg: '#05070a', cold: '#7b96ad', hot: '#bdd2e4', size: 1.05, glow: 0.72, opacity: 0.86,
+    bloom: 0.36, vig: 0.70, sat: 0.86, lift: 0.004, cast: '#b9cbdb', castAmt: 0.10, exposure: 1.0 },
+  { t: 0.18, bg: '#060a0f', cold: '#88a8c6', hot: '#f2ca7e', size: 1.00, glow: 0.94, opacity: 1.00,
+    bloom: 0.42, vig: 0.64, sat: 0.94, lift: 0.005, cast: '#cddced', castAmt: 0.12, exposure: 1.02 },
+  { t: 0.36, bg: '#070b12', cold: '#91b2d0', hot: '#ffd387', size: 0.96, glow: 0.90, opacity: 1.00,
+    bloom: 0.38, vig: 0.60, sat: 1.00, lift: 0.006, cast: '#d8e3f0', castAmt: 0.12, exposure: 1.03 },
+  { t: 0.52, bg: '#080c14', cold: '#9abbda', hot: '#ffdf92', size: 0.92, glow: 0.96, opacity: 1.00,
+    bloom: 0.42, vig: 0.56, sat: 1.06, lift: 0.007, cast: '#e2ecf6', castAmt: 0.10, exposure: 1.04 },
+  { t: 0.70, bg: '#0a0d16', cold: '#a6c7e4', hot: '#ffe9ac', size: 1.18, glow: 1.26, opacity: 1.00,
+    bloom: 0.46, vig: 0.48, sat: 1.10, lift: 0.010, cast: '#eef4fb', castAmt: 0.08, exposure: 1.06 },
+  { t: 0.88, bg: '#07090e', cold: '#96b2ca', hot: '#fff2c6', size: 0.95, glow: 1.32, opacity: 1.00,
+    bloom: 0.48, vig: 0.58, sat: 1.04, lift: 0.006, cast: '#ffeecb', castAmt: 0.16, exposure: 1.04 },
+  { t: 1.00, bg: '#05070a', cold: '#8198ac', hot: '#ecc478', size: 0.60, glow: 0.90, opacity: 0.86,
+    bloom: 0.40, vig: 0.68, sat: 0.92, lift: 0.004, cast: '#cfdbe8', castAmt: 0.10, exposure: 1.02 },
 ];
 
 /* text colour per chapter — the page is dark throughout, so this barely moves */
@@ -336,7 +342,7 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
        effectively unreachable on the machines most able to draw it. A dense
        display is not a slow GPU; the pixel ratio is already capped separately
        for that. */
-    size: small ? 320 : 640,
+    size: small ? 384 : 768,
     scale: 620,
   });
   scene.add(field.points);
@@ -346,10 +352,12 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
      1/n — some of the extra density should be visible as density, or there was
      no point adding it. */
   const DENSITY_REF = 384 * 384;
-  // 0.5 rather than 0.65: sharpening the grains cost the frame some of its
-  // luminance, and under-compensating a little further is the way to give it
-  // back without softening anything.
-  const densityComp = Math.pow(DENSITY_REF / field.count, 0.5);
+  /* 0.35, down from 0.5 and 0.65 before it. Each time the field has grown,
+     this exponent has been the thing quietly cancelling the growth: compensate
+     at 1/n and six hundred thousand grains look exactly like four hundred
+     thousand, only slower. Under-compensating this hard means a denser field
+     arrives as a brighter one, which is the whole reason for adding them. */
+  const densityComp = Math.pow(DENSITY_REF / field.count, 0.35);
 
   const fx = createPostFX(renderer, scene, camera, { quality: perfTier });
 

@@ -402,6 +402,8 @@ const RENDER_FRAG = /* glsl */ `
   uniform float uScan;      // the sweep of light that says it is running
   uniform float uShatter;   // a shaken plate chips the edges off
   uniform float uIris;      // how much thin-film colour the material carries
+  uniform float uMorphSpread; // how far apart grains cross from one form to the next
+  uniform float uMorphFlare;  // how hard a grain lights at the moment it crosses
   uniform float uFormFade;  // 1 the grain is an object · 0 it is only a grain
 
   varying float vLock;
@@ -618,7 +620,25 @@ const RENDER_FRAG = /* glsl */ `
     float ph = uTime * 1.15 + vSeed * TAU;
     vec2  an = vec2(sin(ph), cos(ph)) * uFormFade;
 
-    vec2 f = mix(form(uFormA, p, an), form(uFormB, p, an), uFormMix);
+    /* A shape change should be something the reader watches happen.
+    
+       Every grain used to cross from one form to the next on the same frame,
+       which makes the field blink: one moment a hundred thousand lances, the
+       next a hundred thousand gimbals, with the in-between too brief and too
+       uniform to register as anything. Offsetting each grain's crossing by how
+       far out it sits turns the change into a wave that leaves the centre and
+       travels the figure, so the two forms are on screen together for most of
+       the transition and the reader can see one becoming the other. */
+    float lead = clamp(vPulse * 0.52, 0.0, 1.0) * 0.66 + vSeed * 0.34;
+    float m = clamp(uFormMix * (1.0 + uMorphSpread) - lead * uMorphSpread, 0.0, 1.0);
+    m = m * m * (3.0 - 2.0 * m);
+
+    // and each grain lights as it goes over, which is what makes the wave
+    // visible as a wave rather than inferred from the shapes it leaves behind
+    float crossing = 1.0 - abs(m * 2.0 - 1.0);
+    crossing = crossing * crossing * uMorphFlare * vLock;
+
+    vec2 f = mix(form(uFormA, p, an), form(uFormB, p, an), m);
     float d = f.x;
     float inner = f.y;
 
@@ -701,6 +721,8 @@ const RENDER_FRAG = /* glsl */ `
     shape -= panel * fill * 0.24 * detailLod;
 
     // diffraction spikes off the facets of the ones that have locked hard
+    shape += crossing * fill * 0.22;
+
     shape += (exp(-abs(p.y) * 52.0) + exp(-abs(p.x) * 52.0))
            * exp(-dot(p, p) * 5.0) * vLock * 0.22;
 
@@ -750,6 +772,7 @@ const RENDER_FRAG = /* glsl */ `
     vec3 film = 0.5 + 0.5 * cos(6.2831853 * (vIris + vec3(0.0, 0.21, 0.42)));
     col += mix(uHot, film, 0.62) * rim * vFres * uIris * (0.35 + vLock * 0.55);
     col += mix(uCold, uHot, vLock) * vFres * 0.12;
+    col += uHot * crossing * 0.60;
     // the core and the scan line burn hotter than the body they sit in
     col += uHot * (core * 0.30 + scan * 0.40) * innerLod;
     // the hand's own light, on the body rather than the outline, so it reads
@@ -921,6 +944,8 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
     uScan:        { value: 0 },
     uShatter:     { value: 0 },
     uIris:        { value: 0.85 },
+    uMorphSpread: { value: 0.62 },
+    uMorphFlare:  { value: 0.55 },
     uFormFade:    { value: 1 },
     uSpin:        { value: 0 },
     uAlign:       { value: 0 },
