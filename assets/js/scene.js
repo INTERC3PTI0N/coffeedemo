@@ -812,7 +812,11 @@
       // the time term is only so the corridor still moves when nobody scrolls.
       // Depth comes off the index, so the corridor is evenly filled and never
       // opens a gap you can see down.
-      var u = ((i * PHI) + t * 0.055 + d * 2.4) % 1;
+      /* Unhurried. The corridor used to make better than three full passes
+         across one section's scroll, which read as beans being fired past
+         the lens; it now makes about one and a half, and drifts half as fast
+         when nobody is scrolling. */
+      var u = ((i * PHI) + t * 0.03 + d * 1.1) % 1;
       if (u < 0) u += 1;
 
       /* Where a bean sits in the corridor's cross-section has to be drawn from
@@ -831,12 +835,32 @@
       // nothing pops in at the far end or blows through the lens
       var fade = smooth(clamp(u / 0.14, 0, 1)) * smooth(clamp((1 - u) / 0.10, 0, 1));
 
-      return {
+      var out = {
         x: (wide ? 1.5 : 0) + Math.cos(ang) * rad + bank,
         y: Math.sin(ang) * rad * 0.82 + Math.sin(t * 0.5 + i) * 0.12,
         z: FAR + u * (NEAR - FAR),
         s: b.size * (wide ? 0.66 : 0.44) * fade
       };
+
+      /* The release. As the roasts rise, the arrival timeline (initAltitude)
+         carries every bean out of the corridor to the place the next section
+         holds it — on the same scrubbed line as the heading and the panels,
+         so the scatter IS that transition rather than something that fires
+         when a zone boundary is crossed. Each bean bows outward on the way,
+         toward its own side of the frame, so the corridor opens like a door
+         rather than sliding. By the time the field changes formation the
+         beans are already where it wants them; scrolling back reverses it. */
+      var r = view._release || 0;
+      if (r > 0) {
+        var to = FORMATIONS.sparse(b, i, n, t, 0, view);
+        var k = smooth(clamp(r, 0, 1));
+        var bow = Math.sin(k * Math.PI) * (to.x >= 0 ? 1 : -1) * 1.6;
+        out.x = lerp(out.x, to.x, k) + bow;
+        out.y = lerp(out.y, to.y, k);
+        out.z = lerp(out.z, to.z, k);
+        out.s = lerp(out.s, to.s, k);
+      }
+      return out;
     },
 
     // roasts / brew: quiet, well clear of the copy
@@ -1043,6 +1067,7 @@
       cloudCur: 0,
       dive: 0,             // GSAP-scrubbed travel through the harvest
       divePush: 0,         // ...and how far in the camera has gone with it
+      diveRelease: 0,      // ...and how far the beans have scattered to the roasts
       heroCur: 0,
       building: false,
       light: 0,            // 0 = dark section, 1 = light section
@@ -1122,6 +1147,7 @@
       /* The dive is not only the beans moving: the camera goes with them, and
          that is what gives the cloud bank behind them parallax to move with. */
       view._dive = state.dive;
+      view._release = state.diveRelease;
       var camTarget = 12;
       if (state.formation === 'swarm') camTarget = lerp(12, 7.4, state.heroDolly);
       else if (state.formation === 'dive') camTarget = lerp(12, 9.8, state.divePush);
@@ -1177,7 +1203,10 @@
          continuously — so a slow follow lags behind and the ring collapses
          toward the middle. Static formations keep the softer rate. */
       var driven = state.formation === 'swarm' || state.formation === 'dive';
-      var kMove = damp(driven ? 0.24 : 0.055, dt);
+      /* The dive follows its corridor more softly than the hero ring: its
+         targets move with the scroll, and a softer follow turns a flick of
+         the wheel into a glide instead of a jolt. */
+      var kMove = damp(state.formation === 'dive' ? 0.13 : (driven ? 0.24 : 0.055), dt);
 
       /* How much of the frame is the dive right now — 1 once it has fully
          taken over, and easing through the blend at either end, so the haze
@@ -1271,9 +1300,10 @@
          the push winds up and then eases back out again as the dive lands,
          so the camera is already home by the time the formation changes and
          there is nothing left to snap. */
-      setDive: function (travel, push) {
+      setDive: function (travel, push, release) {
         state.dive = Math.max(0, travel || 0);
         state.divePush = clamp(push == null ? travel : push, 0, 1);
+        state.diveRelease = clamp(release || 0, 0, 1);
       },
       setHeroDolly: function (p) { state.heroDolly = clamp(p, 0, 1); },
       setLight: function (v) { state.light = clamp(v, 0, 1); },

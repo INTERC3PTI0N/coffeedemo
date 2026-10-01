@@ -18,7 +18,7 @@ Ten sections, each with its own motion idea rather than one effect repeated:
 |---|---------|--------|
 | 01 | Hero | A takeaway cup turned on a lathe, orbited by beans, lit by a sun flare; the framed window opens to full bleed as the camera closes on it |
 | 02 | Manifesto | Per-word `rotateX` reveal through a clipping mask; beans loiter in the margins |
-| 03 | The Harvest | A GSAP-scrubbed dive: a corridor of beans running back into a WebGL cloud bank, rushing the lens as the camera goes in with them |
+| 03 | The Harvest | A GSAP-scrubbed dive: a corridor of beans running back into a WebGL cloud bank, gliding toward the lens as the camera goes in with them, then scattering to the roasts on the same scroll as their arrival |
 | 04 | Our Roasts | Five panels that expand when the pointer rests on one, or on focus, over beds of real beans; clicking the open one opens that bean as a specimen, "Roast this lot" opens the drum |
 | 05 | Founder quote | Line-by-line mask reveal and a signature that draws itself |
 | 06 | Roast Studio | The field forms a ring around one large bean you can drag; the slider re-roasts every bean on the page |
@@ -330,6 +330,23 @@ The field is fed from the timeline's own `onUpdate`, not the ScrollTrigger's. A
 scrubbed trigger fires its callback on scroll events, and the scrub then goes on
 easing the timeline after the scrolling has stopped; the corridor would step to
 a halt on the last scroll event while everything else glided to rest.
+
+It is paced to be watched, not fired past. The corridor makes about one and a
+half passes across the section's scroll (it used to make better than three), it
+drifts half as fast when nobody is scrolling, the scrub is 1.1s, and the beans
+follow their targets on a softer spring than the hero ring does, so a flick of
+the wheel turns into a glide.
+
+**The scatter is the third value.** `release` carries every bean out of the
+corridor to the place the roasts section holds it (`FORMATIONS.sparse`), and it
+runs on the same timeline as the heading and the panels: it starts as the
+heading lifts and finishes as the last panel lands. Each bean bows outward
+toward its own side on the way, so the corridor opens like a door rather than
+sliding. By the time the field changes formation the beans are already where
+the new one wants them, so the zone switch has nothing left to move — the
+scatter used to be a time-based crossfade that fired when the boundary was
+crossed, at whatever speed, out of step with everything the scroll was doing.
+Scroll back up and it reverses with the rest of the arrival.
 
 Distance is a colour, not only a size. Beans lerp toward the harvest sky with
 depth, so the far end of the corridor sits in the same air as the cloud bank

@@ -777,8 +777,8 @@
        `power2.in` on the way down is what makes it a descent rather than a
        constant speed: it starts as a drift and is flat out when the roasts
        arrive. */
-    var dive = { travel: 0, push: 0 };
-    var send = function () { if (beans) beans.setDive(dive.travel, dive.push); };
+    var dive = { travel: 0, push: 0, release: 0 };
+    var send = function () { if (beans) beans.setDive(dive.travel, dive.push, dive.release); };
 
     var arrival = GS.timeline({
       /* On the timeline, not on the ScrollTrigger. A scrubbed trigger fires
@@ -790,7 +790,8 @@
       scrollTrigger: {
         trigger: sec, start: 'top 85%',
         endTrigger: '.panels', end: 'top 70%',
-        scrub: 0.55
+        // a longer scrub: the field glides to rest after the wheel stops
+        scrub: 1.1
       }
     });
 
@@ -799,6 +800,10 @@
       // still travelling, but running out of speed rather than stopping dead
       .to(dive, { travel: 1.34, duration: 0.28, ease: 'power1.out' }, 0.72)
       .to(dive, { push: 0.12, duration: 0.28, ease: 'power2.out' }, 0.72)
+      /* The scatter runs under the arrival: it starts as the heading lifts and
+         finishes with the last panel, so the beans clear the stage on the
+         same beat the roasts take it. */
+      .to(dive, { release: 1, duration: 0.3, ease: 'power2.inOut' }, 0.7)
       .from('.roasts__head .display', {
         y: 46, opacity: 0, duration: 0.2, ease: 'power3.out'
       }, 0.73)
