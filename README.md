@@ -171,6 +171,23 @@ Every hover marks its target without laying anything over it:
 - **The nav logo** ripples, each letter rising a hair in turn; links wipe their
   underline through; buttons fill from below.
 
+- **Buttons and nav pills** fill from below in a fixed colour per context and
+  the label turns to sit on it. The fill used to be `currentColor` — which the
+  hover itself changes, so fill and label came out the same colour — and it was
+  a positioned layer over a plain-text label, so it painted on top of the words.
+  Over any of these controls the custom cursor steps out entirely; the system
+  pointer and the control's own fill do the job.
+
+**The loader-to-hero flight** grows the logo by its font-size, not a scale
+transform. A transform stretches the bitmap the browser drew at the small size —
+five times over — so the logo was soft for the whole flight. Font-size makes the
+vectors redraw at their true size every frame; the only transform in flight is a
+translate. It lands with no error and swaps to the hero's letters in the frame it
+lands, with no crossfade (a fade only ever showed both copies a hair apart), and
+the loader fades only after that, so the logo never dims in mid-air. The hero
+title drops `will-change: transform` for the same reason as the flight: the
+hint keeps one bitmap and stretches it, and the title scales 1.7× on scroll.
+
 The nav's and the cursor's light/dark come from the last section whose top has
 crossed their line, not from each section's own top-to-bottom range — a pinned
 section adds scroll its box does not cover, and inside that gap the old

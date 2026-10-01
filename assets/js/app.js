@@ -264,8 +264,8 @@
       // the last of the arrival lands inside the opening, not before it
       .to(counter, { v: 100, duration: 0.7, ease: 'power2.out', onUpdate: paint }, 'open');
 
-    /* The wordmark is the same nine letters the hero sets across the foot
-       of the screen, so it is flown into that box rather than thrown away
+    /* The wordmark is the same eight logo letters the hero sets across the
+       foot of the screen, so it is flown into that box rather than thrown away
        and replaced. The boxes are measured at this moment because the
        hero's type is fitted to the viewport at runtime. */
     var word = $('.loader__word');
@@ -289,51 +289,46 @@
 
       tl.call(function () {
         var target = lettersRect($$('.hero__title .clip'));
-        if (!target || !target.width) return;
-
-        var ls = parseFloat(getComputedStyle(heroTitle).letterSpacing) || 0;
-
-        /* Scale and tracking fight each other: scaling the word up by the
-           ratio of the two widths is wrong once the tracking is on its way
-           to the title's, because that changes the width being scaled. So
-           measure the word at two trackings, solve width = A + N·ls for A
-           and N, and then s·A + N·ls = target gives the scale exactly. */
-        var prev = word.style.letterSpacing;
-        word.style.letterSpacing = '0px';
-        var w0 = lettersRect(word.children);
-        word.style.letterSpacing = '20px';
-        var w20 = lettersRect(word.children);
-        word.style.letterSpacing = prev;
-        if (!w0 || !w20 || !w0.width) return;
-
-        var N = (w20.width - w0.width) / 20;
-        var sc = (target.width - N * ls) / w0.width;
-        if (!(sc > 0.05) || !isFinite(sc)) return;
-
-        /* And the scale happens about the container's centre, not the
-           letters'. Solve for the translation that lands the letters where
-           the title's are once that scaling has been applied. */
-        var box = word.getBoundingClientRect();
         var here = lettersRect(word.children);
-        var cx = box.left + box.width / 2, cy = box.top + box.height / 2;
-        var lx = here.left + here.width / 2, ly = here.top + here.height / 2;
-        var tx = target.left + target.width / 2;
-        var ty = target.top + target.height / 2;
+        if (!target || !target.width || !here || !here.width) return;
+
+        /* The word grows by its font-size, not by a scale transform. A
+           transform scales the bitmap the browser drew at the small size —
+           five times over here — so the logo went soft for the whole flight
+           and only sharpened when the hero took over. Font-size makes it
+           re-draw the vectors at their true size every frame, so it is as
+           crisp in the air as it is on the ground.
+
+           The letters are slices of the same logo the hero draws, so the
+           only number needed is the ratio of the two widths. Where that size
+           puts the letters is found by setting it, measuring, and putting it
+           back; the translation then carries them the rest of the way. Both
+           layout and translation move linearly with the one eased value, so
+           the letters travel a straight line onto the title. */
+        var f0 = parseFloat(getComputedStyle(word).fontSize) || 16;
+        var f1 = f0 * (target.width / here.width);
+        if (!(f1 > 0) || !isFinite(f1)) return;
+
+        word.style.fontSize = f1 + 'px';
+        var landed = lettersRect(word.children);
+        word.style.fontSize = '';
+        if (!landed) return;
+
+        var dx = (target.left + target.width / 2) - (landed.left + landed.width / 2);
+        var dy = (target.top + target.height / 2) - (landed.top + landed.height / 2);
 
         GS.to(word, {
-          x: tx - cx - (lx - cx) * sc,
-          y: ty - cy - (ly - cy) * sc,
-          scale: sc,
-          letterSpacing: (ls / sc) + 'px',
-          color: '#C59D58',
-          duration: 1.35, ease: 'expo.inOut'
-        });
-
-        // and the hero's letters take over underneath, on the last breath
-        GS.to(word, { opacity: 0, duration: 0.38, ease: 'power2.in', delay: 1.02 });
-        GS.delayedCall(1.06, function () {
-          GS.set($$('.hero__title .ch'), { y: '0%' });
-          window.__heroTitleDone = true;
+          fontSize: f1, x: dx, y: dy,
+          duration: 1.35, ease: 'expo.inOut',
+          /* No crossfade. The two are the same shapes in the same place, so
+             the swap happens in the one frame it lands: hero letters on,
+             flying word off. A fade between them only ever showed both at
+             once, a hair apart. */
+          onComplete: function () {
+            GS.set($$('.hero__title .ch'), { y: '0%' });
+            GS.set(word, { opacity: 0 });
+            window.__heroTitleDone = true;
+          }
         });
       }, null, 'open');
     }
@@ -345,7 +340,10 @@
       if (window.__heroIntro) window.__heroIntro.play();
     }, null, 'open+=0.45');
 
-    tl.to(loader, { opacity: 0, duration: 0.5, ease: 'power2.in' }, 'open+=1.15');
+    /* The loader fades only once the word has landed: the word is inside it,
+       and fading it any earlier dimmed the logo in mid-air and then popped it
+       back to full strength at the handover. */
+    tl.to(loader, { opacity: 0, duration: 0.45, ease: 'power2.in' }, 'open+=1.36');
   }
 
   /* ================================================================= */
@@ -404,7 +402,8 @@
         var media = !!label.textContent;
         cur.classList.toggle('is-active', media);
         cur.classList.toggle('is-text', !media);
-        GS.to(ring, { scale: media ? 1.5 : 0.42, opacity: media ? 1 : 0.55,
+        // over words the ring goes entirely; the control's own fill is the answer
+        GS.to(ring, { scale: media ? 1.5 : 0.3, opacity: media ? 1 : 0,
                       duration: 0.35, ease: 'power3.out', overwrite: 'auto' });
       }
     });

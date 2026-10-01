@@ -153,6 +153,17 @@ h1,h2,h3,h4,p,figure,blockquote{ margin:0; }
   100% { transform:scaleX(1); transform-origin:left; }
 }
 
+/* HOVER FILLS — buttons and nav pills.
+   A fill rises from below and the label turns to sit on it. Two rules make
+   that safe, and both were broken:
+   1. The fill is a fixed colour per context, never currentColor. The hover
+      changes the label's colour, so a currentColor fill changed with it and
+      fill and label came out the same colour — the label vanished.
+   2. The fill paints under the label. It sits at z-index -1 inside its own
+      stacking context (isolation), so it covers the pill's background but
+      never the words; without that a positioned fill paints over plain text,
+      and on the gold button an ink fill slid in BEHIND the gold and left
+      light-gold type on gold. */
 .btn{
   display:inline-flex; align-items:center; gap:10px;
   padding:14px 26px;
@@ -160,27 +171,28 @@ h1,h2,h3,h4,p,figure,blockquote{ margin:0; }
   border-radius:100px;
   font-size:12px; font-weight:600;
   letter-spacing:.1em; text-transform:uppercase;
-  overflow:hidden; position:relative;
-  transition:color .45s var(--ease);
+  overflow:hidden; position:relative; isolation:isolate;
+  --fill:var(--oat); --on-fill:var(--ink);
+  transition:color .45s var(--ease), border-color .45s var(--ease);
 }
 .btn::before{
   content:"";
   position:absolute; inset:0;
-  background:currentColor;
+  background:var(--fill);
   transform:translateY(101%);
   transition:transform .5s var(--ease);
   z-index:-1;
 }
-.btn:hover{ color:var(--paper); }
-.btn:hover::before{ transform:translateY(0); }
+.btn:hover, .btn:focus-visible{ color:var(--on-fill); }
+.btn:hover::before, .btn:focus-visible::before{ transform:translateY(0); }
 /* Gold fills carry deep green type: ivory on the gold is 2.4:1, the ink
-   is 6:1. The hover floods the button with the ink and turns the type gold. */
+   is 6:1. The hover floods it with the forest and turns the type gold. */
 .btn--solid{
   background:var(--gold); border-color:var(--gold); color:var(--ink);
   box-shadow:inset 0 1px 0 rgba(255,244,214,.35);
+  --fill:var(--forest); --on-fill:var(--gold-hi);
 }
-.btn--solid::before{ background:var(--ink); }
-.btn--solid:hover{ color:var(--gold-lt); }
+.btn--solid:hover{ border-color:var(--forest); }
 
 /* text-reveal primitives ------------------------------------------- */
 /* An inline-block is a block container, so inherited text-indent would be
@@ -294,7 +306,6 @@ h1,h2,h3,h4,p,figure,blockquote{ margin:0; }
   letter-spacing:.14em;
   color:var(--oat);
   overflow:hidden;
-  will-change:transform;
 }
 /* the loader's word is the logo, a letter to a box, same as the hero's */
 .loader__word{ color:var(--gold); }
@@ -389,6 +400,10 @@ body.is-loading .hero__cue{ opacity:0; }
   opacity:1; color:var(--gold-hi);
   text-shadow:0 1px 6px rgba(5,18,13,.9);
 }
+/* Over a button, a link or a pill the custom cursor steps out altogether.
+   The system pointer is still there, and the control's own fill is the
+   answer to the hover; even a 6px dot sat on top of the label's letters. */
+.cursor.is-text .cursor__dot{ opacity:0; }
 
 @media (hover:none),(pointer:coarse){ .cursor{ display:none; } }
 
@@ -430,7 +445,8 @@ body.is-loading .hero__cue{ opacity:0; }
 .nav__group--right{ justify-content:flex-end; }
 
 .nav__pill{
-  position:relative;
+  position:relative; isolation:isolate;
+  --fill:var(--oat); --on-fill:var(--ink);
   padding:9px 18px;
   font-size:11px; font-weight:600;
   letter-spacing:.09em; text-transform:uppercase;
@@ -443,23 +459,22 @@ body.is-loading .hero__cue{ opacity:0; }
   overflow:hidden;
   transition:opacity .3s, color .4s var(--ease);
 }
-.nav__pill > *{ position:relative; }
+/* see HOVER FILLS above */
 .nav__pill::before{
-  content:""; position:absolute; inset:0;
-  background:currentColor; transform:translateY(102%);
+  content:""; position:absolute; inset:0; z-index:-1;
+  background:var(--fill); transform:translateY(102%);
   transition:transform .48s var(--ease);
 }
-.nav__pill:hover{ opacity:1; }
-.nav__pill:hover::before{ transform:translateY(0); }
-.nav__pill:hover{ color:var(--ink); }
-.nav.is-light .nav__pill:hover{ color:var(--cream); }
-.nav__pill--solid{
+.nav.is-light .nav__pill{ --fill:var(--forest); --on-fill:var(--cream); }
+.nav__pill:hover, .nav__pill:focus-visible{ opacity:1; color:var(--on-fill); }
+.nav__pill:hover::before, .nav__pill:focus-visible::before{ transform:translateY(0); }
+.nav__pill--solid,
+.nav.is-light .nav__pill--solid{
   background:var(--gold); border-color:var(--gold);
   color:var(--ink); opacity:1;
+  --fill:var(--forest); --on-fill:var(--gold-hi);
 }
-.nav__pill--solid::before{ background:var(--ink); }
-.nav__pill--solid:hover,
-.nav.is-light .nav__pill--solid:hover{ color:var(--gold-lt); }
+.nav__pill--solid:hover{ border-color:var(--forest); }
 
 .nav__brand{ display:flex; flex-direction:column; align-items:center; gap:3px; }
 

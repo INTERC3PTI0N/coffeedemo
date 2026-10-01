@@ -94,12 +94,16 @@ section{ position:relative; }
   letter-spacing:-.015em;
   color:var(--gold);             /* the logo, in its own colour */
   pointer-events:none;
-  will-change:transform;
+  /* no will-change: it tells the browser to keep one bitmap of the logo and
+     stretch it, and the logo scales 1.7x as you scroll away — vectors
+     redrawn at their real size each frame stay sharp */
 }
 /* flex items shrink by default, which would squeeze the letters AND make the
    fit measurement always return the container width */
 .hero__title .clip{ flex:0 0 auto; overflow:hidden; line-height:.82; padding-bottom:.02em; }
-.hero__title .ch{ transform:translateY(110%); display:block; }
+/* will-change:auto overrides the reveal primitive's hint, for the same reason
+   as on the title: these letters are scaled by their parent on scroll */
+.hero__title .ch{ transform:translateY(110%); display:block; will-change:auto; }
 /* each letter is a slice of the logo, sized off the title's font-size so the
    fit in app.js still works by measuring the boxes */
 .hero__title .rl-l{ height:.8em; width:auto; }
