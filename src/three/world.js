@@ -10,43 +10,56 @@ import { createPostFX } from './postfx.js';
  * read the struck mark.
  * ------------------------------------------------------------------ */
 const FLIGHT = [
-  /* A camera grammar, not one move repeated.
+  /* A camera grammar, refined.
      
-     Every chapter had the same shape before this — fall forward, climb out,
-     fall forward — and a move you have already seen stops reading as motion.
-     Each chapter now gets its own kind of shot, and the cut between them is
-     the chapter boundary:
+     Two things were wrong with the old table beyond its shot list. Every
+     vantage was on the same side of the plate, looking at it more or less
+     square on, so twelve keyframes gave one relationship to the subject. And
+     most of the look targets aimed right of the figure's centre, which swings
+     the mass to the LEFT of frame — directly under the column of type, which
+     sits left in every chapter. The images and the words were fighting for
+     the same third of the screen.
 
-       silence     a crane, high and looking down, descending to level
-       first note  a lateral truck, sliding past the figure broadside
-       the sweep   a banked spiral, rolling as it closes
-       modes       an orbit, swinging around a node
-       volume      the rush straight through, kept as it was
-       the mark    a slow arc, rising and pulling away
-       silence     the long pull back, level, for the struck glyph
+     So the targets now aim left of centre almost throughout, which places the
+     field right of frame opposite the copy, and the vantages take the plate
+     from genuinely different places:
 
-     `roll` is a dutch angle per keyframe, interpolated like everything else.
-     It is what makes the spiral read as a spiral rather than as a diagonal
-     move, and it returns to zero for the mark, because a hallmark photographed
-     at an angle looks like a mistake. */
-  { t: 0.00, pos: [-180,  920, 1900 ], look: [  40, -120, -260 ], fov: 44, roll: -0.10 },
-  { t: 0.09, pos: [-100,  180,  640 ], look: [  90,  -40, -300 ], fov: 62, roll:  0.16 },
+       0.18  GRAZING. The camera drops almost into the plane of the plate and
+             looks along it. The figure stops being a picture on a wall and
+             becomes a lit floor running to a horizon — the single most
+             different thing this geometry can do, and it costs nothing but
+             two numbers.
+       0.36  LOW. Beneath the figure looking up through it, so the nodal lines
+             read as a ceiling.
+       0.61  THROUGH. The camera passes clean through the plate to negative z
+             and looks back at it from the far side. Nothing else in the piece
+             tells the reader the figure has two faces.
 
-  { t: 0.18, pos: [-900,  150, 1000 ], look: [ 120,  -30, -180 ], fov: 54, roll: -0.14 },
-  { t: 0.27, pos: [ 520,  -80,  560 ], look: [-180,   40, -260 ], fov: 66, roll:  0.22 },
+     Field of view is used as a lens rather than a dial: 36 to 40 for the
+     composed beats, where a long lens flattens the figure into something
+     graphic, and 72 to 78 through the plunges, where a wide one makes the
+     near grains tear past. The contrast between them is the point. */
+  { t: 0.00, pos: [ -140,  980, 1780 ], look: [  -60, -140, -300 ], fov: 40, roll: -0.09 },
+  { t: 0.09, pos: [  -80,  210,  600 ], look: [ -140,  -60, -340 ], fov: 73, roll:  0.20 },
 
-  { t: 0.36, pos: [ 640, -420, 1150 ], look: [ -80,   60, -120 ], fov: 52, roll:  0.30 },
-  { t: 0.44, pos: [-300,  420,  520 ], look: [  90,  -90, -280 ], fov: 66, roll: -0.34 },
+  // grazing: nearly in the plane of the plate, looking down its length
+  { t: 0.18, pos: [ -980,  170,  210 ], look: [  620,  -70, -140 ], fov: 38, roll: -0.06 },
+  { t: 0.27, pos: [  560, -140,  520 ], look: [ -260,   60, -300 ], fov: 71, roll:  0.26 },
 
-  { t: 0.52, pos: [-780,  120,  700 ], look: [  60,  -20, -200 ], fov: 60, roll:  0.12 },
-  { t: 0.61, pos: [ 380,  360,  360 ], look: [ -80,  -60, -320 ], fov: 70, roll: -0.26 },
+  // low: under the figure, looking up through it
+  { t: 0.36, pos: [  520, -720,  900 ], look: [ -150,  260, -200 ], fov: 44, roll:  0.24 },
+  { t: 0.44, pos: [ -330,  470,  470 ], look: [  -90, -120, -320 ], fov: 75, roll: -0.36 },
 
-  { t: 0.70, pos: [  70,   50,  430 ], look: [ -40,   10, -280 ], fov: 68, roll:  0.18 },
+  { t: 0.52, pos: [ -840,  180,  620 ], look: [ -120,  -40, -240 ], fov: 46, roll: -0.14 },
+  // through: out the far side of the plate, looking back at it
+  { t: 0.61, pos: [  420,  330, -260 ], look: [ -110,  -70,  320 ], fov: 76, roll: -0.30 },
 
-  { t: 0.79, pos: [-220,  -60,  560 ], look: [  60,   40, -240 ], fov: 62, roll: -0.20 },
-  { t: 0.87, pos: [-140,  240,  980 ], look: [  35,  -60, -180 ], fov: 52, roll:  0.08 },
+  { t: 0.70, pos: [   70,   50,  430 ], look: [  -90,   10, -290 ], fov: 68, roll:  0.18 },
 
-  { t: 1.00, pos: [ 430,  -40, 3050 ], look: [ 430,  -40,    0 ], fov: 40, roll:  0.00 },
+  { t: 0.79, pos: [ -240,  -90,  520 ], look: [  -40,   60, -280 ], fov: 74, roll: -0.24 },
+  { t: 0.87, pos: [ -160,  260,  940 ], look: [ -120,  -80, -200 ], fov: 42, roll:  0.07 },
+
+  { t: 1.00, pos: [  430,  -40, 3050 ], look: [  430,  -40,    0 ], fov: 40, roll:  0.00 },
 ];
 
 /* ------------------------------------------------------------------ *

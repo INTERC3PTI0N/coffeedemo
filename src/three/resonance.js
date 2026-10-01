@@ -235,6 +235,8 @@ ${FIELD}
   varying float vPx;      // the sprite's *sharp* size on screen, in pixels
   varying float vAmb;     // 1 if this grain is atmosphere rather than figure
   varying float vNear;    // 1 under the pointer, falling off with distance
+  varying float vFres;    // edge-on facets catch a halo the flat ones do not
+  varying float vIris;    // thin-film phase: what colour this facet is held at
 
   /* a world-space direction, as the unit screen direction it projects to at
      this grain's own depth */
@@ -283,6 +285,22 @@ ${FIELD}
     // read as mineral rather than as a dot
     vec3 halfway = normalize(normalize(uLightDir) + viewDir);
     vGlint = pow(max(dot(n, halfway), 0.0), 26.0) * vLock;
+
+    /* Two terms the field was missing, and between them most of what makes a
+       small bright thing read as a material rather than as a lit dot.
+
+       Fresnel: a facet turned edge-on to the eye returns far more light than
+       one facing it. Without it every grain is equally bright whatever angle
+       it is held at, which is why they read as specks — real particles pick
+       out their silhouettes against the dark as they turn.
+
+       And a thin-film phase. Interference colour depends on the angle a film
+       is viewed at, which is what makes oil, mica and anodised metal shift
+       hue as they move. Driving it from the same angle gives the grains a
+       colour that belongs to their orientation rather than to a palette, so a
+       turning field shimmers instead of merely flickering. */
+    vFres = pow(1.0 - facing, 3.2);
+    vIris = fract(facing * 1.35 + aSeed * 0.21);
 
     /* --- the flake's silhouette ---
        Widest across the direction perpendicular to both its normal and the
@@ -383,6 +401,7 @@ const RENDER_FRAG = /* glsl */ `
   uniform float uCore;      // how brightly the inner structure burns
   uniform float uScan;      // the sweep of light that says it is running
   uniform float uShatter;   // a shaken plate chips the edges off
+  uniform float uIris;      // how much thin-film colour the material carries
   uniform float uFormFade;  // 1 the grain is an object · 0 it is only a grain
 
   varying float vLock;
@@ -397,6 +416,8 @@ const RENDER_FRAG = /* glsl */ `
   varying float vPx;
   varying float vAmb;
   varying float vNear;
+  varying float vFres;
+  varying float vIris;
 
   /* ------------------------------------------------------------------
      The form library.
@@ -720,6 +741,15 @@ const RENDER_FRAG = /* glsl */ `
     col *= vShade;
     col *= 0.72 + vLock * uGlow;
     col += uHot * vGlint * 0.40;
+
+    /* The edge light, tinted by the film. Kept narrow in hue — a sixth of the
+       wheel either side of the hot colour, not a full rainbow — because the
+       point is a material that answers to how it is turned, not a soap
+       bubble. Weighted by rim so it lands on the silhouette, which is where
+       interference actually shows. */
+    vec3 film = 0.5 + 0.5 * cos(6.2831853 * (vIris + vec3(0.0, 0.21, 0.42)));
+    col += mix(uHot, film, 0.62) * rim * vFres * uIris * (0.35 + vLock * 0.55);
+    col += mix(uCold, uHot, vLock) * vFres * 0.12;
     // the core and the scan line burn hotter than the body they sit in
     col += uHot * (core * 0.30 + scan * 0.40) * innerLod;
     // the hand's own light, on the body rather than the outline, so it reads
@@ -890,6 +920,7 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
     uCore:        { value: 0.15 },
     uScan:        { value: 0 },
     uShatter:     { value: 0 },
+    uIris:        { value: 0.85 },
     uFormFade:    { value: 1 },
     uSpin:        { value: 0 },
     uAlign:       { value: 0 },
