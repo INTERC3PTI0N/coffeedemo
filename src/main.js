@@ -44,6 +44,7 @@ const scrollTo = (target) => lenis.scrollTo(target, { offset: 0, duration: 1.6 }
  * 3D
  * ------------------------------------------------------------------ */
 const world = createWorld(document.getElementById('gl'), { reducedMotion });
+if (new URLSearchParams(location.search).has('probe')) window.__w = world;
 
 // Pointer does double duty: it parallaxes the camera and drags a furrow
 // through the dust where it meets the plate.
