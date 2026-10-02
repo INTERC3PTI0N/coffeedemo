@@ -939,6 +939,22 @@
         z: z,
         s: b.size
       };
+    },
+    /* The end of the page. The footer is its own world, with its own
+       fruit; the beans clear the stage for it instead of being wiped off
+       by its edge — out along the ring they were on, lifting as they go,
+       and shrinking away before they reach the frame. */
+    away: function (b, i, n, t, p, view) {
+      var k = i / n;
+      var a = k * TAU * 2.2 + t * 0.26;
+      var z = -1 - (i % 6) * 1.5;
+      var r = 1.25 + k * 0.4;
+      return {
+        x: Math.cos(a) * view.halfW(z) * r,
+        y: Math.sin(a) * view.halfH(z) * r * 1.1 + view.halfH(z) * 0.5,
+        z: z,
+        s: 0
+      };
     }
   };
 

@@ -25,7 +25,8 @@ Ten sections, each with its own motion idea rather than one effect repeated:
 | 07 | The Collection | Pinned horizontal scroll; the shelf holds real 3D cups, and clicking one sends it into a deck of cups while a paper docket falls in with the notes |
 | 08 | Bean to Cup | Parallax airport-code slab, closing on the traceability note |
 | 09 | Brew Guide | Working calculator — method × servings → dose, water, ratio, grind, temp, time and steps |
-| 10 | Subscribe | Parallax field, validated form, footer |
+| 10 | Subscribe | Parallax field, validated form |
+| 11 | Footer | A 3D coffee branch of real-looking cherries, ripening green to crimson, with picked fruit floating beside it that bobs away from the pointer and drifts home |
 
 ## The interactive pieces
 
@@ -512,26 +513,62 @@ the compositor to raster a layer seventeen times the viewport, which is enough
 to stall a frame for whole seconds — repainting one screen-sized gradient per
 frame costs nothing by comparison.
 
-**The page ends in the cup.** The footer is a surface of coffee stretching
-away into the dark: real geometry rippling under one low warm light, with the
-crema turning on it, beans riding the swell and steam off the near edge. Touch
-it and it takes the ring. Nothing here is driven by scroll position and nothing
-has an end state — it is the one part of the site that is just weather.
+**The page ends where the coffee begins: on the branch.** A sprig of coffee
+reaches in from the footer's top corner with its cherries clustered at the
+nodes, the way they actually grow — and, because a branch never ripens all at
+once, green, yellow, orange and red on the same twig, greenest toward the tip.
+Beside it, a handful of picked cherries hang in the air, turning slowly on soft
+springs. Move the pointer through them and they part and spin; tap and the
+nearest ones bob away and float home. The branch sways in a breeze, the leaves
+flutter on their own phases, and the pointer near the twig rustles it. On
+arrival the branch swings in and settles while the loose fruit pops in one by
+one. A finger only pokes on a tap that went nowhere, so scrolling past on a
+phone does not set them off.
 
-Three things make it read as coffee rather than as water. The swell is three
-travelling sine waves, not noise, because a sine sum differentiates in closed
-form: the surface normals come out of the same cosines that made the heights,
-and recomputing normals from the triangles every frame is the one thing that
-would make this expensive. The environment is a narrow band rather than a lamp,
-so its reflection is a single streak running back toward the reader with black
-either side of it. And the clearcoat is almost off — at a grazing angle, which
-is nearly all of this surface, it throws a white Fresnel sheen over everything
-and the pool reads as a misty lake, which is exactly what the first pass looked
-like.
+Nothing in it is an image. The fruit is built (`footer.js`):
 
-`#beanField` is fixed at z-index 2 and runs the whole page, so the footer's
-canvas has to meet it at the same level and win on DOM order. Anything lower
-and the page's beans swim over the coffee.
+- **Shape.** An ovoid a little longer than it is wide and slightly flattened
+  one way — there are two beans face to face inside — with the faint seam
+  where they meet, a socket for the stalk and, at the other end, the raised
+  disc with the dried flower at its heart that every coffee cherry carries.
+  The rings bunch toward both poles, where that detail is, and a little noise
+  keeps each fruit from looking turned on a lathe.
+- **Colour.** A seven-stop ripening ramp (green → yellow-green → amber →
+  orange → red → crimson → burgundy) per instance, read through mottling, a
+  stalk end that lags behind the rest of the fruit, fine streaks and pale
+  lenticels. The skin pattern is sampled on the sphere itself, so it never
+  seams or pinches at the poles.
+- **Surface.** A waxy clearcoat over a micro-relief normal map that breaks
+  the highlight up the way real skin does, roughness that varies with the
+  mottling, and a rim term for the light that has gone into the skin and come
+  back out at the edge — the thing that separates fruit from painted plastic.
+- **Leaves.** Coffee's own: elliptic with a drip tip, a wavy margin, a fold
+  along the midrib, pressed veins in the relief, a glossy upper face and a
+  paler matte underside.
+
+They are lit like a product shot — a warm key that casts soft shadows across
+the cluster, the palette gold as a rim light from behind, a forest-green fill
+— and the gloss reflects a small studio of two softboxes and a gold strip, so
+every cherry carries a believable highlight.
+
+The section itself is the palette at its deepest: the forest falling away to
+ink, warmed from the corner the branch reaches in from, with the copy, links
+and small print in oat and gold. The canvas is transparent and draws only the
+branch and its fruit, so with no WebGL the footer is simply the gradient and
+the type. Links underline with a gold hairline instead of filling, so a hover
+never covers the word.
+
+Placement is done in the page's own pixels: the footer tells the scene where
+its stage is and where the headline and hint sit, and the loose cherries are
+scattered into the space that is left. The fruit and leaves are generated
+from noise on the CPU, so the scene is only built once the reader is a screen
+or two from the end of the page, and it only draws while the footer is on
+screen.
+
+The footer stacks above `#beanField`, and the bean field has a formation of
+its own for it, `away`: as the footer's edge comes up the screen the beans
+lift off along the ring they were on and shrink out of the frame, so the
+footer never slices through them.
 
 ## Structure
 
@@ -544,7 +581,7 @@ assets/
   js/scene.js         three.js — bean geometry, textures, the page-wide field
   js/chamber.js       the drum / deck stage, and the still bean-bed renders
   js/shelf.js         the cup — profile, sleeve, crema — and the shelf
-  js/footer.js        the surface of coffee the page ends on
+  js/footer.js        the coffee branch and cherries the page ends on
   js/app.js           Lenis + GSAP/ScrollTrigger, Roast Studio, Brew Guide
   img/favicon.svg
   vendor/             GSAP 3.12.5 + ScrollTrigger, Lenis 1.1.13, three.js r160
@@ -553,8 +590,12 @@ assets/
 
 ## Notes
 
-- `prefers-reduced-motion` is honoured: transitions collapse, the grain stops,
-  and the WebGL scenes hold still instead of drifting.
+- `prefers-reduced-motion` is honoured: transitions are switched off, the
+  grain stops, and the WebGL scenes hold still instead of drifting. Off, not
+  shortened: a `.01ms` transition is still a running transition, and when
+  ScrollTrigger refreshes, GSAP re-reads computed styles mid-transition and
+  recorded every scroll reveal's end state as "opacity 0", which left most of
+  the page blank in this mode.
 - Without WebGL the canvas removes itself and the page keeps its gradients.
 - Without GSAP the page degrades to plain scrolling with everything visible.
 - Fonts come from Google Fonts with local fallbacks; everything else is local.

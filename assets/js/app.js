@@ -578,7 +578,10 @@
     ['#collection', 'stream'],
     ['#journey',    'arc'],
     ['#brew',       'sparse'],
-    ['#cta',        'swirl']
+    ['#cta',        'swirl'],
+    /* the footer's zone opens as its edge comes up the screen, not at
+       the halfway line, so the beans are leaving before it reaches them */
+    ['.footer',     'away', 'top 88%']
   ];
 
   function initBeans() {
@@ -614,7 +617,7 @@
         el: sec,
         // a measuring trigger: it reports start/end in scroll pixels and
         // accounts for pinning, but drives nothing itself
-        st: ST.create({ trigger: sec, start: 'top center', end: 'bottom center' })
+        st: ST.create({ trigger: sec, start: pair[2] || 'top center', end: 'bottom center' })
       });
     });
 
@@ -1512,7 +1515,7 @@
   }
 
   /* ================================================================= */
-  /* 8c2 · The footer's surface of coffee                              */
+  /* 8c2 · The footer's coffee branch                                   */
   /* ================================================================= */
   var footer = null;
 
@@ -1524,53 +1527,101 @@
     var canvas = $('#footerCanvas');
     if (!sec || !canvas) return;
 
-    try { footer = window.LattecanoFooter.create(canvas); }
-    catch (e) { footer = null; }
-    if (!footer) return;
-
-    sec.classList.add('is-live');
-
-    /* It is the last thing on the page, so it only ever draws when the
-       page has actually reached it — the rest of the time this is three
-       canvases' worth of coffee nobody is looking at. */
-    function watch() {
+    /* The scene builds its fruit and leaves from noise on the CPU, so it
+       is not built at boot: only once the reader is a screen or two away
+       from the end of the page. */
+    function near() {
       var r = sec.getBoundingClientRect();
-      footer.setVisible(r.top < window.innerHeight + 120 && r.bottom > -120);
+      return r.top < window.innerHeight * 2.2;
     }
-    watch();
+    function build() {
+      if (footer) return;
+      try { footer = window.LattecanoFooter.create(canvas); window.__footer = footer; }
+      catch (e) { footer = null; }
+      if (!footer) return;
+      sec.classList.add('is-live');
+      layout();
+      watch();
+    }
+
+    /* The scene places everything in the page's own pixels: the stage it
+       may use, and the copy it must keep clear of. */
+    function rel(el) {
+      var a = el.getBoundingClientRect(), b = canvas.getBoundingClientRect();
+      return { x: a.left - b.left, y: a.top - b.top, w: a.width, h: a.height };
+    }
+    function layout() {
+      if (!footer) return;
+      var stage = $('.footer__stage'), lede = $('.footer__lede'), hint = $('.footer__hint');
+      var avoid = [];
+      if (lede) avoid.push(rel(lede));
+      if (hint) avoid.push(rel(hint));
+      footer.setLayout({ stage: stage ? rel(stage) : rel(sec), avoid: avoid });
+    }
+
+    function watch() {
+      if (!footer) return;
+      var r = sec.getBoundingClientRect();
+      footer.setVisible(r.top < window.innerHeight + 80 && r.bottom > -80);
+    }
+
     if (hasGSAP && ST) {
       ST.create({
+        trigger: sec, start: 'top bottom+=' + Math.round(window.innerHeight * 1.2), end: 'bottom top',
+        onToggle: function (self) { if (self.isActive) build(); }
+      });
+      ST.create({
         trigger: sec, start: 'top bottom', end: 'bottom top',
-        onToggle: function (self) { footer.setVisible(self.isActive); }
+        onToggle: function (self) { if (footer) footer.setVisible(self.isActive); }
       });
-    } else {
-      window.addEventListener('scroll', watch, { passive: true });
     }
+    window.addEventListener('scroll', function () {
+      if (!footer && near()) build();
+      else if (!hasGSAP || !ST) watch();
+    }, { passive: true });
+    if (near()) build();
 
+    function local(e) {
+      var b = canvas.getBoundingClientRect();
+      return { x: e.clientX - b.left, y: e.clientY - b.top };
+    }
     sec.addEventListener('pointermove', function (e) {
-      var r = sec.getBoundingClientRect();
-      var nx = (e.clientX - r.left) / Math.max(1, r.width);
-      var ny = (e.clientY - r.top) / Math.max(1, r.height);
-      footer.setPointer(nx * 2 - 1, ny * 2 - 1);
+      if (!footer || e.pointerType === 'touch') return;
+      var p = local(e);
+      footer.setPointer(p.x, p.y, true);
     });
-    sec.addEventListener('pointerleave', function () { footer.setPointer(0, 0); });
-
-    // a touch leaves a ring on it, the way a cup does on a table
+    sec.addEventListener('pointerleave', function () {
+      if (footer) footer.setPointer(0, 0, false);
+    });
+    /* A tap sends the nearest cherries bobbing off, and they float home.
+       A mouse pokes on the press; a finger only on a tap that went
+       nowhere, so scrolling past the footer does not set them off. */
+    var down = null;
     sec.addEventListener('pointerdown', function (e) {
-      var r = sec.getBoundingClientRect();
-      footer.ring((e.clientX - r.left) / Math.max(1, r.width),
-                  (e.clientY - r.top) / Math.max(1, r.height), 0.20);
+      if (!footer || e.target.closest('a,button,input')) return;
+      var p = local(e);
+      if (e.pointerType === 'mouse') { footer.poke(p.x, p.y); return; }
+      down = { x: e.clientX, y: e.clientY, t: performance.now() };
     });
-    $$('.footer__col a, .footer__brand').forEach(function (el) {
-      el.addEventListener('pointerenter', function (e) {
-        var r = sec.getBoundingClientRect();
-        footer.ring((e.clientX - r.left) / Math.max(1, r.width),
-                    (e.clientY - r.top) / Math.max(1, r.height), 0.10);
-      });
+    sec.addEventListener('pointerup', function (e) {
+      if (!footer || !down) return;
+      var moved = Math.abs(e.clientX - down.x) + Math.abs(e.clientY - down.y);
+      var quick = performance.now() - down.t < 450;
+      down = null;
+      if (moved > 12 || !quick) return;
+      var p = local(e);
+      footer.poke(p.x, p.y);
     });
+    sec.addEventListener('pointercancel', function () { down = null; });
 
-    window.addEventListener('resize', function () { footer.resize(); });
-    if (hasGSAP && ST) ST.addEventListener('refresh', function () { footer.resize(); });
+    var t = 0;
+    var relayout = function () {
+      clearTimeout(t);
+      t = setTimeout(layout, 120);
+    };
+    window.addEventListener('resize', relayout);
+    if (hasGSAP && ST) ST.addEventListener('refresh', relayout);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(relayout);
   }
 
   /* ================================================================= */
@@ -2050,9 +2101,13 @@
       y: 38, opacity: 0, duration: 1, stagger: 0.1, ease: 'power3.out',
       scrollTrigger: { trigger: '.cta', start: 'top 70%' }
     });
-    GS.from('.footer > div', {
-      y: 30, opacity: 0, duration: 0.85, stagger: 0.07, ease: 'power3.out',
-      scrollTrigger: { trigger: '.footer', start: 'top 88%' }
+    GS.from('.footer__lede > *', {
+      y: 34, opacity: 0, duration: 1, stagger: 0.09, ease: 'power3.out',
+      scrollTrigger: { trigger: '.footer__lede', start: 'top 86%' }
+    });
+    GS.from('.footer__grid > *, .footer__end', {
+      y: 24, opacity: 0, duration: 0.85, stagger: 0.07, ease: 'power3.out',
+      scrollTrigger: { trigger: '.footer__grid', start: 'top 94%' }
     });
   }
 

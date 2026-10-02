@@ -582,7 +582,17 @@ body.is-loading .hero__cue{ opacity:0; }
 /* reduced motion ---------------------------------------------------- */
 @media (prefers-reduced-motion:reduce){
   .grain{ animation:none; }
-  *{ animation-duration:.01ms !important; transition-duration:.01ms !important; }
+  /* No transitions at all, rather than very short ones. A .01ms
+     transition is still a running transition: GSAP re-reads computed
+     styles whenever ScrollTrigger refreshes, and mid-transition the
+     browser reports the value an element is leaving, so every scroll
+     reveal on the page re-recorded "opacity 0" as its end state and the
+     page came up blank. Nothing here listens for transitionend. */
+  *, *::before, *::after{
+    animation-duration:.01ms !important;
+    animation-iteration-count:1 !important;
+    transition:none !important;
+  }
 }
 
 /* mobile nav -------------------------------------------------------- */
