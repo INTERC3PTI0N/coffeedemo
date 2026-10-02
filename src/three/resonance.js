@@ -1042,11 +1042,15 @@ const RENDER_FRAG_SOLID = /* glsl */ `
 
     vec3 col = base * (0.16 + 0.92 * lam)          // key
              + mix(uCold, base, 0.5) * fill * 0.30 // fill, keeps the dark side readable
-             + mix(uHot, vec3(1.0), 0.6) * spec * (0.55 + vLock * 0.9);
+             /* A metal highlight keeps most of the body's colour. Mixing it
+                six tenths of the way to white and then weighting it above one
+                turned every hero into a white snowflake — bright, detailed,
+                and made of the wrong material entirely. */
+             + mix(uHot, vec3(1.0), 0.32) * spec * (0.22 + vLock * 0.42);
 
     // the thin film still rides the edge
     vec3 film = 0.5 + 0.5 * cos(TAU * (vIris + vec3(0.0, 0.21, 0.42)));
-    col += mix(uHot, film, 0.62) * vFres * uIris * 0.30 * (1.0 - face);
+    col += mix(uHot, film, 0.62) * vFres * uIris * 0.22 * (1.0 - face);
 
     // interior structure, cut into the solid rather than glowing over it
     float ce = fwidth(inner);
