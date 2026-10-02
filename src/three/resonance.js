@@ -136,8 +136,8 @@ const FIELD = /* glsl */ `
       frq *= 2.03;
     }
     h /= norm;
-    // sit the range low in the field so the camera flies above the crests
-    return h * 2.05 - 0.78;
+    // sit the range low enough that the camera clears the highest crests
+    return h * 1.40 - 0.76;
   }
 
   /* --- volume: S = 0 is the gyroid surface --- */
@@ -233,16 +233,24 @@ ${FIELD}
     float over = pos.z - clamp(pos.z, -slab, slab);
     force.z += -over * 14.0 * (1.0 - uDimension) * (1.0 - amb * 0.85) * (1.0 - uTerrain);
 
-    /* The range. Grains fall onto the surface rather than being pressed flat,
-       and are pushed outward in x and y as they land so the crests carry as
-       much dust as the valleys — settle them straight down and a heightfield
-       collects everything in its hollows. */
-    float ht = terrainAt(pos.xy);
-    float toSurface = ht - pos.z;
-    force.z += toSurface * 11.0 * uTerrain * (1.0 - amb);
-    vec2 slope = vec2(terrainAt(pos.xy + vec2(0.035, 0.0)) - ht,
-                      terrainAt(pos.xy + vec2(0.0, 0.035)) - ht) / 0.035;
-    force.xy += slope * 0.22 * uTerrain * (1.0 - amb);
+    /* The range.
+
+       Elevation runs along y, and the ground is the x–z plane. This is the
+       axis the first version got wrong: the plate is the x–y plane with z as
+       its thickness, so building the heightfield to rise in z made the
+       mountains grow toward the lens rather than upward on screen — and with
+       the camera's up vector on y, a landscape raised on z can only ever read
+       as a bumpy wall coming at you. A landform has to agree with which way
+       the viewer thinks is up.
+
+       Grains fall onto the surface and are pushed along its slope as they
+       land, so the crests carry dust rather than everything collecting in the
+       hollows. */
+    float ht = terrainAt(pos.xz);
+    force.y += (ht - pos.y) * 11.0 * uTerrain * (1.0 - amb);
+    vec2 slope = vec2(terrainAt(pos.xz + vec2(0.035, 0.0)) - ht,
+                      terrainAt(pos.xz + vec2(0.0, 0.035)) - ht) / 0.035;
+    force.xz += slope * 0.22 * uTerrain * (1.0 - amb);
 
     // clamped step keeps the descent stable when the gradient is steep
     vec3 step = force * uTightness * uDt;
@@ -279,7 +287,7 @@ ${FIELD}
     float s = mix(abs(sP), abs(sV), uDimension);
     float lock = 1.0 - smoothstep(0.0, uLockWidth, s);
     // on the range, a grain is settled when it is lying on the ground
-    lock = mix(lock, 1.0 - smoothstep(0.0, 0.22, abs(pos.z - ht)), uTerrain);
+    lock = mix(lock, 1.0 - smoothstep(0.0, 0.22, abs(pos.y - ht)), uTerrain);
     // with the plate silent, |S| at a grain's position is meaningless — the
     // struck mark is settled by definition, so light all of it
     lock = mix(lock, 1.0, uGlyph);

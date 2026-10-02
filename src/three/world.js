@@ -56,8 +56,11 @@ const FLIGHT = [
 
   { t: 0.70, pos: [   70,   50,  430 ], look: [  -90,   10, -290 ], fov: 68, roll:  0.18 },
 
-  // the range: low and level, running the crests, the way a landscape is shot
-  { t: 0.79, pos: [ -620, -150,  430 ], look: [  540,  -80, -120 ], fov: 58, roll: -0.05 },
+  /* The range: above the crests, looking across them. Elevation runs on y
+     here, so a landscape shot means a camera high on y looking out along the
+     ground plane — not the low forward plunge the other beats use, which
+     against a heightfield just flies into the side of it. */
+  { t: 0.79, pos: [ -760,  560,  760 ], look: [  620,  -60, -680 ], fov: 54, roll: -0.04 },
   { t: 0.87, pos: [ -160,  260,  940 ], look: [ -120,  -80, -200 ], fov: 42, roll:  0.07 },
 
   { t: 1.00, pos: [  430,  -40, 3050 ], look: [  430,  -40,    0 ], fov: 40, roll:  0.00 },
@@ -166,8 +169,8 @@ const GRADE = [
     bloom: 0.34, vig: 0.56, sat: 1.06, lift: 0.007, cast: '#e2ecf6', castAmt: 0.10, exposure: 1.04 },
   { t: 0.70, bg: '#0a0d16', cold: '#a6c7e4', hot: '#ffe9ac', size: 1.18, glow: 1.26, opacity: 1.00,
     bloom: 0.37, vig: 0.48, sat: 1.10, lift: 0.010, cast: '#eef4fb', castAmt: 0.08, exposure: 1.06 },
-  { t: 0.79, bg: '#080b11', cold: '#8fb0cf', hot: '#ffdca0', size: 1.06, glow: 1.10, opacity: 1.00,
-    bloom: 0.34, vig: 0.54, sat: 1.06, lift: 0.008, cast: '#f2e6cf', castAmt: 0.14, exposure: 1.04 },
+  { t: 0.79, bg: '#080b11', cold: '#8fb0cf', hot: '#f0cf96', size: 0.88, glow: 0.62, opacity: 0.80,
+    bloom: 0.24, vig: 0.60, sat: 1.04, lift: 0.008, cast: '#f2e6cf', castAmt: 0.14, exposure: 0.94 },
   { t: 0.88, bg: '#07090e', cold: '#96b2ca', hot: '#fff2c6', size: 0.95, glow: 1.32, opacity: 1.00,
     bloom: 0.38, vig: 0.58, sat: 1.04, lift: 0.006, cast: '#ffeecb', castAmt: 0.16, exposure: 1.04 },
   { t: 1.00, bg: '#05070a', cold: '#8198ac', hot: '#ecc478', size: 0.60, glow: 0.90, opacity: 0.86,
