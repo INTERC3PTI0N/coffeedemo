@@ -50,6 +50,60 @@ const FIELD = /* glsl */ `
     return step(0.79, ghash(uv * 7.31 + 3.7));
   }
 
+  /* The hero grains.
+
+     A form needs something like a dozen pixels before a bevel, a chamfer and
+     an interior can be told apart, and a grain in a field of six hundred
+     thousand is two or three. Selecting the ones that happen to be big enough
+     to draw as solids therefore selected almost nothing, which is why the
+     objects were still not visible however carefully they were lit: the pass
+     that draws them was running on a handful of grains in the deepest frame
+     of the piece and on none at all anywhere else.
+
+     So a fiftieth of the field is promoted. Those grains are drawn several
+     times larger and always as solids, and they are what the reader actually
+     sees the shape of. The remaining ninety-eight per cent stay exactly as
+     they were — fine, numerous, and carrying the figure — because a Chladni
+     pattern is made of the many, not of the few. One field at two scales: the
+     dust that draws the figure, and the objects that show what the dust is. */
+  float heroOf(vec2 uv) {
+    return step(0.98, ghash(uv * 11.17 + 29.3));
+  }
+
+  /* --- terrain: a range the dust settles onto ---
+
+     The plate and the gyroid are both exact: a figure and a minimal surface,
+     each one the solution to an equation. A landscape is the opposite kind of
+     thing, and that is the point of putting one in the middle of them — the
+     grains spend the whole piece finding mathematics, and here they find
+     geology instead, briefly, before the mark.
+
+     Ridged fractal noise: the absolute value of a noise field inverted and
+     squared, summed over octaves. Taking the ridge rather than the valley is
+     what makes crests sharp and flanks smooth, which is the difference
+     between mountains and hills. */
+  float vnoise(vec2 p) {
+    vec2 i = floor(p), f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = ghash(i);
+    float b = ghash(i + vec2(1.0, 0.0));
+    float c = ghash(i + vec2(0.0, 1.0));
+    float e = ghash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, e, f.x), f.y);
+  }
+
+  float terrainAt(vec2 p) {
+    float h = 0.0, amp = 0.52, frq = 0.85;
+    for (int i = 0; i < 5; i++) {
+      float n = 1.0 - abs(vnoise(p * frq + 17.3) * 2.0 - 1.0);
+      h += n * n * amp;
+      amp *= 0.48;
+      frq *= 2.11;
+    }
+    // sit the range low in the field so the camera flies above the crests
+    return h * 1.45 - 0.62;
+  }
+
   /* --- volume: S = 0 is the gyroid surface --- */
   float volume(vec3 p, vec3 k) {
     return sin(k.x * p.x) * cos(k.y * p.y)
@@ -79,6 +133,7 @@ ${FIELD}
   uniform float uJitter;       // thermal agitation — keeps the figure alive
   uniform float uLockWidth;    // distance from a node that still counts as settled
   uniform float uThick;        // half-depth of the plate's slab, in field units
+  uniform float uTerrain;      // 0 the field is a figure · 1 it is a landscape
   uniform float uGlyph;        // blend toward the struck mark
   uniform float uScatter;      // blow the field apart
   uniform vec3  uPointer;      // world-space pointer, for local disturbance
@@ -127,7 +182,7 @@ ${FIELD}
     // The bow lifts as the mark forms: without this the plate keeps driving
     // grains onto its nodal lines while the glyph pulls them to the digits,
     // the two forces fight, and the mark never resolves.
-    float drive = (1.0 - uGlyph) * (1.0 - amb);
+    float drive = (1.0 - uGlyph) * (1.0 - amb) * (1.0 - uTerrain);
     vec3 force = vec3(0.0);
     force.xy += -2.0 * sP * gP * (1.0 - uDimension) * drive;
     force    += -2.0 * sV * gV * uDimension * drive;
@@ -140,7 +195,18 @@ ${FIELD}
        is made of. uThick is the slab's half-depth, in field units. */
     float slab = mix(uThick, 1.9, amb);
     float over = pos.z - clamp(pos.z, -slab, slab);
-    force.z += -over * 14.0 * (1.0 - uDimension) * (1.0 - amb * 0.85);
+    force.z += -over * 14.0 * (1.0 - uDimension) * (1.0 - amb * 0.85) * (1.0 - uTerrain);
+
+    /* The range. Grains fall onto the surface rather than being pressed flat,
+       and are pushed outward in x and y as they land so the crests carry as
+       much dust as the valleys — settle them straight down and a heightfield
+       collects everything in its hollows. */
+    float ht = terrainAt(pos.xy);
+    float toSurface = ht - pos.z;
+    force.z += toSurface * 11.0 * uTerrain * (1.0 - amb);
+    vec2 slope = vec2(terrainAt(pos.xy + vec2(0.035, 0.0)) - ht,
+                      terrainAt(pos.xy + vec2(0.0, 0.035)) - ht) / 0.035;
+    force.xy += slope * 0.22 * uTerrain * (1.0 - amb);
 
     // clamped step keeps the descent stable when the gradient is steep
     vec3 step = force * uTightness * uDt;
@@ -176,6 +242,8 @@ ${FIELD}
     /* --- how settled is this grain? --- */
     float s = mix(abs(sP), abs(sV), uDimension);
     float lock = 1.0 - smoothstep(0.0, uLockWidth, s);
+    // on the range, a grain is settled when it is lying on the ground
+    lock = mix(lock, 1.0 - smoothstep(0.0, 0.22, abs(pos.z - ht)), uTerrain);
     // with the plate silent, |S| at a grain's position is meaningless — the
     // struck mark is settled by definition, so light all of it
     lock = mix(lock, 1.0, uGlyph);
@@ -198,6 +266,7 @@ ${FIELD}
   uniform float uProjScale;     // drawingBufferHeight / (2 tan(fovY/2))
   uniform float uMinPx;
   uniform float uMaxPx;
+  uniform float uHeroMaxPx;   // heroes are allowed to be far larger than dust
 
   /* focus */
   uniform float uFocus;
@@ -234,6 +303,7 @@ ${FIELD}
   varying float vPulse;   // how far out on the figure this grain sits
   varying float vPx;      // the sprite's *sharp* size on screen, in pixels
   varying float vAmb;     // 1 if this grain is atmosphere rather than figure
+  varying float vHero;    // 1 if this grain is drawn large, as an object
   varying float vNear;    // 1 under the pointer, falling off with distance
   varying float vFres;    // edge-on facets catch a halo the flat ones do not
   varying float vIris;    // thin-film phase: what colour this facet is held at
@@ -254,6 +324,7 @@ ${FIELD}
     vLock = state.w;
     vSeed = aSeed;
     vAmb = ambientOf(aRef);
+    vHero = (1.0 - vAmb) * heroOf(aRef);
 
     /* The hand does not only push the dust about — it wakes it. Grains near
        the pointer take a little more light, which turns a drag through the
@@ -352,7 +423,8 @@ ${FIELD}
     float radius = uGrainRadius
                  * mix(1.0, uSettledGain, vLock)
                  * (0.72 + aSeed * 0.56)
-                 * mix(1.0, 2.1 + aSeed * 1.1, vAmb);
+                 * mix(1.0, 2.1 + aSeed * 1.1, vAmb)
+                 * mix(1.0, 5.2 + aSeed * 2.6, vHero);
 
     float px = 2.0 * radius * uProjScale / depth;
 
@@ -364,14 +436,14 @@ ${FIELD}
        detail level has to be read here, before the circle of confusion
        inflates it — otherwise a distant out-of-focus speck is mistaken for a
        close-up object and drawn with an inside it cannot possibly show. */
-    vPx = clamp(px, uMinPx, uMaxPx);
+    vPx = clamp(px, uMinPx, mix(uMaxPx, uHeroMaxPx, vHero));
 
     float coc = clamp(abs(depth - uFocus) / uFocusRange, 0.0, 1.0);
     coc *= coc;
     vBlur = coc;
     px *= 1.0 + coc * uBokeh;
 
-    gl_PointSize = clamp(px, uMinPx, uMaxPx);
+    gl_PointSize = clamp(px, uMinPx, mix(uMaxPx, uHeroMaxPx, vHero));
     gl_Position = projectionMatrix * mv;
   }
 `;
@@ -601,6 +673,7 @@ const RENDER_FRAG = /* glsl */ `
   varying float vPulse;
   varying float vPx;
   varying float vAmb;
+  varying float vHero;
   varying float vNear;
   varying float vFres;
   varying float vIris;
@@ -711,7 +784,7 @@ const RENDER_FRAG = /* glsl */ `
     /* Handed over. A grain the solid pass has drawn as an object must not
        also be drawn here, or the glow lands on top of the hard edge and
        undoes it — which is the whole reason the solid pass exists. */
-    if (vPx >= uSolidPx && vAmb < 0.5 && vLock >= 0.55 && vBlur <= 0.35 && uFormFade >= 0.5) discard;
+    if (vHero >= 0.5 && vPx >= uSolidPx && vLock >= 0.42 && vBlur <= 0.55 && uFormFade >= 0.5) discard;
 
     float formLod   = smoothstep(1.6, 5.0, vPx) * uFormFade * (1.0 - vAmb);
     float innerLod  = smoothstep(4.0, 9.5, vPx) * (1.0 - vBlur) * uFormFade;
@@ -911,6 +984,7 @@ const RENDER_FRAG_SOLID = /* glsl */ `
   varying float vPulse;
   varying float vPx;
   varying float vAmb;
+  varying float vHero;
   varying float vNear;
   varying float vFres;
   varying float vIris;
@@ -921,7 +995,7 @@ const RENDER_FRAG_SOLID = /* glsl */ `
     /* Only the grains that have earned it. A solid needs enough pixels for a
        bevel to exist in, and it has to be settled — a grain still drifting is
        not an object yet, it is dust, and dust belongs in the glow pass. */
-    if (vPx < uSolidPx || vAmb > 0.5 || vLock < 0.55 || vBlur > 0.35) discard;
+    if (vHero < 0.5 || vPx < uSolidPx || vLock < 0.42 || vBlur > 0.55) discard;
     if (uFormFade < 0.5) discard;
 
     vec2 q = gl_PointCoord - 0.5;
@@ -1076,6 +1150,7 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
     uJitter:       { value: 0.06 },
     uLockWidth:    { value: 0.35 },
     uThick:        { value: 0.02 },
+    uTerrain:      { value: 0 },
     uGlyph:        { value: 0 },
     uScatter:      { value: 0 },
     uPointer:      { value: new THREE.Vector3(9, 9, 9) },
@@ -1111,6 +1186,7 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
     uProjScale:   { value: 800 },
     uMinPx:       { value: 0.9 },
     uMaxPx:       { value: 38 },
+    uHeroMaxPx:   { value: 150 },
 
     uFocus:       { value: 1200 },
     uFocusRange:  { value: 900 },
@@ -1148,7 +1224,7 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
        enough that the close field is genuinely solid, high enough that the
        plate chapters stay a glow — a figure made of ten thousand opaque chips
        is a mosaic, not a standing wave. */
-    uSolidPx:     { value: 7.0 },
+    uSolidPx:     { value: 5.0 },
     uMorphFlare:  { value: 0.55 },
     uFormFade:    { value: 1 },
     uSpin:        { value: 0 },

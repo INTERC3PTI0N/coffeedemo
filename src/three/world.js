@@ -56,7 +56,8 @@ const FLIGHT = [
 
   { t: 0.70, pos: [   70,   50,  430 ], look: [  -90,   10, -290 ], fov: 68, roll:  0.18 },
 
-  { t: 0.79, pos: [ -240,  -90,  520 ], look: [  -40,   60, -280 ], fov: 74, roll: -0.24 },
+  // the range: low and level, running the crests, the way a landscape is shot
+  { t: 0.79, pos: [ -620, -150,  430 ], look: [  540,  -80, -120 ], fov: 58, roll: -0.05 },
   { t: 0.87, pos: [ -160,  260,  940 ], look: [ -120,  -80, -200 ], fov: 42, roll:  0.07 },
 
   { t: 1.00, pos: [  430,  -40, 3050 ], look: [  430,  -40,    0 ], fov: 40, roll:  0.00 },
@@ -73,20 +74,23 @@ const SCORE = [
   // `off` slides the plate clear of the column of type, the way a subject is
   // placed off-centre; the volume dive and the struck mark recentre it.
   // 01 — silence: no mode, wide lock, the dust is formless
-  { t: 0.00, mode: [0.4, 0.7], gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.30, jitter: 0.200, lock: 0.95, glyph: 0, scatter: 0, off:  60, thick: 0.80, dive: 0.55 },
+  { t: 0.00, mode: [0.4, 0.7], gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.30, jitter: 0.200, lock: 0.95, glyph: 0, scatter: 0, off:  60, thick: 0.80, dive: 0.55, terr: 0 },
   // 02 — the first note: a simple, unmistakable figure
-  { t: 0.18, mode: [2, 3],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.20, jitter: 0.030, lock: 0.34, glyph: 0, scatter: 0, off: 110, thick: 0.50, dive: 0.70 },
+  { t: 0.18, mode: [2, 3],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.20, jitter: 0.030, lock: 0.34, glyph: 0, scatter: 0, off: 110, thick: 0.50, dive: 0.70, terr: 0 },
   // 03 — the sweep: the mode climbs, the figure complicates
-  { t: 0.36, mode: [5, 4],     gyro: [3.4, 3.4, 3.4], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.30, glyph: 0, scatter: 0, off: 110, thick: 0.38, dive: 0.58 },
-  { t: 0.52, mode: [8, 5],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.60, jitter: 0.024, lock: 0.27, glyph: 0, scatter: 0, off:  70, thick: 0.46, dive: 0.80 },
+  { t: 0.36, mode: [5, 4],     gyro: [3.4, 3.4, 3.4], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.30, glyph: 0, scatter: 0, off: 110, thick: 0.38, dive: 0.58, terr: 0 },
+  { t: 0.52, mode: [8, 5],     gyro: [3.2, 3.2, 3.2], dim: 0, tight: 2.60, jitter: 0.024, lock: 0.27, glyph: 0, scatter: 0, off:  70, thick: 0.46, dive: 0.80, terr: 0 },
   // 04 — the field lifts. Grains spread over a surface read far thinner than
   // grains crowded onto lines, so the volume needs fewer, larger cells and a
   // harder pull to hold together.
-  { t: 0.70, mode: [9, 6],     gyro: [2.6, 2.6, 2.6], dim: 1, tight: 3.20, jitter: 0.016, lock: 0.30, glyph: 0, scatter: 0, off: 0,   thick: 1.00, dive: 1.00 },
+  { t: 0.70, mode: [9, 6],     gyro: [2.6, 2.6, 2.6], dim: 1, tight: 3.20, jitter: 0.016, lock: 0.30, glyph: 0, scatter: 0, off: 0,   thick: 1.00, dive: 1.00, terr: 0 },
   // 05 — the mark: the field falls quiet so the struck object owns the frame
-  { t: 0.88, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.26, glyph: 0, scatter: 0, off: -80, thick: 0.42, dive: 0.72 },
+  // 04b — the range. The field has just left the plate and closed into a
+  // surface; for one beat that surface is ground, and the dust lies on it.
+  { t: 0.79, mode: [9, 6],     gyro: [2.6, 2.6, 2.6], dim: 0, tight: 1.60, jitter: 0.014, lock: 0.30, glyph: 0, scatter: 0, off: -40, thick: 0.90, dive: 0.86, terr: 1 },
+  { t: 0.88, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 2.40, jitter: 0.026, lock: 0.26, glyph: 0, scatter: 0, off: -80, thick: 0.42, dive: 0.72, terr: 0 },
   // 06 — the dust resolves into the hallmark, and holds
-  { t: 1.00, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.10, jitter: 0.0025, lock: 0.55, glyph: 1, scatter: 0, off: 430, thick: 0.04, dive: 0.10 },
+  { t: 1.00, mode: [9, 9],     gyro: [3.0, 3.0, 3.0], dim: 0, tight: 0.10, jitter: 0.0025, lock: 0.55, glyph: 1, scatter: 0, off: 430, thick: 0.04, dive: 0.10, terr: 0 },
 ];
 
 /* ------------------------------------------------------------------ *
@@ -129,6 +133,8 @@ const SHAPE = [
   // 04 — the volume: the ring opens into a braced cell as the field lifts
   { t: 0.70, form: 4, elong: 1.00, hollow: 0.16, facet: 1.55, core: 0.48, scan: 0.18, align: 0.40, spin: 0.20 },
   // 05 — the mark: compacted, struck, and holding still
+  // on the range the grains lie flat as shale, aligned to the slope
+  { t: 0.79, form: 5, elong: 1.45, hollow: 0.14, facet: 1.20, core: 0.40, scan: 0.22, align: 0.85, spin: 0.00 },
   { t: 0.88, form: 5, elong: 1.25, hollow: 0.10, facet: 1.30, core: 0.92, scan: 0.60, align: 0.72, spin: 0.00 },
   // 06 — struck: the house mark, one grain at a time
   { t: 1.00, form: 6, elong: 1.00, hollow: 0.18, facet: 1.45, core: 1.00, scan: 0.20, align: 0.90, spin: 0.10 },
@@ -160,6 +166,8 @@ const GRADE = [
     bloom: 0.34, vig: 0.56, sat: 1.06, lift: 0.007, cast: '#e2ecf6', castAmt: 0.10, exposure: 1.04 },
   { t: 0.70, bg: '#0a0d16', cold: '#a6c7e4', hot: '#ffe9ac', size: 1.18, glow: 1.26, opacity: 1.00,
     bloom: 0.37, vig: 0.48, sat: 1.10, lift: 0.010, cast: '#eef4fb', castAmt: 0.08, exposure: 1.06 },
+  { t: 0.79, bg: '#080b11', cold: '#8fb0cf', hot: '#ffdca0', size: 1.06, glow: 1.10, opacity: 1.00,
+    bloom: 0.34, vig: 0.54, sat: 1.06, lift: 0.008, cast: '#f2e6cf', castAmt: 0.14, exposure: 1.04 },
   { t: 0.88, bg: '#07090e', cold: '#96b2ca', hot: '#fff2c6', size: 0.95, glow: 1.32, opacity: 1.00,
     bloom: 0.38, vig: 0.58, sat: 1.04, lift: 0.006, cast: '#ffeecb', castAmt: 0.16, exposure: 1.04 },
   { t: 1.00, bg: '#05070a', cold: '#8198ac', hot: '#ecc478', size: 0.60, glow: 0.90, opacity: 0.86,
@@ -236,6 +244,7 @@ function sampleScore(t) {
   _score.off     = l(a.off, b.off);
   _score.thick   = l(a.thick, b.thick);
   _score.dive    = l(a.dive, b.dive);
+  _score.terr    = l(a.terr, b.terr);
   return _score;
 }
 
@@ -412,6 +421,7 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     field.sim.uGlyph.value = s.glyph;
     field.sim.uScatter.value = s.scatter;
     field.sim.uThick.value = s.thick;
+    field.sim.uTerrain.value = s.terr;
     field.points.position.x = s.off;
     field.solid.position.x = s.off;
     state.dive = s.dive;
