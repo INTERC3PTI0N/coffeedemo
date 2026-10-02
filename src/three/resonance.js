@@ -67,7 +67,7 @@ const FIELD = /* glsl */ `
      pattern is made of the many, not of the few. One field at two scales: the
      dust that draws the figure, and the objects that show what the dust is. */
   float heroOf(vec2 uv) {
-    return step(0.98, ghash(uv * 11.17 + 29.3));
+    return step(0.9935, ghash(uv * 11.17 + 29.3));
   }
 
   /* --- terrain: a range the dust settles onto ---
@@ -82,26 +82,62 @@ const FIELD = /* glsl */ `
      squared, summed over octaves. Taking the ridge rather than the valley is
      what makes crests sharp and flanks smooth, which is the difference
      between mountains and hills. */
-  float vnoise(vec2 p) {
+  /* A lattice hash that is actually uniform. The sine-and-fract hash used
+     elsewhere in this file is fine for scattering single grains, but sampled
+     on integer lattice points and interpolated it has visible structure —
+     repeated squiggles and a square grain running through the whole field —
+     and five octaves of it builds warts rather than mountains. This one
+     distributes properly, which is the whole difference between landform and
+     melted plastic. */
+  float lhash(vec2 i) {
+    vec3 p3 = fract(vec3(i.x, i.y, i.x) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+  }
+
+  /* Gradient noise, not value noise.
+
+     Value noise interpolates heights sampled at lattice points, and with a
+     smooth interpolant it is C1 continuous everywhere — it cannot hold a
+     sharp crest, so ridging it produces rounded dunes and the lattice cells
+     show through as blobs. Gradient noise interpolates *slopes* instead and
+     is zero at every lattice point, which is what lets a ridge stay a ridge.
+
+     Raising the ridge to a power was also backwards: a power above one
+     flattens the region near the peak rather than sharpening it. What
+     sharpens a range is the multifractal weighting below — each octave is
+     multiplied by the one above it, so detail collects on the crests and the
+     valleys stay smooth, which is how erosion actually leaves a mountain. */
+  vec2 grad2(vec2 i) {
+    float a = lhash(i) * 6.2831853;
+    return vec2(cos(a), sin(a));
+  }
+
+  float gnoise(vec2 p) {
     vec2 i = floor(p), f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    float a = ghash(i);
-    float b = ghash(i + vec2(1.0, 0.0));
-    float c = ghash(i + vec2(0.0, 1.0));
-    float e = ghash(i + vec2(1.0, 1.0));
-    return mix(mix(a, b, f.x), mix(c, e, f.x), f.y);
+    vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+    float a = dot(grad2(i),                  f);
+    float b = dot(grad2(i + vec2(1.0, 0.0)), f - vec2(1.0, 0.0));
+    float c = dot(grad2(i + vec2(0.0, 1.0)), f - vec2(0.0, 1.0));
+    float d = dot(grad2(i + vec2(1.0, 1.0)), f - vec2(1.0, 1.0));
+    return mix(mix(a, b, u.x), mix(c, d, u.x), u.y) * 1.42;
   }
 
   float terrainAt(vec2 p) {
-    float h = 0.0, amp = 0.52, frq = 0.85;
+    float h = 0.0, amp = 0.55, frq = 0.62, norm = 0.0, prev = 1.0;
     for (int i = 0; i < 5; i++) {
-      float n = 1.0 - abs(vnoise(p * frq + 17.3) * 2.0 - 1.0);
-      h += n * n * amp;
-      amp *= 0.48;
-      frq *= 2.11;
+      float n = 1.0 - abs(gnoise(p * frq + 17.3));
+      n *= n;
+      n *= prev;                       // detail collects where the last octave was high
+      prev = clamp(n * 1.7, 0.0, 1.0);
+      h += n * amp;
+      norm += amp;
+      amp *= 0.5;
+      frq *= 2.03;
     }
+    h /= norm;
     // sit the range low in the field so the camera flies above the crests
-    return h * 1.45 - 0.62;
+    return h * 2.05 - 0.78;
   }
 
   /* --- volume: S = 0 is the gyroid surface --- */
@@ -424,7 +460,7 @@ ${FIELD}
                  * mix(1.0, uSettledGain, vLock)
                  * (0.72 + aSeed * 0.56)
                  * mix(1.0, 2.1 + aSeed * 1.1, vAmb)
-                 * mix(1.0, 5.2 + aSeed * 2.6, vHero);
+                 * mix(1.0, 3.4 + aSeed * 1.8, vHero);
 
     float px = 2.0 * radius * uProjScale / depth;
 
@@ -1038,7 +1074,14 @@ const RENDER_FRAG_SOLID = /* glsl */ `
     vec3  H    = normalize(L + vec3(0.0, 0.0, 1.0));
     float spec = pow(max(dot(N, H), 0.0), 58.0);
 
+    /* The palette's hot end is a cream — nearly white, which is right for a
+       grain of light and wrong for a solid, because a solid lit with it is a
+       snowflake. Pushing saturation back up before shading returns the metal:
+       the cream reads as gold and the slate as blue, which is the contrast
+       the field is built on, restated at object scale. */
     vec3 base = mix(uCold, uHot, smoothstep(0.15, 0.95, vLock)) * vShade;
+    float lum = dot(base, vec3(0.299, 0.587, 0.114));
+    base = mix(vec3(lum), base, 1.55);
 
     vec3 col = base * (0.16 + 0.92 * lam)          // key
              + mix(uCold, base, 0.5) * fill * 0.30 // fill, keeps the dark side readable
