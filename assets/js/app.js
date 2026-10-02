@@ -1534,14 +1534,62 @@
       var r = sec.getBoundingClientRect();
       return r.top < window.innerHeight * 2.2;
     }
+    /* The season's chapters, read out under the branch while it grows. */
+    var lifeNum = $('.footer__life-num b'), lifeName = $('.footer__life-name');
+    var lifeBar = $('.footer__life-bar');
+    var hooks = {
+      onPhase: function (i, label) {
+        sec.classList.add('is-growing');
+        if (lifeNum) lifeNum.textContent = (i + 1 < 10 ? '0' : '') + (i + 1);
+        if (lifeName) {
+          lifeName.textContent = label;
+          lifeName.classList.remove('is-turning');
+          void lifeName.offsetWidth;
+          lifeName.classList.add('is-turning');
+        }
+      },
+      onTick: function (p) {
+        if (lifeBar) lifeBar.style.setProperty('--life', p.toFixed(4));
+      },
+      onGrown: function () {
+        sec.classList.remove('is-growing');
+        sec.classList.add('is-grown');
+      }
+    };
+
+    var wantGrow = false;
     function build() {
       if (footer) return;
-      try { footer = window.LattecanoFooter.create(canvas); window.__footer = footer; }
+      try { footer = window.LattecanoFooter.create(canvas, hooks); window.__footer = footer; }
       catch (e) { footer = null; }
       if (!footer) return;
       sec.classList.add('is-live');
       layout();
       watch();
+      if (wantGrow) footer.grow();
+    }
+
+    /* The season starts once the stage is properly on screen, so the
+       reader sees the shoot leave the corner rather than arriving to find
+       it already in leaf. */
+    function stageInView() {
+      var st = $('.footer__stage');
+      if (!st) return false;
+      var r = st.getBoundingClientRect();
+      return r.top < window.innerHeight * 0.6 && r.bottom > window.innerHeight * 0.25;
+    }
+    function startGrowth() {
+      if (wantGrow) return;
+      wantGrow = true;
+      if (footer) footer.grow();
+    }
+    var replay = $('.footer__replay');
+    if (replay) {
+      replay.addEventListener('click', function () {
+        if (!footer) return;
+        sec.classList.remove('is-grown');
+        footer.regrow();
+      });
     }
 
     /* The scene places everything in the page's own pixels: the stage it
@@ -1552,10 +1600,10 @@
     }
     function layout() {
       if (!footer) return;
-      var stage = $('.footer__stage'), lede = $('.footer__lede'), hint = $('.footer__hint');
+      var stage = $('.footer__stage'), lede = $('.footer__lede'), aside = $('.footer__aside');
       var avoid = [];
       if (lede) avoid.push(rel(lede));
-      if (hint) avoid.push(rel(hint));
+      if (aside) avoid.push(rel(aside));
       footer.setLayout({ stage: stage ? rel(stage) : rel(sec), avoid: avoid });
     }
 
@@ -1578,8 +1626,10 @@
     window.addEventListener('scroll', function () {
       if (!footer && near()) build();
       else if (!hasGSAP || !ST) watch();
+      if (!wantGrow && stageInView()) startGrowth();
     }, { passive: true });
     if (near()) build();
+    if (stageInView()) startGrowth();
 
     function local(e) {
       var b = canvas.getBoundingClientRect();

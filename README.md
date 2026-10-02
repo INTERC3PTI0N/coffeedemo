@@ -26,7 +26,7 @@ Ten sections, each with its own motion idea rather than one effect repeated:
 | 08 | Bean to Cup | Parallax airport-code slab, closing on the traceability note |
 | 09 | Brew Guide | Working calculator — method × servings → dose, water, ratio, grind, temp, time and steps |
 | 10 | Subscribe | Parallax field, validated form |
-| 11 | Footer | A 3D coffee branch of real-looking cherries, ripening green to crimson, with picked fruit floating beside it that bobs away from the pointer and drifts home |
+| 11 | Footer | A 3D coffee branch that lives its whole season on arrival — shoot, unfurling leaves, white blossom, green fruit, ripening to crimson — then hands you the picked cherries to play with; it can rewind and grow again |
 
 ## The interactive pieces
 
@@ -524,6 +524,38 @@ flutter on their own phases, and the pointer near the twig rustles it. On
 arrival the branch swings in and settles while the loose fruit pops in one by
 one. A finger only pokes on a tap that went nowhere, so scrolling past on a
 phone does not set them off.
+
+**It grows.** When the footer's stage is properly on screen the branch
+lives a whole season in about fifteen seconds, read out chapter by chapter
+under it (Shoot · First leaves · Blossom · Fruit set · Ripening · Harvest)
+with a hairline of progress:
+
+1. **Shoot.** The twig reaches out of the corner with a rounded green tip,
+   fast at first and slowing into the tip, and keeps thickening as it turns
+   to wood. It grows by collapsing its own tube: every ring past the tip
+   sits at the tip, and the last few close into a point.
+2. **Leaves.** Each pair breaks a moment after the shoot passes its node,
+   folded shut along the midrib and rolled from the tip — both done as bends
+   of the blade in the vertex shader — and opens out, longer first and then
+   wider, in the soft lime of new growth that darkens to an old leaf's gloss.
+3. **Blossom.** One white coffee flower for every fruit it will become: a
+   closed spindle of a bud, then five narrow petals, stamens with brown
+   anthers and a long style, held a moment, browning and thrown back, then
+   dropping. The whole flower is shaped in the shader from one number per
+   blossom.
+4. **Fruit set.** Pinhead green cherries appear as the petals fall and swell
+   to full size.
+5. **Ripening.** They colour along the ramp — green, yellow, orange, red,
+   crimson — each on its own clock, so the base of the branch is red while
+   the tip is still turning.
+6. **Harvest.** Only then do the picked cherries pop in beside it.
+
+The camera starts closer, leaning toward the branch, and eases back to the
+resting frame as the season ends; the key light comes up with it like a
+morning. Everything is a function of one clock, the branch's age, so
+**Watch it grow again** simply runs that clock backwards — the season
+rewinds into the corner — and starts it over. With reduced motion the branch
+is simply grown and still.
 
 Nothing in it is an image. The fruit is built (`footer.js`):
 

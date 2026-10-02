@@ -1109,16 +1109,62 @@ section{ position:relative; }
   color:rgba(239,231,212,.68);
   max-width:44ch;
 }
-/* The invitation to play. It only appears once there is something to
-   play with, and keeps to the corner so it never competes with the copy. */
+/* The corner under the branch holds, in turn, the season's chapters while
+   it grows, and then the invitation to play and the replay. Both sit in
+   the same grid cell, so one hands over to the other without the layout
+   moving. */
+.footer__aside{
+  display:grid; justify-items:end; align-items:end;
+  min-width:230px;
+}
+.footer__aside > *{ grid-area:1/1; }
+
+.footer__life{
+  display:grid; grid-template-columns:auto; justify-items:end; gap:6px;
+  opacity:0; transform:translateY(6px);
+  transition:opacity .7s var(--ease), transform .7s var(--ease);
+  pointer-events:none;
+}
+.footer.is-growing .footer__life{ opacity:1; transform:none; }
+.footer__life-num{ color:rgba(214,183,126,.7); }
+.footer__life-num b{ color:var(--gold-lt); font-weight:500; }
+.footer__life-name{
+  font-family:var(--serif); font-style:italic;
+  font-size:22px; line-height:1.1; color:var(--oat);
+}
+.footer__life-name.is-turning{ animation:lifeTurn .9s var(--ease); }
+@keyframes lifeTurn{
+  0%  { opacity:0; transform:translateY(8px); filter:blur(3px); }
+  100%{ opacity:1; transform:none; filter:none; }
+}
+.footer__life-bar{
+  position:relative; display:block;
+  width:180px; height:1px; margin-top:6px;
+  background:rgba(239,231,212,.16);
+  overflow:hidden;
+}
+.footer__life-bar i{
+  position:absolute; inset:0;
+  background:linear-gradient(to right, rgba(197,157,88,.4), var(--gold));
+  transform:scaleX(var(--life, 0)); transform-origin:left center;
+}
+
+.footer__after{
+  display:flex; flex-direction:column; align-items:flex-end; gap:14px;
+  opacity:0; transform:translateY(8px); visibility:hidden;
+  transition:opacity .8s var(--ease) .2s, transform .8s var(--ease) .2s, visibility 0s linear 1s;
+}
+.footer.is-grown .footer__after{
+  opacity:1; transform:none; visibility:visible;
+  transition:opacity .8s var(--ease) .2s, transform .8s var(--ease) .2s, visibility 0s;
+}
+/* The invitation to play keeps to the corner so it never competes with
+   the copy. */
 .footer__hint{
   display:flex; align-items:center; gap:10px;
   color:rgba(214,183,126,.78);
-  opacity:0; transform:translateY(6px);
-  transition:opacity .8s var(--ease) .9s, transform .8s var(--ease) .9s;
   white-space:nowrap;
 }
-.footer.is-live .footer__hint{ opacity:1; transform:none; }
 .footer__hint-dot{
   width:7px; height:7px; border-radius:50%;
   background:var(--gold);
@@ -1130,6 +1176,31 @@ section{ position:relative; }
   70% { box-shadow:0 0 0 9px rgba(197,157,88,0); }
   100%{ box-shadow:0 0 0 0 rgba(197,157,88,0); }
 }
+/* The replay is an outline that warms on hover — never a fill over its
+   own label. */
+.footer__replay{
+  display:inline-flex; align-items:center; gap:9px;
+  padding:10px 16px 10px 13px;
+  border:1px solid rgba(197,157,88,.45);
+  border-radius:100px;
+  background:rgba(197,157,88,.04);
+  color:var(--gold-lt);
+  cursor:pointer;
+  transition:background-color .35s var(--ease), border-color .35s var(--ease), color .35s var(--ease);
+}
+.footer__replay svg{
+  width:14px; height:14px;
+  transition:transform .6s var(--ease);
+}
+.footer__replay:hover,
+.footer__replay:focus-visible{
+  background:rgba(197,157,88,.13);
+  border-color:var(--gold);
+  color:var(--oat);
+}
+.footer__replay:hover svg,
+.footer__replay:focus-visible svg{ transform:rotate(-200deg); }
+.footer__replay:focus-visible{ outline:1px solid var(--gold); outline-offset:3px; }
 
 /* --- the links -------------------------------------------------------- */
 .footer__grid{
@@ -1181,7 +1252,7 @@ section{ position:relative; }
 
 /* with less motion the cherries are a still life: nothing to nudge */
 @media (prefers-reduced-motion:reduce){
-  .footer__hint{ display:none; }
+  .footer__hint, .footer__replay, .footer__life{ display:none; }
 }
 
 @media (max-width:860px){
@@ -1197,7 +1268,9 @@ section{ position:relative; }
     padding-top:0;
   }
   .footer__lede{ max-width:none; }
-  .footer__hint{ order:-1; }
+  .footer__aside{ order:-1; justify-items:start; min-width:0; }
+  .footer__life{ justify-items:start; }
+  .footer__after{ align-items:flex-start; }
   .footer__grid{ grid-template-columns:repeat(2,1fr); }
 }
 

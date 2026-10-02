@@ -15,6 +15,14 @@
    cherry carries. Its colour is a ripening ramp read through mottling,
    stalk-end lag, fine streaks and pale lenticels, under a waxy coat
    with a studio's softboxes reflected in it.
+
+   And it lives its whole life on arrival. Everything on the branch is a
+   function of one clock, its age: the shoot reaches out of the corner,
+   leaves break folded and curled and open out, the branch flowers, the
+   flowers drop, green fruit sets and swells and ripens through yellow and
+   orange to red — and only then are the picked ones handed to you. One
+   clock means it can also run backwards, which is what "grow it again"
+   does: the season rewinds into the corner and starts over.
    ===================================================================== */
 (function (global) {
   'use strict';
@@ -33,6 +41,11 @@
     return t * t * (3 - 2 * t);
   };
   var damp = function (k, dt) { return 1 - Math.pow(1 - k, dt * 60); };
+  var easeOut = function (x) { x = clamp(x, 0, 1); return 1 - Math.pow(1 - x, 3); };
+  var easeInOut = function (x) {
+    x = clamp(x, 0, 1);
+    return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  };
   function elasticOut(x) {
     if (x <= 0) return 0;
     if (x >= 1) return 1;
@@ -477,8 +490,35 @@
     return { map: map, normal: normal };
   }
 
+  /* A leaf breaks folded shut along its midrib and rolled from the tip,
+     and opens out as it grows. Both are bends of the flat blade, done in
+     the vertex shader so a leaf can be anywhere between bud and blade. */
+  var LEAF_DEFORM = [
+    'vec3 lp = position;',
+    'vec3 ln = normal;',
+    // fold: each half turns up about the midrib, faces inward
+    'float fa = uFold * sign(lp.y);',
+    'float cf = cos(fa), sf = sin(fa);',
+    'lp = vec3(lp.x, lp.y * cf - lp.z * sf, lp.y * sf + lp.z * cf);',
+    'ln = vec3(ln.x, ln.y * cf - ln.z * sf, ln.y * sf + ln.z * cf);',
+    // curl: the blade rolled round a cylinder, tightest when youngest
+    'if (uCurl > 0.001) {',
+    '  float rr = 1.0 / uCurl;',
+    '  float th = lp.x * uCurl;',
+    '  float ct = cos(th), stn = sin(th);',
+    '  lp = vec3(stn * (rr - lp.z), lp.y, rr - ct * (rr - lp.z));',
+    '  ln = vec3(ln.x * ct - ln.z * stn, ln.y, ln.x * stn + ln.z * ct);',
+    '}',
+    'vec3 objectNormal = ln;',
+    '#ifdef USE_TANGENT',
+    'vec3 objectTangent = vec3( tangent.xyz );',
+    '#endif'
+  ].join('\n');
+
+  var LEAF_MAPS = {};
   function leafMaterial(young) {
-    var maps = leafMaps(young);
+    var key = young ? 'y' : 'm';
+    var maps = LEAF_MAPS[key] || (LEAF_MAPS[key] = leafMaps(young));
     var m = new THREE.MeshPhysicalMaterial({
       map: maps.map, normalMap: maps.normal,
       normalScale: new THREE.Vector2(0.8, 0.8),
@@ -486,11 +526,123 @@
       clearcoat: young ? 0.25 : 0.55, clearcoatRoughness: 0.24,
       side: THREE.DoubleSide, envMapIntensity: 0.9
     });
-    // the underside is paler and matte
+    /* Per leaf, because each is at its own age: how folded, how curled,
+       and how far from the soft bronze-lime of new growth it has darkened. */
+    var u = { uFold: { value: 0 }, uCurl: { value: 0 }, uYoung: { value: 0 } };
+    m.userData.u = u;
     m.onBeforeCompile = function (sh) {
-      sh.fragmentShader = sh.fragmentShader.replace('#include <color_fragment>',
-        '#include <color_fragment>\n' +
-        'if (!gl_FrontFacing) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.24, 0.12), 0.55);');
+      sh.uniforms.uFold = u.uFold;
+      sh.uniforms.uCurl = u.uCurl;
+      sh.uniforms.uYoung = u.uYoung;
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\nuniform float uFold;\nuniform float uCurl;')
+        .replace('#include <beginnormal_vertex>', LEAF_DEFORM)
+        .replace('#include <begin_vertex>', 'vec3 transformed = lp;');
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nuniform float uYoung;')
+        .replace('#include <color_fragment>', '#include <color_fragment>\n' +
+          'diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.27, 0.43, 0.11), uYoung * 0.7);\n' +
+          // the underside is paler and matte
+          'if (!gl_FrontFacing) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.24, 0.12), 0.55);')
+        .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\n' +
+          'roughnessFactor = min(1.0, roughnessFactor + uYoung * 0.3);');
+    };
+    return m;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* THE BLOSSOM                                                         */
+  /*                                                                     */
+  /* Coffee flowers in white clusters at the leaf nodes, a day or two     */
+  /* before the fruit: five narrow petals, five stamens with brown        */
+  /* anthers, and a long style. Each is drawn from strips whose shape is  */
+  /* computed in the shader from one number per flower, aOpen — 0 a       */
+  /* closed white spindle of a bud, 1 a star, 2 browned and thrown back.  */
+  /* ------------------------------------------------------------------ */
+  function flowerGeometry() {
+    var pos = [], pet = [], col = [], idx = [];
+    var SR = 8, SV = 3;
+    function strip(ang, kind) {
+      var base = pos.length / 3;
+      for (var i = 0; i <= SR; i++) {
+        for (var j = 0; j <= SV; j++) {
+          var r = i / SR, v = j / SV * 2 - 1;
+          pos.push(0, 0, 0);
+          pet.push(r, v, ang, kind);
+          if (kind === 1) {
+            var tip = smooth(0.72, 0.9, r);
+            col.push(lerp(0.97, 0.55, tip), lerp(0.95, 0.40, tip), lerp(0.86, 0.18, tip));
+          } else {
+            var heart = 1 - smooth(0, 0.35, r);
+            col.push(1, 1 - heart * 0.04, 0.97 - heart * 0.14);
+          }
+        }
+      }
+      for (i = 0; i < SR; i++) {
+        for (j = 0; j < SV; j++) {
+          var a = base + i * (SV + 1) + j, b = a + SV + 1;
+          idx.push(a, b, a + 1, b, b + 1, a + 1);
+        }
+      }
+    }
+    for (var k = 0; k < 5; k++) strip(k / 5 * TAU, 0);          // petals
+    for (k = 0; k < 5; k++) strip((k + 0.5) / 5 * TAU, 1);      // stamens
+    strip(0.4, 2);                                               // the style
+    var g = new THREE.BufferGeometry();
+    g.setIndex(idx);
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('aPet', new THREE.Float32BufferAttribute(pet, 4));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    return g;
+  }
+
+  var FLOWER_SHAPE = [
+    'float fr = aPet.x, fv = aPet.y, fang = aPet.z, kind = aPet.w;',
+    'float open = clamp(aOpen, 0.0, 1.0), wilt = clamp(aOpen - 1.0, 0.0, 1.0);',
+    'float L = kind < 0.5 ? 0.62 : (kind < 1.5 ? 0.36 : 0.46);',
+    'float W = kind < 0.5 ? 0.13 * pow(sin(3.14159 * pow(fr, 0.7)), 0.8) * mix(0.55, 1.0, open)',
+    '                     : 0.013;',
+    'float alpha = kind < 0.5 ? mix(0.09, 1.48, open) + fr * fr * 0.4 * open + wilt * 0.8',
+    '            : (kind < 1.5 ? mix(0.05, 0.6, open) + wilt * 0.5 : 0.0);',
+    'vec3 fax = vec3(0.0, -1.0, 0.0);',
+    'vec3 frd = vec3(cos(fang), 0.0, sin(fang));',
+    'vec3 ftg = vec3(-sin(fang), 0.0, cos(fang));',
+    'vec3 fdr = fax * cos(alpha) + frd * sin(alpha);',
+    'vec3 fup = fax * cos(alpha + 1.5708) + frd * sin(alpha + 1.5708);',
+    // a petal cups a little across its width
+    'vec3 fpos = fdr * (fr * L) + ftg * (fv * W) + fup * (fv * fv * W * 0.55) + vec3(0.0, 0.24, 0.0);',
+    'vec3 objectNormal = normalize(cross(ftg, fdr));',
+    'vOpen = aOpen;',
+    '#ifdef USE_TANGENT',
+    'vec3 objectTangent = vec3( tangent.xyz );',
+    '#endif'
+  ].join('\n');
+
+  function flowerMaterial() {
+    var m = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff, vertexColors: true,
+      roughness: 0.55, metalness: 0,
+      sheen: 0.7, sheenColor: new THREE.Color(0xffffff), sheenRoughness: 0.45,
+      // coffee blossom is a cold, bright white; a little of its own light
+      // keeps the warm key from turning it cream
+      emissive: new THREE.Color(0xf4f6f2), emissiveIntensity: 0.14,
+      side: THREE.DoubleSide, envMapIntensity: 0.7
+    });
+    m.onBeforeCompile = function (sh) {
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\n' +
+          'attribute vec4 aPet;\nattribute float aOpen;\nvarying float vOpen;')
+        .replace('#include <beginnormal_vertex>', FLOWER_SHAPE)
+        .replace('#include <begin_vertex>', 'vec3 transformed = fpos;');
+      sh.fragmentShader = sh.fragmentShader
+        .replace('#include <common>', '#include <common>\nvarying float vOpen;')
+        .replace('#include <color_fragment>', '#include <color_fragment>\n' +
+          // spent petals brown at the edges before they fall
+          'diffuseColor.rgb *= mix(vec3(1.0), vec3(0.80, 0.64, 0.44), smoothstep(1.0, 1.8, vOpen));')
+        // petals are thin: light comes through them at the edge
+        .replace('#include <opaque_fragment>',
+          'outgoingLight += diffuseColor.rgb * 0.22 * pow(1.0 - abs(dot(normal, normalize(vViewPosition))), 2.0);\n' +
+          '#include <opaque_fragment>');
     };
     return m;
   }
@@ -515,6 +667,31 @@
     { t: 0.985, n: 0, ripe: [],
       leaves: [{ len: 1.35, side: 1, z: 0, tilt: 0.2, young: true }, { len: 1.1, side: -1, z: 0, tilt: -0.2, young: true }] }
   ];
+
+  /* ------------------------------------------------------------------ */
+  /* THE SEASON                                                          */
+  /* Every time below is in seconds of the branch's age.                 */
+  /* ------------------------------------------------------------------ */
+  var SHOOT_AT = 0.25, SHOOT_DUR = 3.3;
+  /* How far along its length the shoot has reached. It starts with a
+     push, as new growth does, and slows into the tip. */
+  function shootAt(a) {
+    var x = clamp((a - SHOOT_AT) / SHOOT_DUR, 0, 1);
+    return 0.5 * (1 - Math.pow(1 - x, 2.6)) + 0.5 * x * x * (3 - 2 * x);
+  }
+  // the age at which the shoot reaches a point along it
+  function reachedAt(t) {
+    var lo = SHOOT_AT, hi = SHOOT_AT + SHOOT_DUR;
+    for (var i = 0; i < 30; i++) {
+      var mid = (lo + hi) / 2;
+      if (shootAt(mid) < t) lo = mid; else hi = mid;
+    }
+    return hi;
+  }
+  var BUD = 0.7, BLOOM = 1.5, SPENT = 2.5, FALL = 3.3;   // a flower's own clock
+  var SET_AFTER = 2.6;    // fruit sets as the petals drop
+  var SWELL = 2.4;        // pinhead to full size
+  var RIPEN_AFTER = 2.0;  // full size before it starts to colour
 
   function branchGeometry(curve) {
     var TS = 120, RS = 10;
@@ -634,8 +811,9 @@
   /* ------------------------------------------------------------------ */
   /* The scene                                                           */
   /* ------------------------------------------------------------------ */
-  function create(canvasEl) {
+  function create(canvasEl, opts) {
     if (!canvasEl) return null;
+    opts = opts || {};
 
     var renderer = new THREE.WebGLRenderer({
       canvas: canvasEl, antialias: true, alpha: true,
@@ -686,14 +864,74 @@
     var twig = new THREE.Mesh(branchGeometry(curve),
       new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72 }));
     twig.castShadow = true; twig.receiveShadow = true;
+    twig.frustumCulled = false;
     branch.add(twig);
 
-    var leafMat = leafMaterial(false), youngMat = leafMaterial(true);
+    /* The shoot grows by collapsing its own tube: every ring past the tip
+       sits at the tip, and the last few rings before it close down into
+       a rounded point. Each ring's centre and each vertex's offset from
+       it are kept, so a frame is one pass over ~1,300 vertices. */
+    var TW_TS = 120, TW_RS = 10;
+    var twPos = twig.geometry.attributes.position;
+    var twOff = new Float32Array(twPos.count * 3);
+    var twCen = new Float32Array((TW_TS + 1) * 3);
+    (function () {
+      var c = new THREE.Vector3();
+      for (var r = 0; r <= TW_TS; r++) {
+        curve.getPointAt(r / TW_TS, c);
+        twCen[r * 3] = c.x; twCen[r * 3 + 1] = c.y; twCen[r * 3 + 2] = c.z;
+      }
+      for (var i = 0; i < twPos.count; i++) {
+        var ring = Math.floor(i / (TW_RS + 1));
+        twOff[i * 3] = twPos.getX(i) - twCen[ring * 3];
+        twOff[i * 3 + 1] = twPos.getY(i) - twCen[ring * 3 + 1];
+        twOff[i * 3 + 2] = twPos.getZ(i) - twCen[ring * 3 + 2];
+      }
+    })();
+    var twLast = -1;
+    function growTwig(a) {
+      var g = shootAt(a);
+      // and it thickens as it turns to wood
+      var thick = lerp(0.52, 1, smooth(0.6, 9, a));
+      var key = g * 1000 + thick;
+      if (key === twLast) return;
+      twLast = key;
+      var gi = g * TW_TS, i0 = Math.min(Math.floor(gi), TW_TS), i1 = Math.min(i0 + 1, TW_TS), f = gi - i0;
+      var tx = lerp(twCen[i0 * 3], twCen[i1 * 3], f);
+      var ty = lerp(twCen[i0 * 3 + 1], twCen[i1 * 3 + 1], f);
+      var tz = lerp(twCen[i0 * 3 + 2], twCen[i1 * 3 + 2], f);
+      var arr = twPos.array;
+      for (var i = 0; i < twPos.count; i++) {
+        var ring = Math.floor(i / (TW_RS + 1)), rt = ring / TW_TS;
+        if (rt >= g) {
+          arr[i * 3] = tx; arr[i * 3 + 1] = ty; arr[i * 3 + 2] = tz;
+          continue;
+        }
+        var k = thick * Math.sqrt(clamp((g - rt) / 0.045, 0, 1));
+        arr[i * 3] = twCen[ring * 3] + twOff[i * 3] * k;
+        arr[i * 3 + 1] = twCen[ring * 3 + 1] + twOff[i * 3 + 1] * k;
+        arr[i * 3 + 2] = twCen[ring * 3 + 2] + twOff[i * 3 + 2] * k;
+      }
+      twPos.needsUpdate = true;
+    }
+
     var leaves = [];
     var clusterList = [];
     NODES.forEach(function (node, ni) {
       var P = curve.getPointAt(node.t), T = curve.getTangentAt(node.t).normalize();
-      if (node.n) clusterList = clusterList.concat(packCluster(R, P, T, node));
+      if (node.n) {
+        var reach = reachedAt(node.t);
+        clusterList = clusterList.concat(packCluster(R, P, T, node).map(function (c) {
+          /* The branch flowers from the base outward, each node over a
+             day or so of its own; the fruit follows the flowers. */
+          c.fStart = 4.5 + ni * 0.45 + R() * 0.8 + (reach - 0.6) * 0.1;
+          c.setT = c.fStart + SET_AFTER;
+          // riper fruit started sooner and goes further
+          c.ripenAt = c.setT + SWELL - 0.4 + RIPEN_AFTER * 0.2 + (1 - c.ripe) * 0.6 + c.seed * 0.5;
+          c.ripenDur = 1.2 + c.ripe * 2.4;
+          return c;
+        }));
+      }
       node.leaves.forEach(function (lf, li) {
         var B = new THREE.Vector3(-T.y, T.x, 0).normalize();
         var dir = B.clone().multiplyScalar(lf.side).addScaledVector(T, 0.5)
@@ -707,17 +945,53 @@
         pivot.position.copy(P).addScaledVector(dir, 0.05);
         pivot.position.z += lf.z;
         pivot.quaternion.setFromRotationMatrix(m);
-        var mesh = new THREE.Mesh(leafGeometry(ni * 7 + li + 3), lf.young ? youngMat : leafMat);
+        var mat = leafMaterial(!!lf.young);
+        var mesh = new THREE.Mesh(leafGeometry(ni * 7 + li + 3), mat);
         mesh.scale.setScalar(lf.len);
         mesh.castShadow = true; mesh.receiveShadow = true;
+        mesh.frustumCulled = false;
         pivot.add(mesh);
         branch.add(pivot);
-        leaves.push({ mesh: mesh, phase: R() * TAU, amp: 0.05 + R() * 0.04, rate: 0.9 + R() * 0.6 });
+        leaves.push({
+          mesh: mesh, u: mat.userData.u, len: lf.len, young: !!lf.young,
+          // a leaf breaks a moment after the shoot passes its node
+          born: reachedAt(node.t) + 0.1 + li * 0.32,
+          dur: lf.young ? 1.9 : 2.8,
+          phase: R() * TAU, amp: 0.05 + R() * 0.04, rate: 0.9 + R() * 0.6
+        });
       });
     });
 
     var cluster = cherrySet(cGeo, stGeo, cMat, sMat, clusterList);
     branch.add(cluster.fruit); branch.add(cluster.stalk);
+    var ripeAttr = cluster.fruit.geometry.attributes.aRipe;
+    ripeAttr.setUsage(THREE.DynamicDrawUsage);
+
+    // one flower for every fruit it becomes
+    var fGeo = flowerGeometry();
+    var openArr = new Float32Array(clusterList.length);
+    fGeo.setAttribute('aOpen', new THREE.InstancedBufferAttribute(openArr, 1));
+    fGeo.attributes.aOpen.setUsage(THREE.DynamicDrawUsage);
+    var flowers = new THREE.InstancedMesh(fGeo, flowerMaterial(), clusterList.length);
+    flowers.frustumCulled = false;
+    flowers.receiveShadow = true;
+    flowers.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    branch.add(flowers);
+
+    /* The chapters of the season, for the readout under the branch. */
+    var minOf = function (list, f) { return Math.min.apply(null, list.map(f)); };
+    var maxOf = function (list, f) { return Math.max.apply(null, list.map(f)); };
+    var RIPE_END = maxOf(clusterList, function (c) { return c.ripenAt + c.ripenDur; });
+    var LOOSE_AT = RIPE_END - 0.4;           // the picked ones arrive last
+    var GROWN = LOOSE_AT + 1.9;              // ...and everything has settled
+    var PHASES = [
+      { at: 0, label: 'Shoot' },
+      { at: minOf(leaves, function (l) { return l.born; }), label: 'First leaves' },
+      { at: minOf(clusterList, function (c) { return c.fStart; }), label: 'Blossom' },
+      { at: minOf(clusterList, function (c) { return c.setT; }), label: 'Fruit set' },
+      { at: minOf(clusterList, function (c) { return c.ripenAt; }), label: 'Ripening' },
+      { at: LOOSE_AT, label: 'Harvest' }
+    ];
 
     /* --- the picked ones, loose in the air ---------------------------- */
     var LOOSE_RIPE = [0.8, 0.86, 0.72, 0.9, 0.78, 0.68, 0.84, 0.58, 0.94, 0.76, 0.82];
@@ -734,7 +1008,7 @@
         s: 0.9 + R() * 0.28, z: 0,
         ph: [R() * TAU, R() * TAU, R() * TAU],
         fr: [0.21 + R() * 0.12, 0.17 + R() * 0.12, 0.13 + R() * 0.1],
-        delay: 0, wob: 0, wobT: 0, hoverCool: 0, active: true, bare: i % 2 === 1
+        delay: 0, wob: 0, wobT: 0, hoverCool: 0, active: true, bare: i % 2 === 1, popped: false
       });
     }
     var loose = cherrySet(cGeo, stGeo, cMat, sMat, looseList);
@@ -747,9 +1021,29 @@
       pointer: { on: false, x: 0, y: 0, nx: 0, ny: 0 },
       cam: { x: 0, y: 0 },
       gust: 0, gustV: 0,
-      introAt: -1, swing: 0, swingV: 0,
-      t: 0, layout: null
+      swing: 0, swingV: 0,
+      t: 0, layout: null,
+      // the season: when it started, and a rewind in progress
+      growAt: -1, rewindAt: -1, rewindFrom: 0,
+      phase: -1, grown: false, lastAge: -1,
+      focus: new THREE.Vector3()
     };
+
+    /* The branch's age. Before anything has asked it to grow it is a bare
+       corner; with less motion it is simply grown. */
+    var REWIND = 1.9;
+    function age() {
+      if (reduced) return GROWN + 1;
+      if (state.growAt < 0) return 0;
+      if (state.rewindAt >= 0) {
+        var k = (state.t - state.rewindAt) / REWIND;
+        if (k < 1) return state.rewindFrom * (1 - easeInOut(k));
+        state.rewindAt = -1;
+        state.growAt = state.t + 0.35;     // a beat of bare corner, then again
+        return 0;
+      }
+      return Math.max(0, state.t - state.growAt);
+    }
 
     var m4 = new THREE.Matrix4(), j4 = new THREE.Matrix4(), p4 = new THREE.Matrix4();
     var vA = new THREE.Vector3(), vB = new THREE.Vector3(), vS = new THREE.Vector3();
@@ -825,12 +1119,13 @@
         if (!c.active) return;
         c.z = -3.5 + R2() * 4.5;
         pxToWorld(homes[i].x, homes[i].y, c.z, c.home);
-        if (state.introAt < 0) c.pos.copy(c.home);
+        if (!c.popped || reduced) c.pos.copy(c.home);
         c.delay = 0.12 + i * 0.085;
       });
 
       // the key light follows the branch, so its shadows stay inside it
       vA.set(-5, -1.3, 0).applyMatrix4(branch.matrixWorld);
+      state.focus.copy(vA);
       key.target.position.copy(vA);
       key.position.copy(vA).add(vB.set(-6, 8, 10));
       var sc = key.shadow.camera, ext = 8.5 * bs;
@@ -857,7 +1152,64 @@
     /* --- one frame ------------------------------------------------------ */
     function update(dt) {
       var t = state.t;
-      var intro = state.introAt < 0 ? 0 : t - state.introAt;
+      var a = age();
+
+      /* --- the season -------------------------------------------------- */
+      growTwig(a);
+
+      // the light comes up with it, as a morning does
+      key.intensity = lerp(1.9, 2.5, smooth(0, 7, a));
+      rim.intensity = lerp(1.5, 2.3, smooth(2, 10, a));
+
+      // flowers: bud, open, hold, brown and fall
+      clusterList.forEach(function (c, i) {
+        var fk = a - c.fStart;
+        if (fk <= 0 || fk >= FALL) {
+          openArr[i] = 0;
+          flowers.setMatrixAt(i, m4.makeScale(0, 0, 0));
+          return;
+        }
+        var sc = 1, open = 0, drop = 0;
+        if (fk < BUD) sc = 0.25 + 0.75 * easeOut(fk / BUD);
+        else if (fk < BLOOM) open = easeInOut((fk - BUD) / (BLOOM - BUD));
+        else if (fk < SPENT) open = 1;
+        else {
+          var w = (fk - SPENT) / (FALL - SPENT);
+          open = 1 + w;
+          sc = 1 - w * w;
+          drop = w * w * 0.7;
+        }
+        openArr[i] = open;
+        vA.copy(c.pos); vA.y -= drop;
+        vS.setScalar(c.s * 0.95 * sc);
+        flowers.setMatrixAt(i, m4.compose(vA, c.q, vS));
+      });
+      flowers.instanceMatrix.needsUpdate = true;
+      fGeo.attributes.aOpen.needsUpdate = true;
+
+      // fruit: sets as a pinhead, swells, and colours
+      clusterList.forEach(function (c, i) {
+        var k = (a - c.setT) / SWELL;
+        c.grow = k <= 0 ? 0 : 0.1 + 0.9 * easeOut(k);
+        ripeAttr.array[i] = c.ripe * smooth(c.ripenAt, c.ripenAt + c.ripenDur, a);
+      });
+      ripeAttr.needsUpdate = true;
+
+      /* the chapters, and the end of the season */
+      if (!reduced && state.growAt >= 0) {
+        var ph = 0;
+        for (var pi = 0; pi < PHASES.length; pi++) if (a >= PHASES[pi].at) ph = pi;
+        if (ph !== state.phase && state.rewindAt < 0) {
+          state.phase = ph;
+          if (opts.onPhase) opts.onPhase(ph, PHASES[ph].label, PHASES.length);
+        }
+        if (a !== state.lastAge && opts.onTick) opts.onTick(clamp(a / GROWN, 0, 1));
+        state.lastAge = a;
+        if (!state.grown && a >= GROWN && state.rewindAt < 0) {
+          state.grown = true;
+          if (opts.onGrown) opts.onGrown();
+        }
+      }
 
       // the breeze, plus whatever the reader stirred up
       state.gustV += (-state.gust * 9 - state.gustV * 2.4) * dt;
@@ -872,9 +1224,22 @@
       branch.rotation.y = Math.sin(t * 0.33) * 0.04;
 
       leaves.forEach(function (lf) {
-        lf.mesh.rotation.x = Math.sin(t * lf.rate + lf.phase) * lf.amp +
-                             state.gust * 0.25 * Math.sin(t * 7 + lf.phase);
-        lf.mesh.rotation.y = Math.sin(t * lf.rate * 0.7 + lf.phase * 2) * lf.amp * 0.4;
+        var k = clamp((a - lf.born) / lf.dur, 0, 1);
+        lf.mesh.visible = k > 0;
+        if (!lf.mesh.visible) return;
+        // longer first, then wider, as it unfolds
+        var L = lf.len * (0.05 + 0.95 * easeOut(k));
+        var wf = 0.3 + 0.7 * smooth(0.08, 0.9, k);
+        lf.mesh.scale.set(L, L * wf, L);
+        lf.u.uFold.value = (1 - smooth(0.05, 0.85, k)) * 1.3;
+        lf.u.uCurl.value = (1 - smooth(0.0, 0.8, k)) * 2.6;
+        // and darkens from new growth to an old leaf's gloss over a while
+        lf.u.uYoung.value = 1 - smooth(lf.born + lf.dur * 0.4, lf.born + lf.dur + 2.4, a);
+        // a leaf still unfolding casts a flat shadow; leave it out until open
+        lf.mesh.castShadow = k > 0.9;
+        lf.mesh.rotation.x = (Math.sin(t * lf.rate + lf.phase) * lf.amp +
+                              state.gust * 0.25 * Math.sin(t * 7 + lf.phase)) * k;
+        lf.mesh.rotation.y = Math.sin(t * lf.rate * 0.7 + lf.phase * 2) * lf.amp * 0.4 * k;
       });
 
       // the cluster fruit hang a little loose on their stalks
@@ -886,7 +1251,8 @@
         j4.makeTranslation(0, PIV, 0).multiply(p4.makeRotationFromQuaternion(qA))
           .multiply(m4.makeTranslation(0, -PIV, 0));
         var sq = c.wob * Math.exp(-c.wobT * 3.2) * Math.sin(c.wobT * 17);
-        vS.set(c.s * (1 + sq * 0.10), c.s * (1 - sq * 0.12), c.s * (1 + sq * 0.10));
+        var cs = c.s * c.grow;
+        vS.set(cs * (1 + sq * 0.10), cs * (1 - sq * 0.12), cs * (1 + sq * 0.10));
         m4.compose(c.pos, c.q, vS).multiply(j4);
         cluster.fruit.setMatrixAt(i, m4);
         cluster.stalk.setMatrixAt(i, m4);
@@ -942,8 +1308,14 @@
           c.q.premultiply(qB);
         }
 
-        // arrival: each one pops in on its own beat, rising into place
-        var k2 = state.introAt < 0 ? 1 : elasticOut(clamp((intro - c.delay) / 1.1, 0, 1));
+        // arrival, once the branch has ripened: each pops in on its own
+        // beat, rising into place
+        var lk = (a - LOOSE_AT - c.delay) / 1.1;
+        if (lk > 0 && !c.popped) {
+          c.popped = true;
+          if (!reduced) { c.pos.copy(c.home); c.pos.y -= 1.2; c.vel.set(0, 1.6, 0); }
+        } else if (lk <= 0) c.popped = false;
+        var k2 = elasticOut(clamp(lk, 0, 1));
         c.wobT += dt;
         var sq = c.wob * Math.exp(-c.wobT * 3.4) * Math.sin(c.wobT * 18);
         var s = c.s * k2;
@@ -960,8 +1332,12 @@
       var tx = P.on ? P.nx * 0.45 : 0, ty = P.on ? -P.ny * 0.25 : 0;
       state.cam.x += (tx - state.cam.x) * damp(0.04, dt);
       state.cam.y += (ty - state.cam.y) * damp(0.04, dt);
-      camera.position.set(state.cam.x, state.cam.y, state.dist);
-      camera.lookAt(state.cam.x * 0.3, state.cam.y * 0.3, 0);
+      /* While it grows the eye is closer in and leaning toward the branch,
+         and it eases back out to the resting frame as the season ends. */
+      var push = reduced ? 0 : 1 - smooth(1.2, GROWN - 1.2, a);
+      var fx = state.focus.x * 0.2 * push, fy = state.focus.y * 0.2 * push;
+      camera.position.set(state.cam.x + fx, state.cam.y + fy, state.dist * (1 - 0.1 * push));
+      camera.lookAt(state.cam.x * 0.3 + fx * 1.5, state.cam.y * 0.3 + fy * 1.5, 0);
 
       // a pointer near the twig rustles it
       if (P.on) {
@@ -992,6 +1368,7 @@
     }
 
     resize();
+    if (reduced && opts.onGrown) global.setTimeout(opts.onGrown, 0);
     if (!reduced) {
       state.running = true;
       clock.start();
@@ -1035,14 +1412,6 @@
         v = !!v;
         if (v && !state.visible) {
           clock.getDelta();
-          if (state.introAt < 0 && !reduced) {
-            state.introAt = state.t;
-            state.swing = 0.16; state.swingV = 0;
-            looseList.forEach(function (c) {
-              c.pos.copy(c.home); c.pos.y -= 1.2;
-              c.vel.set(0, 1.6, 0);
-            });
-          }
           if (reduced) draw(0);
         }
         state.visible = v;
@@ -1054,6 +1423,19 @@
         P.nx = px / state.w * 2 - 1; P.ny = py / state.h * 2 - 1;
       },
       poke: poke,
+      /* Start the season, once. */
+      grow: function () {
+        if (reduced || state.growAt >= 0) return;
+        state.growAt = state.t + 0.15;
+      },
+      /* Wind the season back into the corner and grow it again. */
+      regrow: function () {
+        if (reduced || state.growAt < 0 || state.rewindAt >= 0) return;
+        state.rewindFrom = age();
+        state.rewindAt = state.t;
+        state.grown = false;
+        state.phase = -1;
+      },
       // advance the simulation by hand (tests on slow software GL)
       step: function (sec) {
         var n = Math.round(sec * 30);
@@ -1063,6 +1445,8 @@
       debug: function () {
         return {
           ready: state.ready, visible: state.visible, U: state.U, t: +state.t.toFixed(2),
+          age: +age().toFixed(2), grown: state.grown, end: +GROWN.toFixed(2),
+          phases: PHASES.map(function (p) { return p.label + '@' + p.at.toFixed(1); }),
           loose: looseList.filter(function (c) { return c.active; }).map(function (c) {
             var p = worldToPx(c.pos); return [Math.round(p.x), Math.round(p.y)];
           }),
