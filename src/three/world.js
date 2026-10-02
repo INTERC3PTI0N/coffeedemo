@@ -151,19 +151,19 @@ const GRADE = [
      daylight blue and the hot into cream gives the same opposition far more
      air, and the grains stop looking like soot catching a lamp. */
   { t: 0.00, bg: '#05070a', cold: '#7b96ad', hot: '#bdd2e4', size: 1.05, glow: 0.72, opacity: 0.86,
-    bloom: 0.36, vig: 0.70, sat: 0.86, lift: 0.004, cast: '#b9cbdb', castAmt: 0.10, exposure: 1.0 },
+    bloom: 0.30, vig: 0.70, sat: 0.86, lift: 0.004, cast: '#b9cbdb', castAmt: 0.10, exposure: 1.0 },
   { t: 0.18, bg: '#060a0f', cold: '#88a8c6', hot: '#f2ca7e', size: 1.00, glow: 0.94, opacity: 1.00,
-    bloom: 0.42, vig: 0.64, sat: 0.94, lift: 0.005, cast: '#cddced', castAmt: 0.12, exposure: 1.02 },
+    bloom: 0.34, vig: 0.64, sat: 0.94, lift: 0.005, cast: '#cddced', castAmt: 0.12, exposure: 1.02 },
   { t: 0.36, bg: '#070b12', cold: '#91b2d0', hot: '#ffd387', size: 0.96, glow: 0.90, opacity: 1.00,
-    bloom: 0.38, vig: 0.60, sat: 1.00, lift: 0.006, cast: '#d8e3f0', castAmt: 0.12, exposure: 1.03 },
+    bloom: 0.31, vig: 0.60, sat: 1.00, lift: 0.006, cast: '#d8e3f0', castAmt: 0.12, exposure: 1.03 },
   { t: 0.52, bg: '#080c14', cold: '#9abbda', hot: '#ffdf92', size: 0.92, glow: 0.96, opacity: 1.00,
-    bloom: 0.42, vig: 0.56, sat: 1.06, lift: 0.007, cast: '#e2ecf6', castAmt: 0.10, exposure: 1.04 },
+    bloom: 0.34, vig: 0.56, sat: 1.06, lift: 0.007, cast: '#e2ecf6', castAmt: 0.10, exposure: 1.04 },
   { t: 0.70, bg: '#0a0d16', cold: '#a6c7e4', hot: '#ffe9ac', size: 1.18, glow: 1.26, opacity: 1.00,
-    bloom: 0.46, vig: 0.48, sat: 1.10, lift: 0.010, cast: '#eef4fb', castAmt: 0.08, exposure: 1.06 },
+    bloom: 0.37, vig: 0.48, sat: 1.10, lift: 0.010, cast: '#eef4fb', castAmt: 0.08, exposure: 1.06 },
   { t: 0.88, bg: '#07090e', cold: '#96b2ca', hot: '#fff2c6', size: 0.95, glow: 1.32, opacity: 1.00,
-    bloom: 0.48, vig: 0.58, sat: 1.04, lift: 0.006, cast: '#ffeecb', castAmt: 0.16, exposure: 1.04 },
+    bloom: 0.38, vig: 0.58, sat: 1.04, lift: 0.006, cast: '#ffeecb', castAmt: 0.16, exposure: 1.04 },
   { t: 1.00, bg: '#05070a', cold: '#8198ac', hot: '#ecc478', size: 0.60, glow: 0.90, opacity: 0.86,
-    bloom: 0.40, vig: 0.68, sat: 0.92, lift: 0.004, cast: '#cfdbe8', castAmt: 0.10, exposure: 1.02 },
+    bloom: 0.33, vig: 0.68, sat: 0.92, lift: 0.004, cast: '#cfdbe8', castAmt: 0.10, exposure: 1.02 },
 ];
 
 /* text colour per chapter — the page is dark throughout, so this barely moves */

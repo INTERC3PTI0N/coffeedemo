@@ -649,7 +649,7 @@ const RENDER_FRAG = /* glsl */ `
 
     float edge = fwidth(d) + 0.004;
     float fill = smoothstep(edge, -edge, d);
-    float rim  = exp(-abs(d) * (42.0 * uFacet));
+    float rim  = exp(-abs(d) * (62.0 * uFacet));
 
     // hollow draws the form as an outline; solid fills it in. Early on the
     // grains are diagrams of themselves, and they acquire a body as they lock.
@@ -705,7 +705,50 @@ const RENDER_FRAG = /* glsl */ `
     // a third tier, for grains close enough that machining would be visible
     float detailLod = smoothstep(9.0, 20.0, vPx) * (1.0 - vBlur) * uFormFade;
 
-    float shell = body * (0.55 + vLock * 0.55) + rim * 0.35 * vLock;
+    /* --- the grain as a solid, not a silhouette ---
+
+       Every grain here has been a flat filled outline: the distance field was
+       used as a stencil and thrown away. But an SDF carries everything needed
+       to light a solid. Its gradient is the direction the surface faces, and
+       how far inside the sample sits says whether it is on the chamfer or on
+       the face. Reconstructing a normal from those two and lighting it is the
+       difference between a shape cut out of paper and an object with a top, a
+       bevelled edge, and a side that catches the lamp as it turns.
+
+       The bevel is held to a couple of pixels, so the edge stays a hard line
+       rather than a soft shoulder — this is a machined part, and the whole
+       point of the chamfer is the bright line it throws where it meets the
+       face. Below a few pixels the derivatives are meaningless, so the
+       shading fades out with formLod and the grain goes back to being flat,
+       which at that size is all it could honestly be anyway. */
+    vec2  grad = vec2(dFdx(d), dFdy(d));
+    float glen = length(grad);
+    vec2  gdir = glen > 1e-7 ? grad / glen : vec2(1.0, 0.0);
+
+    /* A wide chamfer, not a hairline one. The first pass gave the forms a
+       two-pixel edge, which is a crisp border but leaves the whole face
+       flat-lit and the object reads as a lit sticker. Turning a fifth of the
+       half-width into chamfer gives the normal somewhere to swing, so the
+       shape has a bright side and a dark side and the eye gets the tonal
+       range it needs to call it solid. */
+    float bevel = max(fwidth(d) * 3.4, 0.058);
+    float face  = clamp(-d / bevel, 0.0, 1.0);        // 0 on the rim, 1 on the face
+    float turn  = face * 1.5707963;
+    vec3  N = normalize(vec3(-gdir * cos(turn), sin(turn) + 0.002));
+
+    vec3  L = normalize(vec3(-0.46, 0.60, 0.66));
+    float lam  = max(dot(N, L), 0.0);
+    vec3  H    = normalize(L + vec3(0.0, 0.0, 1.0));
+    float spec = pow(max(dot(N, H), 0.0), 58.0);
+
+    // the lit chamfer: a bright line exactly where the edge turns over
+    float chamfer = (1.0 - face) * face * 4.0;
+
+    float solid = mix(1.0, 0.20 + 1.18 * lam, formLod);
+
+    float shell = body * (0.55 + vLock * 0.55) * solid
+                + rim * 0.35 * vLock
+                + (spec * 0.55 + chamfer * 0.22) * formLod * (0.30 + vLock * 0.80);
     float shape = shell + (core * 0.70 + scan * 0.45) * innerLod;
 
     /* Panel lines. Contours of the form's own distance field, scored into the
@@ -773,6 +816,8 @@ const RENDER_FRAG = /* glsl */ `
     col += mix(uHot, film, 0.62) * rim * vFres * uIris * (0.35 + vLock * 0.55);
     col += mix(uCold, uHot, vLock) * vFres * 0.12;
     col += uHot * crossing * 0.60;
+    // a struck edge returns the lamp, not the body colour
+    col += mix(uHot, vec3(1.0), 0.55) * spec * formLod * (0.25 + vLock * 0.75) * 0.5;
     // the core and the scan line burn hotter than the body they sit in
     col += uHot * (core * 0.30 + scan * 0.40) * innerLod;
     // the hand's own light, on the body rather than the outline, so it reads
