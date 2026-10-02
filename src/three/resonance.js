@@ -376,51 +376,9 @@ ${FIELD}
   }
 `;
 
-const RENDER_FRAG = /* glsl */ `
-  precision highp float;
-
-  #define TAU 6.2831853071
-
-  uniform vec3  uCold;      // drifting, unresolved
-  uniform vec3  uHot;       // settled on a node
-  uniform vec3  uHaze;
-  uniform float uOpacity;
-  uniform float uGlow;
-  uniform float uBokeh;
-  uniform float uHazeDensity;
-  uniform float uHazeNear;
-  uniform float uTime;
-
-  /* the grain's own geometry — see the form library below */
-  uniform float uFormA;     // the beat the scroll is leaving
-  uniform float uFormB;     // the beat it is arriving at
-  uniform float uFormMix;   // where between them it currently is
-  uniform float uElong;     // 1 equant · >1 drawn out along its axis
-  uniform float uHollow;    // 1 drawn outline · 0 solid body
-  uniform float uFacet;     // how hard-edged the form reads
-  uniform float uCore;      // how brightly the inner structure burns
-  uniform float uScan;      // the sweep of light that says it is running
-  uniform float uShatter;   // a shaken plate chips the edges off
-  uniform float uIris;      // how much thin-film colour the material carries
-  uniform float uMorphSpread; // how far apart grains cross from one form to the next
-  uniform float uMorphFlare;  // how hard a grain lights at the moment it crosses
-  uniform float uFormFade;  // 1 the grain is an object · 0 it is only a grain
-
-  varying float vLock;
-  varying float vSeed;
-  varying float vBlur;
-  varying float vShade;
-  varying float vGlint;
-  varying float vDepth;
-  varying vec2  vAxis;
-  varying float vSquash;
-  varying float vPulse;
-  varying float vPx;
-  varying float vAmb;
-  varying float vNear;
-  varying float vFres;
-  varying float vIris;
-
+/* The form library, shared by both passes: the glow pass and the solid pass
+   must draw the same seven shapes, and two copies would drift apart. */
+const FORMS = /* glsl */ `
   /* ------------------------------------------------------------------
      The form library.
 
@@ -599,6 +557,56 @@ const RENDER_FRAG = /* glsl */ `
     return fSigil(p, an);
   }
 
+`;
+
+const RENDER_FRAG = /* glsl */ `
+  precision highp float;
+
+  #define TAU 6.2831853071
+
+  uniform vec3  uCold;      // drifting, unresolved
+  uniform vec3  uHot;       // settled on a node
+  uniform vec3  uHaze;
+  uniform float uOpacity;
+  uniform float uGlow;
+  uniform float uBokeh;
+  uniform float uHazeDensity;
+  uniform float uHazeNear;
+  uniform float uTime;
+
+  /* the grain's own geometry — see the form library below */
+  uniform float uFormA;     // the beat the scroll is leaving
+  uniform float uFormB;     // the beat it is arriving at
+  uniform float uFormMix;   // where between them it currently is
+  uniform float uElong;     // 1 equant · >1 drawn out along its axis
+  uniform float uHollow;    // 1 drawn outline · 0 solid body
+  uniform float uFacet;     // how hard-edged the form reads
+  uniform float uCore;      // how brightly the inner structure burns
+  uniform float uScan;      // the sweep of light that says it is running
+  uniform float uShatter;   // a shaken plate chips the edges off
+  uniform float uIris;      // how much thin-film colour the material carries
+  uniform float uMorphSpread; // how far apart grains cross from one form to the next
+  uniform float uMorphFlare;  // how hard a grain lights at the moment it crosses
+  uniform float uSolidPx;     // above this size a grain is drawn by the solid pass
+  uniform float uFormFade;  // 1 the grain is an object · 0 it is only a grain
+
+  varying float vLock;
+  varying float vSeed;
+  varying float vBlur;
+  varying float vShade;
+  varying float vGlint;
+  varying float vDepth;
+  varying vec2  vAxis;
+  varying float vSquash;
+  varying float vPulse;
+  varying float vPx;
+  varying float vAmb;
+  varying float vNear;
+  varying float vFres;
+  varying float vIris;
+
+  ${FORMS}
+
   void main() {
     vec2 q = gl_PointCoord - 0.5;
 
@@ -700,6 +708,11 @@ const RENDER_FRAG = /* glsl */ `
        hand the frame back: by the time the mark is fully struck each grain is
        a plain speck again, which is exactly what the closing shot wants. */
     // atmosphere is never a contraption: it is out of focus by definition
+    /* Handed over. A grain the solid pass has drawn as an object must not
+       also be drawn here, or the glow lands on top of the hard edge and
+       undoes it — which is the whole reason the solid pass exists. */
+    if (vPx >= uSolidPx && vAmb < 0.5 && vLock >= 0.55 && vBlur <= 0.35 && uFormFade >= 0.5) discard;
+
     float formLod   = smoothstep(1.6, 5.0, vPx) * uFormFade * (1.0 - vAmb);
     float innerLod  = smoothstep(4.0, 9.5, vPx) * (1.0 - vBlur) * uFormFade;
     // a third tier, for grains close enough that machining would be visible
@@ -837,6 +850,147 @@ const RENDER_FRAG = /* glsl */ `
 
     if (a < 0.002) discard;
     gl_FragColor = vec4(col, a);
+  }
+`;
+
+/* ------------------------------------------------------------------
+   The solid pass.
+
+   Everything in this field is additively blended, and additive blending
+   cannot draw a dark side. A bevel's whole claim to being three-dimensional
+   is that one face is lit and the other is not, and under addition the unlit
+   face is simply filled in by whatever grain lies behind it. Nothing occludes
+   anything either, because the pass writes no depth. Shading a grain as a
+   solid and then compositing it additively therefore produces a correct
+   calculation of a thing you cannot see: it reads as a glowing smudge no
+   matter how carefully the normal is reconstructed.
+
+   So the grains large enough and close enough to be read as objects are drawn
+   first, opaque, writing depth. They occlude each other and everything behind
+   them, they carry a genuinely dark side, and their silhouette is a hard
+   cutout rather than a falloff. The rest of the field — the small, the
+   distant, the atmosphere, the unsettled — stays exactly as it was, and is
+   depth-tested against the solids so it cannot wash over them.
+
+   One field, drawn twice, each half in the mode that suits what it is.
+   ------------------------------------------------------------------ */
+const RENDER_FRAG_SOLID = /* glsl */ `
+  precision highp float;
+
+  #define TAU 6.2831853071
+
+  uniform vec3  uCold;
+  uniform vec3  uHot;
+  uniform vec3  uHaze;
+  uniform float uGlow;
+  uniform float uHazeDensity;
+  uniform float uHazeNear;
+  uniform float uTime;
+  uniform float uSolidPx;    // the size at which a grain becomes an object
+  uniform float uIris;
+
+  uniform float uFormA;
+  uniform float uFormB;
+  uniform float uFormMix;
+  uniform float uElong;
+  uniform float uFacet;
+  uniform float uCore;
+  uniform float uScan;
+  uniform float uShatter;
+  uniform float uFormFade;
+  uniform float uMorphSpread;
+
+  varying float vLock;
+  varying float vSeed;
+  varying float vBlur;
+  varying float vShade;
+  varying float vGlint;
+  varying float vDepth;
+  varying vec2  vAxis;
+  varying float vSquash;
+  varying float vPulse;
+  varying float vPx;
+  varying float vAmb;
+  varying float vNear;
+  varying float vFres;
+  varying float vIris;
+
+  ${FORMS}
+
+  void main() {
+    /* Only the grains that have earned it. A solid needs enough pixels for a
+       bevel to exist in, and it has to be settled — a grain still drifting is
+       not an object yet, it is dust, and dust belongs in the glow pass. */
+    if (vPx < uSolidPx || vAmb > 0.5 || vLock < 0.55 || vBlur > 0.35) discard;
+    if (uFormFade < 0.5) discard;
+
+    vec2 q = gl_PointCoord - 0.5;
+    vec2 p = vec2(q.x * vAxis.x + q.y * vAxis.y,
+                 -q.x * vAxis.y + q.y * vAxis.x);
+    p.y /= max(vSquash, 0.16);
+    p.x /= max(uElong, 0.001);
+
+    float ph = uTime * 1.15 + vSeed * TAU;
+    vec2  an = vec2(sin(ph), cos(ph)) * uFormFade;
+
+    float lead = clamp(vPulse * 0.52, 0.0, 1.0) * 0.66 + vSeed * 0.34;
+    float m = clamp(uFormMix * (1.0 + uMorphSpread) - lead * uMorphSpread, 0.0, 1.0);
+    m = m * m * (3.0 - 2.0 * m);
+
+    vec2  f = mix(form(uFormA, p, an), form(uFormB, p, an), m);
+    float d = f.x;
+    float inner = f.y;
+    d += uShatter * 0.05 * sin(atan(p.y + 1e-6, p.x + 1e-6) * 9.0 + vSeed * 137.0);
+
+    // a hard cutout: this is the border, and it is a decision, not a gradient
+    float aa = fwidth(d);
+    if (d > aa * 0.5) discard;
+
+    /* The same bevel as the glow pass, but here it can actually be seen,
+       because nothing is adding light back into the dark side of it. */
+    vec2  grad = vec2(dFdx(d), dFdy(d));
+    float glen = length(grad);
+    vec2  gdir = glen > 1e-7 ? grad / glen : vec2(1.0, 0.0);
+
+    float bevel = max(aa * 3.4, 0.058);
+    float face  = clamp(-d / bevel, 0.0, 1.0);
+    float turn  = face * 1.5707963;
+    vec3  N = normalize(vec3(-gdir * cos(turn), sin(turn) + 0.002));
+
+    vec3  L  = normalize(vec3(-0.46, 0.60, 0.66));
+    vec3  L2 = normalize(vec3(0.55, -0.35, 0.42));   // a cool fill, from below
+    float lam  = max(dot(N, L), 0.0);
+    float fill = max(dot(N, L2), 0.0);
+    vec3  H    = normalize(L + vec3(0.0, 0.0, 1.0));
+    float spec = pow(max(dot(N, H), 0.0), 58.0);
+
+    vec3 base = mix(uCold, uHot, smoothstep(0.15, 0.95, vLock)) * vShade;
+
+    vec3 col = base * (0.16 + 0.92 * lam)          // key
+             + mix(uCold, base, 0.5) * fill * 0.30 // fill, keeps the dark side readable
+             + mix(uHot, vec3(1.0), 0.6) * spec * (0.55 + vLock * 0.9);
+
+    // the thin film still rides the edge
+    vec3 film = 0.5 + 0.5 * cos(TAU * (vIris + vec3(0.0, 0.21, 0.42)));
+    col += mix(uHot, film, 0.62) * vFres * uIris * 0.30 * (1.0 - face);
+
+    // interior structure, cut into the solid rather than glowing over it
+    float ce = fwidth(inner);
+    float core = smoothstep(ce, -ce, inner);
+    col = mix(col, col * 0.42, core * 0.55);
+    col += uHot * core * uCore * 0.30;
+
+    float band  = abs(fract(d * 26.0 + 0.5) - 0.5) / 26.0;
+    float panel = 1.0 - smoothstep(0.0, 0.0055, band);
+    col *= 1.0 - panel * 0.42;
+
+    col += uHot * vNear * 0.45;
+    col *= 0.75 + vLock * uGlow * 0.55;
+
+    float haze = 1.0 - exp(-max(vDepth - uHazeNear, 0.0) * uHazeDensity);
+    col = mix(col, uHaze, haze * 0.62);
+
+    gl_FragColor = vec4(col, 1.0);
   }
 `;
 
@@ -990,6 +1144,11 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
     uShatter:     { value: 0 },
     uIris:        { value: 0.85 },
     uMorphSpread: { value: 0.62 },
+    /* Where a grain stops being a speck of light and becomes an object. Low
+       enough that the close field is genuinely solid, high enough that the
+       plate chapters stay a glow — a figure made of ten thousand opaque chips
+       is a mosaic, not a standing wave. */
+    uSolidPx:     { value: 7.0 },
     uMorphFlare:  { value: 0.55 },
     uFormFade:    { value: 1 },
     uSpin:        { value: 0 },
@@ -1013,11 +1172,31 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
   const points = new THREE.Points(geometry, material);
   points.scale.setScalar(scale);
   points.frustumCulled = false;
+  points.renderOrder = 1;
+
+  /* The solid pass shares the geometry and every uniform — it is the same
+     field, drawn first and opaquely, so the objects in it write depth and the
+     glow behind them is tested against it. */
+  const solidMaterial = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: RENDER_VERT,
+    fragmentShader: RENDER_FRAG_SOLID,
+    transparent: false,
+    depthWrite: true,
+    depthTest: true,
+    blending: THREE.NoBlending,
+  });
+
+  const solid = new THREE.Points(geometry, solidMaterial);
+  solid.scale.setScalar(scale);
+  solid.frustumCulled = false;
+  solid.renderOrder = 0;
 
   const _p = new THREE.Vector3();
 
   return {
     points,
+    solid,
     uniforms,
     sim,
     count,
@@ -1068,6 +1247,7 @@ export function createResonance(renderer, { size = 320, scale = 620 } = {}) {
       gpu.dispose?.();
       geometry.dispose();
       material.dispose();
+      solidMaterial.dispose();
       targets.dispose();
     },
   };

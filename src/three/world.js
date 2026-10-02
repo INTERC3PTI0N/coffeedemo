@@ -345,6 +345,7 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     size: small ? 384 : 768,
     scale: 620,
   });
+  scene.add(field.solid);
   scene.add(field.points);
 
   /* Grains are additively blended, so putting more of them in the same volume
@@ -412,6 +413,7 @@ export function createWorld(canvas, { reducedMotion = false } = {}) {
     field.sim.uScatter.value = s.scatter;
     field.sim.uThick.value = s.thick;
     field.points.position.x = s.off;
+    field.solid.position.x = s.off;
     state.dive = s.dive;
 
     // a readable "driving frequency" for the UI: mode order, scaled
